@@ -1,0 +1,6 @@
+.tools/
+.vscode/
+bin/
+coverage.out
+*.log
+

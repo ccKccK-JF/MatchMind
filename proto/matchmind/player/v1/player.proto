@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package matchmind.player.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1;playerv1";
+
+service PlayerService {
+  rpc CreatePlayer(CreatePlayerRequest) returns (CreatePlayerResponse);
+  rpc GetPlayer(GetPlayerRequest) returns (GetPlayerResponse);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_VANGUARD = 1;
+  ROLE_ROAMER = 2;
+  ROLE_CORE = 3;
+  ROLE_RANGED = 4;
+  ROLE_SUPPORT = 5;
+}
+
+message Player {
+  string id = 1;
+  string name = 2;
+  double rating = 3;
+  double rating_deviation = 4;
+  repeated Role preferred_roles = 5;
+  string home_region = 6;
+  map<string, int32> region_latency_ms = 7;
+  double behavior_score = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message CreatePlayerRequest {
+  string id = 1;
+  string name = 2;
+  double initial_rating = 3;
+  repeated Role preferred_roles = 4;
+  string home_region = 5;
+  map<string, int32> region_latency_ms = 6;
+  double behavior_score = 7;
+}
+
+message CreatePlayerResponse {
+  Player player = 1;
+}
+
+message GetPlayerRequest {
+  string player_id = 1;
+}
+
+message GetPlayerResponse {
+  Player player = 1;
+}
+

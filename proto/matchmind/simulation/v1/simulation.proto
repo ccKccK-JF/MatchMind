@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package matchmind.simulation.v1;
+
+option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1;simulationv1";
+
+service SimulationService {
+  rpc SimulateMatch(SimulateMatchRequest) returns (SimulateMatchResponse);
+}
+
+enum WinningTeam {
+  WINNING_TEAM_UNSPECIFIED = 0;
+  WINNING_TEAM_A = 1;
+  WINNING_TEAM_B = 2;
+}
+
+message SimulateMatchRequest {
+  string match_id = 1;
+  int64 random_seed = 2;
+}
+
+message SimulateMatchResponse {
+  string match_id = 1;
+  WinningTeam winning_team = 2;
+  int32 duration_seconds = 3;
+  int32 score_a = 4;
+  int32 score_b = 5;
+  double max_advantage = 6;
+  bool has_afk = 7;
+  bool surrendered = 8;
+  bool one_sided = 9;
+  double actual_quality_score = 10;
+}
+

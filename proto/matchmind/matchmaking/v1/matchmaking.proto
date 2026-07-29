@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package matchmind.matchmaking.v1;
+
+import "google/protobuf/timestamp.proto";
+import "matchmind/player/v1/player.proto";
+
+option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1;matchmakingv1";
+
+service MatchmakingService {
+  rpc CreateTicket(CreateTicketRequest) returns (CreateTicketResponse);
+  rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
+  rpc CancelTicket(CancelTicketRequest) returns (CancelTicketResponse);
+  rpc GetMatch(GetMatchRequest) returns (GetMatchResponse);
+}
+
+enum TicketState {
+  TICKET_STATE_UNSPECIFIED = 0;
+  TICKET_STATE_CREATED = 1;
+  TICKET_STATE_QUEUED = 2;
+  TICKET_STATE_RESERVED = 3;
+  TICKET_STATE_ASSIGNED = 4;
+  TICKET_STATE_CANCELLED = 5;
+  TICKET_STATE_EXPIRED = 6;
+  TICKET_STATE_FAILED = 7;
+}
+
+enum MatchState {
+  MATCH_STATE_UNSPECIFIED = 0;
+  MATCH_STATE_CREATED = 1;
+  MATCH_STATE_ALLOCATING = 2;
+  MATCH_STATE_READY = 3;
+  MATCH_STATE_RUNNING = 4;
+  MATCH_STATE_FINISHED = 5;
+  MATCH_STATE_FAILED = 6;
+}
+
+message MatchTicket {
+  string id = 1;
+  string player_id = 2;
+  string party_id = 3;
+  string mode = 4;
+  string client_version = 5;
+  string region = 6;
+  double rating = 7;
+  TicketState state = 8;
+  repeated matchmind.player.v1.Role preferred_roles = 9;
+  map<string, int32> region_latency_ms = 10;
+  google.protobuf.Timestamp created_at = 11;
+  string reservation_id = 12;
+  google.protobuf.Timestamp reservation_expires_at = 13;
+}
+
+message Team {
+  string id = 1;
+  repeated string player_ids = 2;
+  double average_rating = 3;
+}
+
+message Match {
+  string id = 1;
+  Team team_a = 2;
+  Team team_b = 3;
+  MatchState state = 4;
+  string server_region = 5;
+  string policy_version = 6;
+  double predicted_win_rate_a = 7;
+  double quality_score = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message CreateTicketRequest {
+  string player_id = 1;
+  string party_id = 2;
+  string mode = 3;
+  string client_version = 4;
+  repeated matchmind.player.v1.Role preferred_roles = 5;
+  map<string, int32> region_latency_ms = 6;
+  string idempotency_key = 7;
+}
+
+message CreateTicketResponse {
+  MatchTicket ticket = 1;
+}
+
+message GetTicketRequest {
+  string ticket_id = 1;
+}
+
+message GetTicketResponse {
+  MatchTicket ticket = 1;
+}
+
+message CancelTicketRequest {
+  string ticket_id = 1;
+  string player_id = 2;
+  string idempotency_key = 3;
+}
+
+message CancelTicketResponse {
+  MatchTicket ticket = 1;
+}
+
+message GetMatchRequest {
+  string match_id = 1;
+}
+
+message GetMatchResponse {
+  Match match = 1;
+}
+

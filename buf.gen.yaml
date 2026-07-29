@@ -1,0 +1,12 @@
+version: v2
+clean: true
+plugins:
+  - local: .tools/bin/protoc-gen-go.exe
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - local: .tools/bin/protoc-gen-go-grpc.exe
+    out: gen/go
+    opt:
+      - paths=source_relative
+
