@@ -171,6 +171,21 @@ func (s *TicketStore) PoolKeys(ctx context.Context) ([]domain.PoolKey, error) {
 	return keys, nil
 }
 
+func (s *TicketStore) QueueSize(ctx context.Context) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	count := 0
+	for _, ticket := range s.tickets {
+		if ticket != nil && ticket.IsQueueCandidate() {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (s *TicketStore) ReserveAll(
 	ctx context.Context,
 	ticketIDs []string,

@@ -11,6 +11,7 @@ gRPC/Protocol Buffers for internal APIs.
 | `player-service` | `:50051` | Player profiles and ratings |
 | `matchmaking-service` | `:50052` | Tickets, queues, team formation, and matches |
 | `simulation-service` | `:50053` | Deterministic match simulation |
+| `api-service` | HTTP `:8080` | Public REST API and downstream readiness |
 
 All services expose the standard gRPC health service and server reflection.
 
@@ -30,9 +31,15 @@ All services expose the standard gRPC health service and server reflection.
   through `matchmaking-service`.
 - A three-service integration test proves the complete in-memory flow from ten
   players entering the queue through match completion and rating history.
+- `api-service` exposes the required REST routes, trace IDs, JSON error
+  mapping, health/readiness checks, and Prometheus-format API metrics.
+- `matchmaking-service` exposes the required queue, wait, attempt, success,
+  failure, quality, reservation-conflict, and worker-duration metrics on
+  `:8082`.
 
 Current persistence is intentionally in memory. PostgreSQL, Redis, an external
-REST gateway, and production telemetry remain later milestones.
+message broker, distributed tracing backend, and durable telemetry storage
+remain later milestones.
 
 ## Architecture
 
@@ -86,7 +93,12 @@ Run the services in separate terminals, in dependency order:
 go run .\cmd\player-service
 go run .\cmd\matchmaking-service
 go run .\cmd\simulation-service
+go run .\cmd\api-service
 ```
+
+The HTTP API is then available at `http://localhost:8080`. See
+[`docs/API.md`](docs/API.md) for request examples. Matchmaking Prometheus
+metrics are available at `http://localhost:8082/metrics`.
 
 Runtime configuration:
 
@@ -95,6 +107,9 @@ Runtime configuration:
 | `PLAYER_GRPC_ADDRESS` | `:50051` |
 | `PLAYER_ELO_K_FACTOR` | `32` |
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
+| `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
 | `PLAYER_GRPC_TARGET` | `localhost:50051` |
 | `SIMULATION_GRPC_ADDRESS` | `:50053` |
 | `MATCHMAKING_GRPC_TARGET` | `localhost:50052` |
+| `SIMULATION_GRPC_TARGET` | `localhost:50053` |
+| `API_HTTP_ADDRESS` | `:8080` |

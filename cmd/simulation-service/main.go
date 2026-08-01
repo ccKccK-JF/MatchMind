@@ -12,6 +12,7 @@ import (
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	"github.com/ccKccK-JF/MatchMind/internal/simulation/application"
 	simulationdomain "github.com/ccKccK-JF/MatchMind/internal/simulation/domain"
 	matchmakinggateway "github.com/ccKccK-JF/MatchMind/internal/simulation/gateway/matchmakinggrpc"
@@ -23,6 +24,7 @@ import (
 )
 
 func main() {
+	logging.Configure()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

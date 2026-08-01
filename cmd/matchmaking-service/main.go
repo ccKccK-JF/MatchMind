@@ -14,14 +14,19 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	playergateway "github.com/ccKccK-JF/MatchMind/internal/matchmaking/gateway/playergrpc"
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/observability"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/memory"
 	matchmakinggrpc "github.com/ccKccK-JF/MatchMind/internal/matchmaking/transport/grpc"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
+	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
+	logging.Configure()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -46,13 +51,24 @@ func main() {
 		slog.Error("create matchmaking worker", "error", err)
 		os.Exit(1)
 	}
+	registry := platformmetrics.NewRegistry()
+	worker.SetMetrics(observability.NewMatchmakingMetrics(registry))
 	go worker.Run(ctx, 250*time.Millisecond)
 	transport := matchmakinggrpc.NewServer(service, matchService)
 
 	address := config.String("MATCHMAKING_GRPC_ADDRESS", ":50052")
-	err = grpcserver.Run(ctx, "matchmind.matchmaking.v1.MatchmakingService", address, func(server *grpc.Server) {
-		matchmakingv1.RegisterMatchmakingServiceServer(server, transport)
-	})
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- grpcserver.Run(ctx, "matchmind.matchmaking.v1.MatchmakingService", address, func(server *grpc.Server) {
+			matchmakingv1.RegisterMatchmakingServiceServer(server, transport)
+		})
+	}()
+	go func() {
+		httpAddress := config.String("MATCHMAKING_HTTP_ADDRESS", ":8082")
+		errCh <- httpserver.Run(ctx, "matchmind-matchmaking-operations", httpAddress, httpserver.NewHandler(nil, registry, nil))
+	}()
+	err = <-errCh
+	stop()
 	if err != nil {
 		slog.Error("matchmaking service stopped with error", "error", err)
 		os.Exit(1)

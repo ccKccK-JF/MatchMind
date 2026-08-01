@@ -10,6 +10,7 @@ import (
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	"github.com/ccKccK-JF/MatchMind/internal/player/application"
 	"github.com/ccKccK-JF/MatchMind/internal/player/repository/memory"
 	playergrpc "github.com/ccKccK-JF/MatchMind/internal/player/transport/grpc"
@@ -18,6 +19,7 @@ import (
 )
 
 func main() {
+	logging.Configure()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

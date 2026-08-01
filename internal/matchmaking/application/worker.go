@@ -32,6 +32,28 @@ type ServerAllocator interface {
 	Allocate(ctx context.Context, matchID, region string) (Allocation, error)
 }
 
+type WorkerMetrics interface {
+	SetQueueSize(int)
+	IncMatchAttempt()
+	IncMatchSuccess()
+	IncMatchFailure()
+	IncReservationConflict()
+	ObserveWaitSeconds(float64)
+	ObserveQualityScore(float64)
+	ObserveWorkerDuration(float64)
+}
+
+type noopWorkerMetrics struct{}
+
+func (noopWorkerMetrics) SetQueueSize(int)              {}
+func (noopWorkerMetrics) IncMatchAttempt()              {}
+func (noopWorkerMetrics) IncMatchSuccess()              {}
+func (noopWorkerMetrics) IncMatchFailure()              {}
+func (noopWorkerMetrics) IncReservationConflict()       {}
+func (noopWorkerMetrics) ObserveWaitSeconds(float64)    {}
+func (noopWorkerMetrics) ObserveQualityScore(float64)   {}
+func (noopWorkerMetrics) ObserveWorkerDuration(float64) {}
+
 type Worker struct {
 	queue       MatchQueue
 	matches     MatchRepository
@@ -39,6 +61,7 @@ type Worker struct {
 	policy      domain.MatchPolicy
 	idGenerator platformid.Generator
 	clock       func() time.Time
+	metrics     WorkerMetrics
 }
 
 func NewWorker(
@@ -60,8 +83,16 @@ func NewWorker(
 	}
 	return &Worker{
 		queue: queue, matches: matches, allocator: allocator, policy: policy,
-		idGenerator: idGenerator, clock: clock,
+		idGenerator: idGenerator, clock: clock, metrics: noopWorkerMetrics{},
 	}, nil
+}
+
+func (w *Worker) SetMetrics(metrics WorkerMetrics) {
+	if metrics == nil {
+		w.metrics = noopWorkerMetrics{}
+		return
+	}
+	w.metrics = metrics
 }
 
 func (w *Worker) Run(ctx context.Context, interval time.Duration) {
@@ -84,9 +115,19 @@ func (w *Worker) Run(ctx context.Context, interval time.Duration) {
 }
 
 func (w *Worker) RunOnce(ctx context.Context) (*domain.Match, error) {
+	startedAt := time.Now()
+	defer func() { w.metrics.ObserveWorkerDuration(time.Since(startedAt).Seconds()) }()
+
 	now := w.clock()
 	if _, err := w.queue.RecoverExpiredReservations(ctx, now); err != nil {
 		return nil, err
+	}
+	if sizer, ok := w.queue.(interface {
+		QueueSize(context.Context) (int, error)
+	}); ok {
+		if size, err := sizer.QueueSize(ctx); err == nil {
+			w.metrics.SetQueueSize(size)
+		}
 	}
 	poolKeys, err := w.queue.PoolKeys(ctx)
 	if err != nil {
@@ -106,7 +147,7 @@ func (w *Worker) RunOnce(ctx context.Context) (*domain.Match, error) {
 	return nil, ErrNoMatchAvailable
 }
 
-func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.Time) (*domain.Match, error) {
+func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.Time) (result *domain.Match, resultErr error) {
 	tickets, err := w.queue.QueueSnapshot(ctx, poolKey, w.policy.CandidateLimit)
 	if err != nil {
 		return nil, err
@@ -114,6 +155,12 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	if len(tickets) < w.policy.TeamSize*2 {
 		return nil, ErrNoMatchAvailable
 	}
+	w.metrics.IncMatchAttempt()
+	defer func() {
+		if resultErr != nil {
+			w.metrics.IncMatchFailure()
+		}
+	}()
 	candidates, err := engine.GenerateCandidates(tickets, now, w.policy)
 	if err != nil {
 		return nil, err
@@ -126,6 +173,7 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	if err != nil {
 		return nil, err
 	}
+	w.metrics.ObserveQualityScore(quality.TotalScore)
 	if quality.TotalScore < w.policy.MinQualityScore {
 		return nil, ErrNoMatchAvailable
 	}
@@ -140,6 +188,9 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	}
 	ticketIDs := formationTicketIDs(formation)
 	if _, err := w.queue.ReserveAll(ctx, ticketIDs, reservationID, now.Add(w.policy.ReservationTTL), now); err != nil {
+		if errors.Is(err, ErrReservationConflict) {
+			w.metrics.IncReservationConflict()
+		}
 		return nil, err
 	}
 
@@ -189,7 +240,21 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	if err := w.matches.Update(ctx, match); err != nil {
 		return nil, err
 	}
+	w.metrics.IncMatchSuccess()
+	for _, ticket := range ticketsForFormation(formation) {
+		w.metrics.ObserveWaitSeconds(now.Sub(ticket.CreatedAt()).Seconds())
+	}
 	return match.Clone(), nil
+}
+
+func ticketsForFormation(formation engine.TeamFormation) []*domain.MatchTicket {
+	result := make([]*domain.MatchTicket, 0, 10)
+	for _, team := range []engine.Team{formation.TeamA, formation.TeamB} {
+		for _, player := range team.Players {
+			result = append(result, player.Ticket)
+		}
+	}
+	return result
 }
 
 func formationTicketIDs(formation engine.TeamFormation) []string {
