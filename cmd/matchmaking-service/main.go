@@ -6,21 +6,52 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
+	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
+	playergateway "github.com/ccKccK-JF/MatchMind/internal/matchmaking/gateway/playergrpc"
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/memory"
 	matchmakinggrpc "github.com/ccKccK-JF/MatchMind/internal/matchmaking/transport/grpc"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	playerTarget := config.String("PLAYER_GRPC_TARGET", "localhost:50051")
+	playerConnection, err := grpc.NewClient(playerTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		slog.Error("create player service client", "error", err)
+		os.Exit(1)
+	}
+	defer playerConnection.Close()
+
+	store := memory.NewTicketStore()
+	matchStore := memory.NewMatchStore()
+	players := playergateway.NewClient(playerv1.NewPlayerServiceClient(playerConnection))
+	service := application.NewTicketService(store, players, nil, nil)
+	matchService := application.NewMatchService(matchStore, nil)
+	policy := domain.DefaultPolicy()
+	worker, err := application.NewWorker(
+		store, matchStore, application.NewLocalAllocator(nil), policy, nil, nil,
+	)
+	if err != nil {
+		slog.Error("create matchmaking worker", "error", err)
+		os.Exit(1)
+	}
+	go worker.Run(ctx, 250*time.Millisecond)
+	transport := matchmakinggrpc.NewServer(service, matchService)
+
 	address := config.String("MATCHMAKING_GRPC_ADDRESS", ":50052")
-	err := grpcserver.Run(ctx, "matchmind.matchmaking.v1.MatchmakingService", address, func(server *grpc.Server) {
-		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakinggrpc.NewServer())
+	err = grpcserver.Run(ctx, "matchmind.matchmaking.v1.MatchmakingService", address, func(server *grpc.Server) {
+		matchmakingv1.RegisterMatchmakingServiceServer(server, transport)
 	})
 	if err != nil {
 		slog.Error("matchmaking service stopped with error", "error", err)

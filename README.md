@@ -14,6 +14,26 @@ gRPC/Protocol Buffers for internal APIs.
 
 All services expose the standard gRPC health service and server reflection.
 
+## Development status
+
+- The service process skeleton, Protobuf contracts, generation workflow,
+  health checks, reflection, and graceful shutdown are complete.
+- `player-service` supports player creation/query, configurable Elo updates,
+  rating history, result idempotency, and a concurrency-safe memory store.
+- `matchmaking-service` supports idempotent ticket create/cancel/query, strict
+  ticket and match state machines, partitioned queues, dynamic rating windows,
+  party-safe candidate selection, deterministic 5v5 team/role assignment,
+  five-part quality scoring, atomic reservation, automatic workers, and match
+  connection details.
+- `simulation-service` runs reproducible seeded matches, records process
+  metrics, updates ranked Elo through `player-service`, and completes matches
+  through `matchmaking-service`.
+- A three-service integration test proves the complete in-memory flow from ten
+  players entering the queue through match completion and rating history.
+
+Current persistence is intentionally in memory. PostgreSQL, Redis, an external
+REST gateway, and production telemetry remain later milestones.
+
 ## Architecture
 
 ```text
@@ -57,10 +77,24 @@ go mod tidy
 go test ./...
 ```
 
-Run a service:
+The full test suite includes domain tests, repository concurrency tests, gRPC
+status-code tests, and an in-memory end-to-end gRPC test.
+
+Run the services in separate terminals, in dependency order:
 
 ```powershell
 go run .\cmd\player-service
 go run .\cmd\matchmaking-service
 go run .\cmd\simulation-service
 ```
+
+Runtime configuration:
+
+| Variable | Default |
+|---|---|
+| `PLAYER_GRPC_ADDRESS` | `:50051` |
+| `PLAYER_ELO_K_FACTOR` | `32` |
+| `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
+| `PLAYER_GRPC_TARGET` | `localhost:50051` |
+| `SIMULATION_GRPC_ADDRESS` | `:50053` |
+| `MATCHMAKING_GRPC_TARGET` | `localhost:50052` |

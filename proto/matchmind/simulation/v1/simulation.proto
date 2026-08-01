@@ -30,5 +30,5 @@ message SimulateMatchResponse {
   bool surrendered = 8;
   bool one_sided = 9;
   double actual_quality_score = 10;
+  int64 random_seed = 11;
 }
-

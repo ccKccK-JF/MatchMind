@@ -134,6 +134,7 @@ type SimulateMatchResponse struct {
 	Surrendered        bool                   `protobuf:"varint,8,opt,name=surrendered,proto3" json:"surrendered,omitempty"`
 	OneSided           bool                   `protobuf:"varint,9,opt,name=one_sided,json=oneSided,proto3" json:"one_sided,omitempty"`
 	ActualQualityScore float64                `protobuf:"fixed64,10,opt,name=actual_quality_score,json=actualQualityScore,proto3" json:"actual_quality_score,omitempty"`
+	RandomSeed         int64                  `protobuf:"varint,11,opt,name=random_seed,json=randomSeed,proto3" json:"random_seed,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -238,6 +239,13 @@ func (x *SimulateMatchResponse) GetActualQualityScore() float64 {
 	return 0
 }
 
+func (x *SimulateMatchResponse) GetRandomSeed() int64 {
+	if x != nil {
+		return x.RandomSeed
+	}
+	return 0
+}
+
 var File_matchmind_simulation_v1_simulation_proto protoreflect.FileDescriptor
 
 const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
@@ -246,7 +254,7 @@ const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"\x14SimulateMatchRequest\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12\x1f\n" +
 	"\vrandom_seed\x18\x02 \x01(\x03R\n" +
-	"randomSeed\"\x87\x03\n" +
+	"randomSeed\"\xa8\x03\n" +
 	"\x15SimulateMatchResponse\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12G\n" +
 	"\fwinning_team\x18\x02 \x01(\x0e2$.matchmind.simulation.v1.WinningTeamR\vwinningTeam\x12)\n" +
@@ -258,7 +266,9 @@ const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"\vsurrendered\x18\b \x01(\bR\vsurrendered\x12\x1b\n" +
 	"\tone_sided\x18\t \x01(\bR\boneSided\x120\n" +
 	"\x14actual_quality_score\x18\n" +
-	" \x01(\x01R\x12actualQualityScore*S\n" +
+	" \x01(\x01R\x12actualQualityScore\x12\x1f\n" +
+	"\vrandom_seed\x18\v \x01(\x03R\n" +
+	"randomSeed*S\n" +
 	"\vWinningTeam\x12\x1c\n" +
 	"\x18WINNING_TEAM_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eWINNING_TEAM_A\x10\x01\x12\x12\n" +

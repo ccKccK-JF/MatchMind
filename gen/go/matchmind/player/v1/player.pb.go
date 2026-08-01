@@ -80,6 +80,58 @@ func (Role) EnumDescriptor() ([]byte, []int) {
 	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{0}
 }
 
+type MatchOutcome int32
+
+const (
+	MatchOutcome_MATCH_OUTCOME_UNSPECIFIED MatchOutcome = 0
+	MatchOutcome_MATCH_OUTCOME_TEAM_A_WIN  MatchOutcome = 1
+	MatchOutcome_MATCH_OUTCOME_TEAM_B_WIN  MatchOutcome = 2
+	MatchOutcome_MATCH_OUTCOME_DRAW        MatchOutcome = 3
+)
+
+// Enum value maps for MatchOutcome.
+var (
+	MatchOutcome_name = map[int32]string{
+		0: "MATCH_OUTCOME_UNSPECIFIED",
+		1: "MATCH_OUTCOME_TEAM_A_WIN",
+		2: "MATCH_OUTCOME_TEAM_B_WIN",
+		3: "MATCH_OUTCOME_DRAW",
+	}
+	MatchOutcome_value = map[string]int32{
+		"MATCH_OUTCOME_UNSPECIFIED": 0,
+		"MATCH_OUTCOME_TEAM_A_WIN":  1,
+		"MATCH_OUTCOME_TEAM_B_WIN":  2,
+		"MATCH_OUTCOME_DRAW":        3,
+	}
+)
+
+func (x MatchOutcome) Enum() *MatchOutcome {
+	p := new(MatchOutcome)
+	*p = x
+	return p
+}
+
+func (x MatchOutcome) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MatchOutcome) Descriptor() protoreflect.EnumDescriptor {
+	return file_matchmind_player_v1_player_proto_enumTypes[1].Descriptor()
+}
+
+func (MatchOutcome) Type() protoreflect.EnumType {
+	return &file_matchmind_player_v1_player_proto_enumTypes[1]
+}
+
+func (x MatchOutcome) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MatchOutcome.Descriptor instead.
+func (MatchOutcome) EnumDescriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{1}
+}
+
 type Player struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -412,6 +464,306 @@ func (x *GetPlayerResponse) GetPlayer() *Player {
 	return nil
 }
 
+type RatingChange struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	MatchId       string                 `protobuf:"bytes,2,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
+	Before        float64                `protobuf:"fixed64,3,opt,name=before,proto3" json:"before,omitempty"`
+	After         float64                `protobuf:"fixed64,4,opt,name=after,proto3" json:"after,omitempty"`
+	Delta         float64                `protobuf:"fixed64,5,opt,name=delta,proto3" json:"delta,omitempty"`
+	Reason        string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RatingChange) Reset() {
+	*x = RatingChange{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RatingChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RatingChange) ProtoMessage() {}
+
+func (x *RatingChange) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RatingChange.ProtoReflect.Descriptor instead.
+func (*RatingChange) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RatingChange) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *RatingChange) GetMatchId() string {
+	if x != nil {
+		return x.MatchId
+	}
+	return ""
+}
+
+func (x *RatingChange) GetBefore() float64 {
+	if x != nil {
+		return x.Before
+	}
+	return 0
+}
+
+func (x *RatingChange) GetAfter() float64 {
+	if x != nil {
+		return x.After
+	}
+	return 0
+}
+
+func (x *RatingChange) GetDelta() float64 {
+	if x != nil {
+		return x.Delta
+	}
+	return 0
+}
+
+func (x *RatingChange) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *RatingChange) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ApplyMatchResultRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MatchId        string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
+	TeamAPlayerIds []string               `protobuf:"bytes,2,rep,name=team_a_player_ids,json=teamAPlayerIds,proto3" json:"team_a_player_ids,omitempty"`
+	TeamBPlayerIds []string               `protobuf:"bytes,3,rep,name=team_b_player_ids,json=teamBPlayerIds,proto3" json:"team_b_player_ids,omitempty"`
+	Outcome        MatchOutcome           `protobuf:"varint,4,opt,name=outcome,proto3,enum=matchmind.player.v1.MatchOutcome" json:"outcome,omitempty"`
+	Reason         string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ApplyMatchResultRequest) Reset() {
+	*x = ApplyMatchResultRequest{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApplyMatchResultRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApplyMatchResultRequest) ProtoMessage() {}
+
+func (x *ApplyMatchResultRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApplyMatchResultRequest.ProtoReflect.Descriptor instead.
+func (*ApplyMatchResultRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ApplyMatchResultRequest) GetMatchId() string {
+	if x != nil {
+		return x.MatchId
+	}
+	return ""
+}
+
+func (x *ApplyMatchResultRequest) GetTeamAPlayerIds() []string {
+	if x != nil {
+		return x.TeamAPlayerIds
+	}
+	return nil
+}
+
+func (x *ApplyMatchResultRequest) GetTeamBPlayerIds() []string {
+	if x != nil {
+		return x.TeamBPlayerIds
+	}
+	return nil
+}
+
+func (x *ApplyMatchResultRequest) GetOutcome() MatchOutcome {
+	if x != nil {
+		return x.Outcome
+	}
+	return MatchOutcome_MATCH_OUTCOME_UNSPECIFIED
+}
+
+func (x *ApplyMatchResultRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ApplyMatchResultResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*RatingChange        `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApplyMatchResultResponse) Reset() {
+	*x = ApplyMatchResultResponse{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApplyMatchResultResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApplyMatchResultResponse) ProtoMessage() {}
+
+func (x *ApplyMatchResultResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApplyMatchResultResponse.ProtoReflect.Descriptor instead.
+func (*ApplyMatchResultResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ApplyMatchResultResponse) GetChanges() []*RatingChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+type GetRatingHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRatingHistoryRequest) Reset() {
+	*x = GetRatingHistoryRequest{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRatingHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRatingHistoryRequest) ProtoMessage() {}
+
+func (x *GetRatingHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRatingHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetRatingHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetRatingHistoryRequest) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+type GetRatingHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*RatingChange        `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRatingHistoryResponse) Reset() {
+	*x = GetRatingHistoryResponse{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRatingHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRatingHistoryResponse) ProtoMessage() {}
+
+func (x *GetRatingHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRatingHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetRatingHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetRatingHistoryResponse) GetChanges() []*RatingChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
 var File_matchmind_player_v1_player_proto protoreflect.FileDescriptor
 
 const file_matchmind_player_v1_player_proto_rawDesc = "" +
@@ -449,17 +801,45 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x10GetPlayerRequest\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\"H\n" +
 	"\x11GetPlayerResponse\x123\n" +
-	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player*r\n" +
+	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"\xdd\x01\n" +
+	"\fRatingChange\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x19\n" +
+	"\bmatch_id\x18\x02 \x01(\tR\amatchId\x12\x16\n" +
+	"\x06before\x18\x03 \x01(\x01R\x06before\x12\x14\n" +
+	"\x05after\x18\x04 \x01(\x01R\x05after\x12\x14\n" +
+	"\x05delta\x18\x05 \x01(\x01R\x05delta\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xdf\x01\n" +
+	"\x17ApplyMatchResultRequest\x12\x19\n" +
+	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12)\n" +
+	"\x11team_a_player_ids\x18\x02 \x03(\tR\x0eteamAPlayerIds\x12)\n" +
+	"\x11team_b_player_ids\x18\x03 \x03(\tR\x0eteamBPlayerIds\x12;\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2!.matchmind.player.v1.MatchOutcomeR\aoutcome\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\"W\n" +
+	"\x18ApplyMatchResultResponse\x12;\n" +
+	"\achanges\x18\x01 \x03(\v2!.matchmind.player.v1.RatingChangeR\achanges\"6\n" +
+	"\x17GetRatingHistoryRequest\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\"W\n" +
+	"\x18GetRatingHistoryResponse\x12;\n" +
+	"\achanges\x18\x01 \x03(\v2!.matchmind.player.v1.RatingChangeR\achanges*r\n" +
 	"\x04Role\x12\x14\n" +
 	"\x10ROLE_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rROLE_VANGUARD\x10\x01\x12\x0f\n" +
 	"\vROLE_ROAMER\x10\x02\x12\r\n" +
 	"\tROLE_CORE\x10\x03\x12\x0f\n" +
 	"\vROLE_RANGED\x10\x04\x12\x10\n" +
-	"\fROLE_SUPPORT\x10\x052\xd0\x01\n" +
+	"\fROLE_SUPPORT\x10\x05*\x81\x01\n" +
+	"\fMatchOutcome\x12\x1d\n" +
+	"\x19MATCH_OUTCOME_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18MATCH_OUTCOME_TEAM_A_WIN\x10\x01\x12\x1c\n" +
+	"\x18MATCH_OUTCOME_TEAM_B_WIN\x10\x02\x12\x16\n" +
+	"\x12MATCH_OUTCOME_DRAW\x10\x032\xb2\x03\n" +
 	"\rPlayerService\x12c\n" +
 	"\fCreatePlayer\x12(.matchmind.player.v1.CreatePlayerRequest\x1a).matchmind.player.v1.CreatePlayerResponse\x12Z\n" +
-	"\tGetPlayer\x12%.matchmind.player.v1.GetPlayerRequest\x1a&.matchmind.player.v1.GetPlayerResponseBDZBgithub.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1;playerv1b\x06proto3"
+	"\tGetPlayer\x12%.matchmind.player.v1.GetPlayerRequest\x1a&.matchmind.player.v1.GetPlayerResponse\x12o\n" +
+	"\x10ApplyMatchResult\x12,.matchmind.player.v1.ApplyMatchResultRequest\x1a-.matchmind.player.v1.ApplyMatchResultResponse\x12o\n" +
+	"\x10GetRatingHistory\x12,.matchmind.player.v1.GetRatingHistoryRequest\x1a-.matchmind.player.v1.GetRatingHistoryResponseBDZBgithub.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1;playerv1b\x06proto3"
 
 var (
 	file_matchmind_player_v1_player_proto_rawDescOnce sync.Once
@@ -473,36 +853,50 @@ func file_matchmind_player_v1_player_proto_rawDescGZIP() []byte {
 	return file_matchmind_player_v1_player_proto_rawDescData
 }
 
-var file_matchmind_player_v1_player_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_matchmind_player_v1_player_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_matchmind_player_v1_player_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_matchmind_player_v1_player_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_matchmind_player_v1_player_proto_goTypes = []any{
-	(Role)(0),                     // 0: matchmind.player.v1.Role
-	(*Player)(nil),                // 1: matchmind.player.v1.Player
-	(*CreatePlayerRequest)(nil),   // 2: matchmind.player.v1.CreatePlayerRequest
-	(*CreatePlayerResponse)(nil),  // 3: matchmind.player.v1.CreatePlayerResponse
-	(*GetPlayerRequest)(nil),      // 4: matchmind.player.v1.GetPlayerRequest
-	(*GetPlayerResponse)(nil),     // 5: matchmind.player.v1.GetPlayerResponse
-	nil,                           // 6: matchmind.player.v1.Player.RegionLatencyMsEntry
-	nil,                           // 7: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(Role)(0),                        // 0: matchmind.player.v1.Role
+	(MatchOutcome)(0),                // 1: matchmind.player.v1.MatchOutcome
+	(*Player)(nil),                   // 2: matchmind.player.v1.Player
+	(*CreatePlayerRequest)(nil),      // 3: matchmind.player.v1.CreatePlayerRequest
+	(*CreatePlayerResponse)(nil),     // 4: matchmind.player.v1.CreatePlayerResponse
+	(*GetPlayerRequest)(nil),         // 5: matchmind.player.v1.GetPlayerRequest
+	(*GetPlayerResponse)(nil),        // 6: matchmind.player.v1.GetPlayerResponse
+	(*RatingChange)(nil),             // 7: matchmind.player.v1.RatingChange
+	(*ApplyMatchResultRequest)(nil),  // 8: matchmind.player.v1.ApplyMatchResultRequest
+	(*ApplyMatchResultResponse)(nil), // 9: matchmind.player.v1.ApplyMatchResultResponse
+	(*GetRatingHistoryRequest)(nil),  // 10: matchmind.player.v1.GetRatingHistoryRequest
+	(*GetRatingHistoryResponse)(nil), // 11: matchmind.player.v1.GetRatingHistoryResponse
+	nil,                              // 12: matchmind.player.v1.Player.RegionLatencyMsEntry
+	nil,                              // 13: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	(*timestamppb.Timestamp)(nil),    // 14: google.protobuf.Timestamp
 }
 var file_matchmind_player_v1_player_proto_depIdxs = []int32{
-	0, // 0: matchmind.player.v1.Player.preferred_roles:type_name -> matchmind.player.v1.Role
-	6, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
-	8, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
-	0, // 3: matchmind.player.v1.CreatePlayerRequest.preferred_roles:type_name -> matchmind.player.v1.Role
-	7, // 4: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	1, // 5: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
-	1, // 6: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
-	2, // 7: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
-	4, // 8: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
-	3, // 9: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
-	5, // 10: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
-	9, // [9:11] is the sub-list for method output_type
-	7, // [7:9] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	0,  // 0: matchmind.player.v1.Player.preferred_roles:type_name -> matchmind.player.v1.Role
+	12, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
+	14, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: matchmind.player.v1.CreatePlayerRequest.preferred_roles:type_name -> matchmind.player.v1.Role
+	13, // 4: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	2,  // 5: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
+	2,  // 6: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
+	14, // 7: matchmind.player.v1.RatingChange.created_at:type_name -> google.protobuf.Timestamp
+	1,  // 8: matchmind.player.v1.ApplyMatchResultRequest.outcome:type_name -> matchmind.player.v1.MatchOutcome
+	7,  // 9: matchmind.player.v1.ApplyMatchResultResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	7,  // 10: matchmind.player.v1.GetRatingHistoryResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	3,  // 11: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
+	5,  // 12: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
+	8,  // 13: matchmind.player.v1.PlayerService.ApplyMatchResult:input_type -> matchmind.player.v1.ApplyMatchResultRequest
+	10, // 14: matchmind.player.v1.PlayerService.GetRatingHistory:input_type -> matchmind.player.v1.GetRatingHistoryRequest
+	4,  // 15: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
+	6,  // 16: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
+	9,  // 17: matchmind.player.v1.PlayerService.ApplyMatchResult:output_type -> matchmind.player.v1.ApplyMatchResultResponse
+	11, // 18: matchmind.player.v1.PlayerService.GetRatingHistory:output_type -> matchmind.player.v1.GetRatingHistoryResponse
+	15, // [15:19] is the sub-list for method output_type
+	11, // [11:15] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_matchmind_player_v1_player_proto_init() }
@@ -515,8 +909,8 @@ func file_matchmind_player_v1_player_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matchmind_player_v1_player_proto_rawDesc), len(file_matchmind_player_v1_player_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   7,
+			NumEnums:      2,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PlayerService_CreatePlayer_FullMethodName = "/matchmind.player.v1.PlayerService/CreatePlayer"
-	PlayerService_GetPlayer_FullMethodName    = "/matchmind.player.v1.PlayerService/GetPlayer"
+	PlayerService_CreatePlayer_FullMethodName     = "/matchmind.player.v1.PlayerService/CreatePlayer"
+	PlayerService_GetPlayer_FullMethodName        = "/matchmind.player.v1.PlayerService/GetPlayer"
+	PlayerService_ApplyMatchResult_FullMethodName = "/matchmind.player.v1.PlayerService/ApplyMatchResult"
+	PlayerService_GetRatingHistory_FullMethodName = "/matchmind.player.v1.PlayerService/GetRatingHistory"
 )
 
 // PlayerServiceClient is the client API for PlayerService service.
@@ -29,6 +31,8 @@ const (
 type PlayerServiceClient interface {
 	CreatePlayer(ctx context.Context, in *CreatePlayerRequest, opts ...grpc.CallOption) (*CreatePlayerResponse, error)
 	GetPlayer(ctx context.Context, in *GetPlayerRequest, opts ...grpc.CallOption) (*GetPlayerResponse, error)
+	ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error)
+	GetRatingHistory(ctx context.Context, in *GetRatingHistoryRequest, opts ...grpc.CallOption) (*GetRatingHistoryResponse, error)
 }
 
 type playerServiceClient struct {
@@ -59,12 +63,34 @@ func (c *playerServiceClient) GetPlayer(ctx context.Context, in *GetPlayerReques
 	return out, nil
 }
 
+func (c *playerServiceClient) ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApplyMatchResultResponse)
+	err := c.cc.Invoke(ctx, PlayerService_ApplyMatchResult_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *playerServiceClient) GetRatingHistory(ctx context.Context, in *GetRatingHistoryRequest, opts ...grpc.CallOption) (*GetRatingHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRatingHistoryResponse)
+	err := c.cc.Invoke(ctx, PlayerService_GetRatingHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PlayerServiceServer is the server API for PlayerService service.
 // All implementations must embed UnimplementedPlayerServiceServer
 // for forward compatibility.
 type PlayerServiceServer interface {
 	CreatePlayer(context.Context, *CreatePlayerRequest) (*CreatePlayerResponse, error)
 	GetPlayer(context.Context, *GetPlayerRequest) (*GetPlayerResponse, error)
+	ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error)
+	GetRatingHistory(context.Context, *GetRatingHistoryRequest) (*GetRatingHistoryResponse, error)
 	mustEmbedUnimplementedPlayerServiceServer()
 }
 
@@ -80,6 +106,12 @@ func (UnimplementedPlayerServiceServer) CreatePlayer(context.Context, *CreatePla
 }
 func (UnimplementedPlayerServiceServer) GetPlayer(context.Context, *GetPlayerRequest) (*GetPlayerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPlayer not implemented")
+}
+func (UnimplementedPlayerServiceServer) ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyMatchResult not implemented")
+}
+func (UnimplementedPlayerServiceServer) GetRatingHistory(context.Context, *GetRatingHistoryRequest) (*GetRatingHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRatingHistory not implemented")
 }
 func (UnimplementedPlayerServiceServer) mustEmbedUnimplementedPlayerServiceServer() {}
 func (UnimplementedPlayerServiceServer) testEmbeddedByValue()                       {}
@@ -138,6 +170,42 @@ func _PlayerService_GetPlayer_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlayerService_ApplyMatchResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyMatchResultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlayerServiceServer).ApplyMatchResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlayerService_ApplyMatchResult_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlayerServiceServer).ApplyMatchResult(ctx, req.(*ApplyMatchResultRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlayerService_GetRatingHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRatingHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlayerServiceServer).GetRatingHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlayerService_GetRatingHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlayerServiceServer).GetRatingHistory(ctx, req.(*GetRatingHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PlayerService_ServiceDesc is the grpc.ServiceDesc for PlayerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +220,14 @@ var PlayerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPlayer",
 			Handler:    _PlayerService_GetPlayer_Handler,
+		},
+		{
+			MethodName: "ApplyMatchResult",
+			Handler:    _PlayerService_ApplyMatchResult_Handler,
+		},
+		{
+			MethodName: "GetRatingHistory",
+			Handler:    _PlayerService_GetRatingHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

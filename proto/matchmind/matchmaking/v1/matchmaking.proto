@@ -12,6 +12,8 @@ service MatchmakingService {
   rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
   rpc CancelTicket(CancelTicketRequest) returns (CancelTicketResponse);
   rpc GetMatch(GetMatchRequest) returns (GetMatchResponse);
+  rpc StartMatch(StartMatchRequest) returns (StartMatchResponse);
+  rpc CompleteMatch(CompleteMatchRequest) returns (CompleteMatchResponse);
 }
 
 enum TicketState {
@@ -35,6 +37,12 @@ enum MatchState {
   MATCH_STATE_FAILED = 6;
 }
 
+enum WinningTeam {
+  WINNING_TEAM_UNSPECIFIED = 0;
+  WINNING_TEAM_A = 1;
+  WINNING_TEAM_B = 2;
+}
+
 message MatchTicket {
   string id = 1;
   string player_id = 2;
@@ -49,12 +57,22 @@ message MatchTicket {
   google.protobuf.Timestamp created_at = 11;
   string reservation_id = 12;
   google.protobuf.Timestamp reservation_expires_at = 13;
+  string match_id = 14;
 }
 
 message Team {
   string id = 1;
   repeated string player_ids = 2;
   double average_rating = 3;
+  repeated TeamPlayer player_details = 4;
+}
+
+message TeamPlayer {
+  string player_id = 1;
+  string ticket_id = 2;
+  string party_id = 3;
+  matchmind.player.v1.Role role = 4;
+  double rating = 5;
 }
 
 message Match {
@@ -67,6 +85,29 @@ message Match {
   double predicted_win_rate_a = 7;
   double quality_score = 8;
   google.protobuf.Timestamp created_at = 9;
+  string server_address = 10;
+  string connection_token = 11;
+  double skill_score = 12;
+  double role_score = 13;
+  double latency_score = 14;
+  double party_score = 15;
+  double wait_score = 16;
+  repeated string quality_reasons = 17;
+  string mode = 18;
+  MatchResult result = 19;
+}
+
+message MatchResult {
+  WinningTeam winning_team = 1;
+  int64 random_seed = 2;
+  int32 duration_seconds = 3;
+  int32 score_a = 4;
+  int32 score_b = 5;
+  double max_advantage = 6;
+  bool has_afk = 7;
+  bool surrendered = 8;
+  bool one_sided = 9;
+  double actual_quality_score = 10;
 }
 
 message CreateTicketRequest {
@@ -109,3 +150,19 @@ message GetMatchResponse {
   Match match = 1;
 }
 
+message StartMatchRequest {
+  string match_id = 1;
+}
+
+message StartMatchResponse {
+  Match match = 1;
+}
+
+message CompleteMatchRequest {
+  string match_id = 1;
+  MatchResult result = 2;
+}
+
+message CompleteMatchResponse {
+  Match match = 1;
+}
