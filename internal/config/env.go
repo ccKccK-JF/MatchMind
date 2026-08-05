@@ -25,3 +25,15 @@ func Float64(key string, fallback float64) (float64, error) {
 	}
 	return parsed, nil
 }
+
+func Int(key string, fallback int) (int, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("parse %s: %w", key, err)
+	}
+	return parsed, nil
+}

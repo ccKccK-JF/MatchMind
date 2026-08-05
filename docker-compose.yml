@@ -1,0 +1,116 @@
+name: matchmind
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - matchmind
+
+services:
+  player:
+    <<: *service-defaults
+    build:
+      context: .
+      args:
+        SERVICE: player-service
+    environment:
+      PLAYER_GRPC_ADDRESS: ":50051"
+      PLAYER_HTTP_ADDRESS: ":8081"
+      PLAYER_ELO_K_FACTOR: "32"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 5s
+
+  matchmaking:
+    <<: *service-defaults
+    build:
+      context: .
+      args:
+        SERVICE: matchmaking-service
+    environment:
+      MATCHMAKING_GRPC_ADDRESS: ":50052"
+      MATCHMAKING_HTTP_ADDRESS: ":8082"
+      MATCHMAKING_WORKER_COUNT: "10"
+      PLAYER_GRPC_TARGET: "player:50051"
+    depends_on:
+      player:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8082/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 5s
+
+  simulation:
+    <<: *service-defaults
+    build:
+      context: .
+      args:
+        SERVICE: simulation-service
+    environment:
+      SIMULATION_GRPC_ADDRESS: ":50053"
+      SIMULATION_HTTP_ADDRESS: ":8083"
+      MATCHMAKING_GRPC_TARGET: "matchmaking:50052"
+      PLAYER_GRPC_TARGET: "player:50051"
+    depends_on:
+      player:
+        condition: service_healthy
+      matchmaking:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8083/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 5s
+
+  api:
+    <<: *service-defaults
+    build:
+      context: .
+      args:
+        SERVICE: api-service
+    environment:
+      API_HTTP_ADDRESS: ":8080"
+      PLAYER_GRPC_TARGET: "player:50051"
+      MATCHMAKING_GRPC_TARGET: "matchmaking:50052"
+      SIMULATION_GRPC_TARGET: "simulation:50053"
+    depends_on:
+      player:
+        condition: service_healthy
+      matchmaking:
+        condition: service_healthy
+      simulation:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 5s
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./deployments/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - matchmind
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  matchmind:
+    driver: bridge

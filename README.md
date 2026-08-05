@@ -6,14 +6,15 @@ gRPC/Protocol Buffers for internal APIs.
 
 ## Services
 
-| Service | Default gRPC address | Responsibility |
+| Service | Default address | Responsibility |
 |---|---:|---|
-| `player-service` | `:50051` | Player profiles and ratings |
-| `matchmaking-service` | `:50052` | Tickets, queues, team formation, and matches |
-| `simulation-service` | `:50053` | Deterministic match simulation |
+| `player-service` | gRPC `:50051`, HTTP `:8081` | Player profiles and ratings |
+| `matchmaking-service` | gRPC `:50052`, HTTP `:8082` | Tickets, queues, team formation, and matches |
+| `simulation-service` | gRPC `:50053`, HTTP `:8083` | Deterministic match simulation |
 | `api-service` | HTTP `:8080` | Public REST API and downstream readiness |
 
-All services expose the standard gRPC health service and server reflection.
+The three internal gRPC services expose standard gRPC health and reflection.
+Every process exposes HTTP liveness/readiness/metrics endpoints.
 
 ## Development status
 
@@ -87,6 +88,19 @@ go test ./...
 The full test suite includes domain tests, repository concurrency tests, gRPC
 status-code tests, and an in-memory end-to-end gRPC test.
 
+Install the pinned portable compiler and run the Windows race detector:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-race-tools.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\race.ps1
+```
+
+Run the complete four-process demo:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1
+```
+
 Run the services in separate terminals, in dependency order:
 
 ```powershell
@@ -105,11 +119,23 @@ Runtime configuration:
 | Variable | Default |
 |---|---|
 | `PLAYER_GRPC_ADDRESS` | `:50051` |
+| `PLAYER_HTTP_ADDRESS` | `:8081` |
 | `PLAYER_ELO_K_FACTOR` | `32` |
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
 | `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
+| `MATCHMAKING_WORKER_COUNT` | `1` |
 | `PLAYER_GRPC_TARGET` | `localhost:50051` |
 | `SIMULATION_GRPC_ADDRESS` | `:50053` |
+| `SIMULATION_HTTP_ADDRESS` | `:8083` |
 | `MATCHMAKING_GRPC_TARGET` | `localhost:50052` |
 | `SIMULATION_GRPC_TARGET` | `localhost:50053` |
 | `API_HTTP_ADDRESS` | `:8080` |
+
+## Documentation
+
+- [System architecture](docs/ARCHITECTURE.md)
+- [HTTP API](docs/API.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Testing and load testing](docs/TESTING.md)
+- [Reproducible demo](docs/DEMO.md)
+- [Database design](docs/DATABASE.md)

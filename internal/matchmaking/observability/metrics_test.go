@@ -17,7 +17,7 @@ func TestMatchmakingMetricsExposeRequiredNames(t *testing.T) {
 	metrics.IncMatchFailure()
 	metrics.IncReservationConflict()
 	metrics.ObserveWaitSeconds(12)
-	metrics.ObserveQualityScore(0.91)
+	metrics.ObserveQualityScore(91)
 	metrics.ObserveWorkerDuration(0.02)
 
 	response := httptest.NewRecorder()

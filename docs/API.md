@@ -119,3 +119,7 @@ Its metrics include all required core names: `match_queue_size`,
 `match_wait_seconds`, `match_attempt_total`, `match_success_total`,
 `match_failure_total`, `match_quality_score`,
 `ticket_reservation_conflict_total`, and `match_worker_duration_seconds`.
+
+Player and Simulation expose the same operational routes on ports `8081` and
+`8083` respectively. Their gRPC health services remain available for internal
+dependency checks.

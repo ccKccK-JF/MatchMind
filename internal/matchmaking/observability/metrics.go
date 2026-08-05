@@ -20,7 +20,7 @@ func NewMatchmakingMetrics(registry *metrics.Registry) *MatchmakingMetrics {
 		matchAttempt:        registry.NewCounter("match_attempt_total", "Total matchmaking formation attempts."),
 		matchSuccess:        registry.NewCounter("match_success_total", "Total successfully created matches."),
 		matchFailure:        registry.NewCounter("match_failure_total", "Total matchmaking attempts that did not create a match."),
-		qualityScore:        registry.NewHistogram("match_quality_score", "Calculated match quality score.", []float64{0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1}),
+		qualityScore:        registry.NewHistogram("match_quality_score", "Calculated match quality score on the 0-100 scale.", []float64{50, 60, 70, 75, 80, 85, 90, 95, 100}),
 		reservationConflict: registry.NewCounter("ticket_reservation_conflict_total", "Total atomic ticket reservation conflicts."),
 		workerDuration:      registry.NewHistogram("match_worker_duration_seconds", "Duration of one matchmaking worker iteration.", []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1}),
 	}

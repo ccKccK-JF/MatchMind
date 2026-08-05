@@ -244,6 +244,14 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	for _, ticket := range ticketsForFormation(formation) {
 		w.metrics.ObserveWaitSeconds(now.Sub(ticket.CreatedAt()).Seconds())
 	}
+	slog.Info(
+		"match created",
+		"match_id", match.ID(),
+		"reservation_id", reservationID,
+		"policy_version", w.policy.Version,
+		"quality_score", quality.TotalScore,
+		"server_region", poolKey.Region,
+	)
 	return match.Clone(), nil
 }
 

@@ -12,7 +12,9 @@ import (
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
+	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"github.com/ccKccK-JF/MatchMind/internal/simulation/application"
 	simulationdomain "github.com/ccKccK-JF/MatchMind/internal/simulation/domain"
 	matchmakinggateway "github.com/ccKccK-JF/MatchMind/internal/simulation/gateway/matchmakinggrpc"
@@ -56,9 +58,19 @@ func main() {
 	transport := simulationgrpc.NewServer(service)
 
 	address := config.String("SIMULATION_GRPC_ADDRESS", ":50053")
-	err = grpcserver.Run(ctx, "matchmind.simulation.v1.SimulationService", address, func(server *grpc.Server) {
-		simulationv1.RegisterSimulationServiceServer(server, transport)
-	})
+	registry := platformmetrics.NewRegistry()
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- grpcserver.Run(ctx, "matchmind.simulation.v1.SimulationService", address, func(server *grpc.Server) {
+			simulationv1.RegisterSimulationServiceServer(server, transport)
+		})
+	}()
+	go func() {
+		httpAddress := config.String("SIMULATION_HTTP_ADDRESS", ":8083")
+		errCh <- httpserver.Run(ctx, "matchmind-simulation-operations", httpAddress, httpserver.NewHandler(nil, registry, nil))
+	}()
+	err = <-errCh
+	stop()
 	if err != nil {
 		slog.Error("simulation service stopped with error", "error", err)
 		os.Exit(1)

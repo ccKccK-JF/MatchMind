@@ -1,0 +1,7 @@
+.git
+.cache
+.tools
+.vscode
+bin
+*.log
+*.lnk

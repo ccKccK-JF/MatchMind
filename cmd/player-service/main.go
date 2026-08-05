@@ -10,7 +10,9 @@ import (
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
+	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"github.com/ccKccK-JF/MatchMind/internal/player/application"
 	"github.com/ccKccK-JF/MatchMind/internal/player/repository/memory"
 	playergrpc "github.com/ccKccK-JF/MatchMind/internal/player/transport/grpc"
@@ -39,9 +41,19 @@ func main() {
 	transport := playergrpc.NewServer(service, ratingService)
 
 	address := config.String("PLAYER_GRPC_ADDRESS", ":50051")
-	err = grpcserver.Run(ctx, "matchmind.player.v1.PlayerService", address, func(server *grpc.Server) {
-		playerv1.RegisterPlayerServiceServer(server, transport)
-	})
+	registry := platformmetrics.NewRegistry()
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- grpcserver.Run(ctx, "matchmind.player.v1.PlayerService", address, func(server *grpc.Server) {
+			playerv1.RegisterPlayerServiceServer(server, transport)
+		})
+	}()
+	go func() {
+		httpAddress := config.String("PLAYER_HTTP_ADDRESS", ":8081")
+		errCh <- httpserver.Run(ctx, "matchmind-player-operations", httpAddress, httpserver.NewHandler(nil, registry, nil))
+	}()
+	err = <-errCh
+	stop()
 	if err != nil {
 		slog.Error("player service stopped with error", "error", err)
 		os.Exit(1)

@@ -44,7 +44,9 @@ func Run(ctx context.Context, serviceName, address string, handler http.Handler)
 	server := &http.Server{
 		Addr:              address,
 		Handler:           handler,
+		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 	errCh := make(chan error, 1)

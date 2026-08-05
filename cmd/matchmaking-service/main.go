@@ -44,16 +44,28 @@ func main() {
 	service := application.NewTicketService(store, players, nil, nil)
 	matchService := application.NewMatchService(matchStore, nil)
 	policy := domain.DefaultPolicy()
-	worker, err := application.NewWorker(
-		store, matchStore, application.NewLocalAllocator(nil), policy, nil, nil,
-	)
+	workerCount, err := config.Int("MATCHMAKING_WORKER_COUNT", 1)
 	if err != nil {
-		slog.Error("create matchmaking worker", "error", err)
+		slog.Error("invalid matchmaking worker count", "error", err)
+		os.Exit(1)
+	}
+	if workerCount < 0 {
+		slog.Error("matchmaking worker count cannot be negative", "worker_count", workerCount)
 		os.Exit(1)
 	}
 	registry := platformmetrics.NewRegistry()
-	worker.SetMetrics(observability.NewMatchmakingMetrics(registry))
-	go worker.Run(ctx, 250*time.Millisecond)
+	workerMetrics := observability.NewMatchmakingMetrics(registry)
+	for workerIndex := range workerCount {
+		worker, workerErr := application.NewWorker(
+			store, matchStore, application.NewLocalAllocator(nil), policy, nil, nil,
+		)
+		if workerErr != nil {
+			slog.Error("create matchmaking worker", "worker_index", workerIndex, "error", workerErr)
+			os.Exit(1)
+		}
+		worker.SetMetrics(workerMetrics)
+		go worker.Run(ctx, 250*time.Millisecond)
+	}
 	transport := matchmakinggrpc.NewServer(service, matchService)
 
 	address := config.String("MATCHMAKING_GRPC_ADDRESS", ":50052")

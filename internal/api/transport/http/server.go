@@ -1,6 +1,7 @@
 package httptransport
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -21,6 +22,7 @@ import (
 )
 
 const maxRequestBodyBytes = 1 << 20
+const downstreamTimeout = 3 * time.Second
 
 type Server struct {
 	players     playerv1.PlayerServiceClient
@@ -65,6 +67,9 @@ func NewServer(
 
 func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	startedAt := time.Now()
+	ctx, cancel := context.WithTimeout(request.Context(), downstreamTimeout)
+	defer cancel()
+	request = request.WithContext(ctx)
 	traceID := strings.TrimSpace(request.Header.Get("X-Trace-ID"))
 	if traceID == "" {
 		traceID, _ = platformid.UUID()
