@@ -1,14 +1,17 @@
 # Database design
 
-The current development runtime uses concurrency-safe memory repositories. The
-persistence milestone will implement the same repository interfaces with
-PostgreSQL 17 and Redis 8.
+The local process demo uses concurrency-safe memory repositories by default.
+The Player and rating-history repository can now run on PostgreSQL through
+`PLAYER_STORAGE_BACKEND=postgres`. Ticket/Match and Redis adapters remain the
+next persistence increment.
 
 ## PostgreSQL ownership
 
-`players` stores profile and current rating. `rating_changes` is append-only
-and uses a unique `(match_id, player_id)` key so result retries cannot update
-Elo twice.
+`players` stores profile and current rating. `rating_changes` is append-only,
+preserves response order with a per-Match sequence, and uses a unique
+`(match_id, player_id)` key so result retries cannot update Elo twice. Elo
+updates use a serializable transaction plus a Match-scoped PostgreSQL advisory
+lock, making duplicate result delivery idempotent.
 
 `tickets` stores the durable Ticket state, idempotency keys, reservation
 metadata, Match ID, timestamps, and a numeric version for optimistic checks. A

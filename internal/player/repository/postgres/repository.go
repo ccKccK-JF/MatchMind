@@ -1,0 +1,242 @@
+package postgres
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/ccKccK-JF/MatchMind/internal/player/application"
+	"github.com/ccKccK-JF/MatchMind/internal/player/domain"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Repository struct {
+	pool *pgxpool.Pool
+}
+
+var _ application.Repository = (*Repository)(nil)
+var _ application.RatingRepository = (*Repository)(nil)
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
+}
+
+func (r *Repository) Create(ctx context.Context, player *domain.Player) error {
+	latencies, err := json.Marshal(player.RegionLatency())
+	if err != nil {
+		return fmt.Errorf("marshal player latency: %w", err)
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO players (
+			id, name, rating, rating_deviation, preferred_roles,
+			home_region, region_latency, behavior_score, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
+	`,
+		player.ID(), player.Name(), player.Rating(), player.RatingDeviation(),
+		rolesToStrings(player.PreferredRoles()), player.HomeRegion(), latencies,
+		player.BehaviorScore(), player.CreatedAt(),
+	)
+	if uniqueViolation(err) {
+		return application.ErrPlayerAlreadyExists
+	}
+	if err != nil {
+		return fmt.Errorf("insert player: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Player, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, name, rating, rating_deviation, preferred_roles,
+		       home_region, region_latency, behavior_score, created_at
+		FROM players
+		WHERE id = $1
+	`, strings.TrimSpace(playerID))
+	player, err := scanPlayer(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, application.ErrPlayerNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("select player: %w", err)
+	}
+	return player, nil
+}
+
+func (r *Repository) ApplyRatingChanges(
+	ctx context.Context,
+	matchID string,
+	changes []*domain.RatingChange,
+) ([]*domain.RatingChange, error) {
+	matchID = strings.TrimSpace(matchID)
+	if matchID == "" || len(changes) == 0 {
+		return nil, application.ErrRatingConflict
+	}
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return nil, fmt.Errorf("begin rating transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Serialize retries for the same Match before the idempotency read.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, matchID); err != nil {
+		return nil, fmt.Errorf("lock rating match: %w", err)
+	}
+	existing, err := queryChanges(ctx, tx, `
+		SELECT player_id, match_id, rating_before, rating_after, reason, created_at
+		FROM rating_changes
+		WHERE match_id = $1
+		ORDER BY sequence
+	`, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("query existing rating changes: %w", err)
+	}
+	if len(existing) > 0 {
+		return existing, nil
+	}
+
+	seen := make(map[string]struct{}, len(changes))
+	for sequence, change := range changes {
+		if change == nil || change.MatchID() != matchID {
+			return nil, application.ErrRatingConflict
+		}
+		if _, duplicate := seen[change.PlayerID()]; duplicate {
+			return nil, application.ErrRatingConflict
+		}
+		seen[change.PlayerID()] = struct{}{}
+		tag, err := tx.Exec(ctx, `
+			UPDATE players
+			SET rating = $1, updated_at = $2
+			WHERE id = $3 AND rating = $4
+		`, change.After(), change.CreatedAt(), change.PlayerID(), change.Before())
+		if err != nil {
+			return nil, fmt.Errorf("update player rating: %w", err)
+		}
+		if tag.RowsAffected() != 1 {
+			return nil, fmt.Errorf("%w: player %s rating changed", application.ErrRatingConflict, change.PlayerID())
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO rating_changes (
+				match_id, player_id, sequence, rating_before, rating_after, reason, created_at
+			) VALUES ($1,$2,$3,$4,$5,$6,$7)
+		`, matchID, change.PlayerID(), sequence, change.Before(), change.After(), change.Reason(), change.CreatedAt()); err != nil {
+			return nil, fmt.Errorf("insert rating change: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit rating transaction: %w", err)
+	}
+	return cloneChanges(changes), nil
+}
+
+func (r *Repository) RatingHistory(ctx context.Context, playerID string) ([]*domain.RatingChange, error) {
+	playerID = strings.TrimSpace(playerID)
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM players WHERE id = $1)`, playerID).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("check player history owner: %w", err)
+	}
+	if !exists {
+		return nil, application.ErrPlayerNotFound
+	}
+	changes, err := queryChanges(ctx, r.pool, `
+		SELECT player_id, match_id, rating_before, rating_after, reason, created_at
+		FROM rating_changes
+		WHERE player_id = $1
+		ORDER BY created_at, match_id
+	`, playerID)
+	if err != nil {
+		return nil, fmt.Errorf("query rating history: %w", err)
+	}
+	return changes, nil
+}
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+type queryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func scanPlayer(row rowScanner) (*domain.Player, error) {
+	var snapshot domain.PlayerSnapshot
+	var roles []string
+	var latencyJSON []byte
+	if err := row.Scan(
+		&snapshot.ID, &snapshot.Name, &snapshot.Rating, &snapshot.RatingDeviation,
+		&roles, &snapshot.HomeRegion, &latencyJSON, &snapshot.BehaviorScore, &snapshot.CreatedAt,
+	); err != nil {
+		return nil, err
+	}
+	parsedRoles, err := stringsToRoles(roles)
+	if err != nil {
+		return nil, err
+	}
+	snapshot.PreferredRoles = parsedRoles
+	if err := json.Unmarshal(latencyJSON, &snapshot.RegionLatency); err != nil {
+		return nil, fmt.Errorf("decode player latency: %w", err)
+	}
+	return domain.RestorePlayer(snapshot)
+}
+
+func queryChanges(ctx context.Context, source queryer, query string, argument any) ([]*domain.RatingChange, error) {
+	rows, err := source.Query(ctx, query, argument)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []*domain.RatingChange
+	for rows.Next() {
+		var playerID, matchID, reason string
+		var before, after float64
+		var createdAt time.Time
+		if err := rows.Scan(&playerID, &matchID, &before, &after, &reason, &createdAt); err != nil {
+			return nil, err
+		}
+		change, err := domain.NewRatingChange(playerID, matchID, before, after, reason, createdAt)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, change)
+	}
+	return result, rows.Err()
+}
+
+func rolesToStrings(roles []domain.Role) []string {
+	result := make([]string, len(roles))
+	for index, role := range roles {
+		result[index] = string(role)
+	}
+	return result
+}
+
+func stringsToRoles(values []string) ([]domain.Role, error) {
+	roles := make([]domain.Role, len(values))
+	for index, value := range values {
+		role := domain.Role(value)
+		switch role {
+		case domain.RoleVanguard, domain.RoleRoamer, domain.RoleCore, domain.RoleRanged, domain.RoleSupport:
+			roles[index] = role
+		default:
+			return nil, fmt.Errorf("unknown stored player role %q", value)
+		}
+	}
+	return roles, nil
+}
+
+func uniqueViolation(err error) bool {
+	var postgresError *pgconn.PgError
+	return errors.As(err, &postgresError) && postgresError.Code == "23505"
+}
+
+func cloneChanges(changes []*domain.RatingChange) []*domain.RatingChange {
+	result := make([]*domain.RatingChange, 0, len(changes))
+	for _, change := range changes {
+		result = append(result, change.Clone())
+	}
+	return result
+}

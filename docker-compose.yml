@@ -6,6 +6,38 @@ x-service-defaults: &service-defaults
     - matchmind
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: matchmind
+      POSTGRES_USER: matchmind
+      POSTGRES_PASSWORD: matchmind
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - matchmind
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matchmind -d matchmind"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  migrate:
+    build:
+      context: .
+      args:
+        SERVICE: migrate
+    restart: "no"
+    environment:
+      POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
+    networks:
+      - matchmind
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   player:
     <<: *service-defaults
     build:
@@ -16,6 +48,11 @@ services:
       PLAYER_GRPC_ADDRESS: ":50051"
       PLAYER_HTTP_ADDRESS: ":8081"
       PLAYER_ELO_K_FACTOR: "32"
+      PLAYER_STORAGE_BACKEND: "postgres"
+      POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/health"]
       interval: 5s
@@ -114,3 +151,6 @@ services:
 networks:
   matchmind:
     driver: bridge
+
+volumes:
+  postgres-data:

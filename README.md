@@ -21,7 +21,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
 - The service process skeleton, Protobuf contracts, generation workflow,
   health checks, reflection, and graceful shutdown are complete.
 - `player-service` supports player creation/query, configurable Elo updates,
-  rating history, result idempotency, and a concurrency-safe memory store.
+  rating history, result idempotency, a concurrency-safe memory store, and an
+  optional transactional PostgreSQL repository.
 - `matchmaking-service` supports idempotent ticket create/cancel/query, strict
   ticket and match state machines, partitioned queues, dynamic rating windows,
   party-safe candidate selection, deterministic 5v5 team/role assignment,
@@ -38,9 +39,10 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   failure, quality, reservation-conflict, and worker-duration metrics on
   `:8082`.
 
-Current persistence is intentionally in memory. PostgreSQL, Redis, an external
-message broker, distributed tracing backend, and durable telemetry storage
-remain later milestones.
+The local process demo defaults to memory. Docker Compose runs Player and Elo
+history on PostgreSQL. Ticket/Match persistence, Redis coordination, an
+external message broker, distributed tracing backend, and durable telemetry
+storage remain later milestones.
 
 ## Architecture
 
@@ -121,6 +123,8 @@ Runtime configuration:
 | `PLAYER_GRPC_ADDRESS` | `:50051` |
 | `PLAYER_HTTP_ADDRESS` | `:8081` |
 | `PLAYER_ELO_K_FACTOR` | `32` |
+| `PLAYER_STORAGE_BACKEND` | `memory` |
+| `POSTGRES_DSN` | `postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable` |
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
 | `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
 | `MATCHMAKING_WORKER_COUNT` | `1` |

@@ -121,3 +121,31 @@ func TestPlayerAccessorsReturnCopies(t *testing.T) {
 		t.Fatal("RegionLatency returned mutable internal state")
 	}
 }
+
+func TestRestorePlayerPreservesDurableRatingDeviation(t *testing.T) {
+	createdAt := time.Now().UTC().Truncate(time.Microsecond)
+	player, err := RestorePlayer(PlayerSnapshot{
+		ID: "player-1", Name: "Nova", Rating: 1725, RatingDeviation: 82,
+		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 31}, BehaviorScore: 97,
+		CreatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if player.Rating() != 1725 || player.RatingDeviation() != 82 || !player.CreatedAt().Equal(createdAt) {
+		t.Fatalf("restored player = rating %v, deviation %v, created %v", player.Rating(), player.RatingDeviation(), player.CreatedAt())
+	}
+}
+
+func TestRestorePlayerRejectsInvalidSnapshot(t *testing.T) {
+	_, err := RestorePlayer(PlayerSnapshot{
+		ID: "player-1", Name: "Nova", Rating: 1500, RatingDeviation: 0,
+		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 31}, BehaviorScore: 97,
+		CreatedAt: time.Now(),
+	})
+	if !errors.Is(err, ErrInvalidPlayer) {
+		t.Fatalf("RestorePlayer() error = %v, want ErrInvalidPlayer", err)
+	}
+}

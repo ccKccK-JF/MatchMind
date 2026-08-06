@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/config"
@@ -15,17 +17,47 @@ import (
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"github.com/ccKccK-JF/MatchMind/internal/player/application"
 	"github.com/ccKccK-JF/MatchMind/internal/player/repository/memory"
+	playerpostgres "github.com/ccKccK-JF/MatchMind/internal/player/repository/postgres"
 	playergrpc "github.com/ccKccK-JF/MatchMind/internal/player/transport/grpc"
 	"github.com/ccKccK-JF/MatchMind/internal/rating/elo"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
+
+type playerRepository interface {
+	application.Repository
+	application.RatingRepository
+}
 
 func main() {
 	logging.Configure()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	repository := memory.NewRepository()
+	var repository playerRepository
+	switch backend := strings.ToLower(config.String("PLAYER_STORAGE_BACKEND", "memory")); backend {
+	case "memory":
+		repository = memory.NewRepository()
+	case "postgres":
+		connectContext, cancel := context.WithTimeout(ctx, 5*time.Second)
+		pool, err := pgxpool.New(connectContext, config.String(
+			"POSTGRES_DSN",
+			"postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable",
+		))
+		if err == nil {
+			err = pool.Ping(connectContext)
+		}
+		cancel()
+		if err != nil {
+			slog.Error("connect player PostgreSQL repository", "error", err)
+			os.Exit(1)
+		}
+		defer pool.Close()
+		repository = playerpostgres.NewRepository(pool)
+	default:
+		slog.Error("unsupported player storage backend", "backend", backend)
+		os.Exit(1)
+	}
 	service := application.NewService(repository, nil)
 	kFactor, err := config.Float64("PLAYER_ELO_K_FACTOR", 32)
 	if err != nil {

@@ -28,6 +28,21 @@ type NewPlayerParams struct {
 	CreatedAt      time.Time
 }
 
+// PlayerSnapshot is the durable representation accepted when restoring a
+// player from persistence. RestorePlayer applies the same validation as a new
+// player instead of allowing repositories to mutate private fields.
+type PlayerSnapshot struct {
+	ID              string
+	Name            string
+	Rating          float64
+	RatingDeviation float64
+	PreferredRoles  []Role
+	HomeRegion      string
+	RegionLatency   map[string]int
+	BehaviorScore   float64
+	CreatedAt       time.Time
+}
+
 // Player is an immutable player snapshot. Slices and maps are copied at the
 // boundary so callers cannot mutate shared repository state accidentally.
 type Player struct {
@@ -83,6 +98,27 @@ func NewPlayer(params NewPlayerParams) (*Player, error) {
 		behaviorScore:   params.BehaviorScore,
 		createdAt:       params.CreatedAt.UTC(),
 	}, nil
+}
+
+func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
+	if snapshot.RatingDeviation <= 0 {
+		return nil, invalidPlayer("rating deviation must be greater than zero")
+	}
+	player, err := NewPlayer(NewPlayerParams{
+		ID:             snapshot.ID,
+		Name:           snapshot.Name,
+		InitialRating:  snapshot.Rating,
+		PreferredRoles: snapshot.PreferredRoles,
+		HomeRegion:     snapshot.HomeRegion,
+		RegionLatency:  snapshot.RegionLatency,
+		BehaviorScore:  snapshot.BehaviorScore,
+		CreatedAt:      snapshot.CreatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	player.ratingDeviation = snapshot.RatingDeviation
+	return player, nil
 }
 
 func (p *Player) ID() string                    { return p.id }

@@ -32,7 +32,8 @@ docker compose ps
 Invoke-RestMethod http://localhost:8080/ready
 ```
 
-The Compose stack runs ten matching workers and Prometheus. Public endpoints:
+The Compose stack runs PostgreSQL migrations, a PostgreSQL-backed Player
+service, ten matching workers, and Prometheus. Public endpoints:
 
 - API: `http://localhost:8080`
 - matchmaking metrics: `http://localhost:8082/metrics`
@@ -42,6 +43,12 @@ Stop the stack with:
 
 ```powershell
 docker compose down
+```
+
+To remove the development database as well:
+
+```powershell
+docker compose down --volumes
 ```
 
 Containers run as a non-root user, include health checks, and communicate on a
