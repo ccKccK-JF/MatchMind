@@ -1,9 +1,11 @@
 # Database design
 
 The local process demo uses concurrency-safe memory repositories by default.
-The Player and rating-history repository can now run on PostgreSQL through
-`PLAYER_STORAGE_BACKEND=postgres`. Ticket/Match and Redis adapters remain the
-next persistence increment.
+Player/rating history can run on PostgreSQL through
+`PLAYER_STORAGE_BACKEND=postgres`. Ticket and Match persistence are selected
+with `MATCHMAKING_TICKET_STORAGE_BACKEND=postgres` and
+`MATCHMAKING_MATCH_STORAGE_BACKEND=postgres`. Redis remains the next
+persistence increment.
 
 ## PostgreSQL ownership
 
@@ -19,12 +21,14 @@ reservation metadata, Match ID, and timestamps. A partial unique index on
 several API instances race. PostgreSQL row locks make ten-Ticket reservation,
 assignment, release, and expiry recovery atomic.
 
-`matches` stores policy version, quality sub-scores, teams as normalized child
-rows, server allocation, state, prediction, result, and actual quality. Match
-creation and durable Ticket assignment share one database transaction.
+`matches` stores policy version, quality sub-scores, team snapshots, server
+allocation, state, prediction, result, actual quality, and a monotonic
+revision. Updates reject stale revisions. The final READY Match update and all
+reserved-to-assigned Ticket transitions share one database transaction.
 
-`outbox_events` stores messages in the same transaction as business changes.
-Consumers deduplicate by event ID before applying side effects.
+The planned `outbox_events` table will store messages in the same transaction
+as business changes. Consumers will deduplicate by event ID before applying
+side effects.
 
 ## Redis ownership
 
@@ -41,6 +45,6 @@ or change nothing. PostgreSQL remains the durable source of truth. At startup,
 the service rebuilds missing Redis queue entries from active PostgreSQL
 Tickets and reconciles expired reservations.
 
-Match persistence and Redis acceleration are still being implemented; until
-then the PostgreSQL Ticket adapter is a durable correctness baseline rather
-than a claim of complete distributed recovery.
+PostgreSQL is now the durable correctness path for Player, Ticket, Match, and
+Elo state. Redis acceleration and startup reconciliation are still being
+implemented, so complete distributed recovery is not claimed yet.

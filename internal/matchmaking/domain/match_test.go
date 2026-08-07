@@ -42,6 +42,44 @@ func TestMatchRejectsDuplicatePlayer(t *testing.T) {
 	}
 }
 
+func TestRestoreFinishedMatchSnapshot(t *testing.T) {
+	now := time.Now().UTC()
+	match := newTestMatch(t, now)
+	if err := match.StartAllocation(now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := match.MarkReady("127.0.0.1:7001", "token", now.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := match.Start(now.Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := match.Complete(MatchResult{
+		WinningTeam: WinningTeamB, RandomSeed: 42, DurationSeconds: 900,
+		ScoreA: 10, ScoreB: 15, MaxAdvantage: 1200, ActualQualityScore: 88,
+	}, now.Add(4*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreMatch(match.Snapshot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.State() != MatchStateFinished || restored.Revision() != 5 {
+		t.Fatalf("restored state/revision = %s/%d", restored.State(), restored.Revision())
+	}
+	if result, ok := restored.Result(); !ok || result.RandomSeed != 42 {
+		t.Fatalf("restored result = %#v, %v", result, ok)
+	}
+}
+
+func TestRestoreMatchRejectsInconsistentState(t *testing.T) {
+	snapshot := newTestMatch(t, time.Now().UTC()).Snapshot()
+	snapshot.State = MatchStateRunning
+	if _, err := RestoreMatch(snapshot); !errors.Is(err, ErrInvalidMatch) {
+		t.Fatalf("RestoreMatch() error = %v, want ErrInvalidMatch", err)
+	}
+}
+
 func newTestMatch(t *testing.T, now time.Time) *Match {
 	t.Helper()
 	match, err := NewMatch(validMatchParams(now))

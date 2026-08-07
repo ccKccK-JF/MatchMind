@@ -23,6 +23,10 @@ type MatchQueue interface {
 	RecoverExpiredReservations(ctx context.Context, now time.Time) (int, error)
 }
 
+type MatchAssignmentCoordinator interface {
+	AssignReservedTickets(ctx context.Context, reservationID string, match *domain.Match, now time.Time) error
+}
+
 type Allocation struct {
 	Address string
 	Token   string
@@ -216,29 +220,37 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		_ = w.queue.ReleaseAll(ctx, reservationID, now)
 		return nil, err
 	}
-	_ = w.matches.Update(ctx, match)
+	if err := w.matches.Update(ctx, match); err != nil {
+		_ = w.queue.ReleaseAll(ctx, reservationID, now)
+		return nil, err
+	}
 
 	allocation, err := w.allocator.Allocate(ctx, match.ID(), match.ServerRegion())
 	if err != nil {
-		_ = match.Fail(now)
-		_ = w.matches.Update(ctx, match)
+		w.failStoredMatch(ctx, match.ID(), now)
 		_ = w.queue.ReleaseAll(ctx, reservationID, now)
 		return nil, err
 	}
 	if err := match.MarkReady(allocation.Address, allocation.Token, now); err != nil {
-		_ = match.Fail(now)
-		_ = w.matches.Update(ctx, match)
+		w.failStoredMatch(ctx, match.ID(), now)
 		_ = w.queue.ReleaseAll(ctx, reservationID, now)
 		return nil, err
 	}
-	if _, err := w.queue.AssignAll(ctx, reservationID, match.ID(), now); err != nil {
-		_ = match.Fail(now)
-		_ = w.matches.Update(ctx, match)
-		_ = w.queue.ReleaseAll(ctx, reservationID, now)
-		return nil, err
-	}
-	if err := w.matches.Update(ctx, match); err != nil {
-		return nil, err
+	if coordinator, ok := w.matches.(MatchAssignmentCoordinator); ok {
+		if err := coordinator.AssignReservedTickets(ctx, reservationID, match, now); err != nil {
+			w.failStoredMatch(ctx, match.ID(), now)
+			_ = w.queue.ReleaseAll(ctx, reservationID, now)
+			return nil, err
+		}
+	} else {
+		if _, err := w.queue.AssignAll(ctx, reservationID, match.ID(), now); err != nil {
+			w.failStoredMatch(ctx, match.ID(), now)
+			_ = w.queue.ReleaseAll(ctx, reservationID, now)
+			return nil, err
+		}
+		if err := w.matches.Update(ctx, match); err != nil {
+			return nil, err
+		}
 	}
 	w.metrics.IncMatchSuccess()
 	for _, ticket := range ticketsForFormation(formation) {
@@ -253,6 +265,17 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		"server_region", poolKey.Region,
 	)
 	return match.Clone(), nil
+}
+
+func (w *Worker) failStoredMatch(ctx context.Context, matchID string, now time.Time) {
+	stored, err := w.matches.Get(ctx, matchID)
+	if err != nil {
+		return
+	}
+	if err := stored.Fail(now); err != nil {
+		return
+	}
+	_ = w.matches.Update(ctx, stored)
 }
 
 func ticketsForFormation(formation engine.TeamFormation) []*domain.MatchTicket {

@@ -71,6 +71,7 @@ services:
       MATCHMAKING_HTTP_ADDRESS: ":8082"
       MATCHMAKING_WORKER_COUNT: "10"
       MATCHMAKING_TICKET_STORAGE_BACKEND: "postgres"
+      MATCHMAKING_MATCH_STORAGE_BACKEND: "postgres"
       POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
       PLAYER_GRPC_TARGET: "player:50051"
     depends_on:

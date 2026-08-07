@@ -34,6 +34,13 @@ func TestMatchStoreCreateGetUpdate(t *testing.T) {
 	if updated.State() != got.State() {
 		t.Fatalf("updated state = %s, want %s", updated.State(), got.State())
 	}
+	stale := match.Clone()
+	if err := stale.StartAllocation(time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(context.Background(), stale); !errors.Is(err, application.ErrMatchRevisionConflict) {
+		t.Fatalf("stale Update() error = %v, want ErrMatchRevisionConflict", err)
+	}
 }
 
 func newTestMatchForStore(t *testing.T) *domain.Match {

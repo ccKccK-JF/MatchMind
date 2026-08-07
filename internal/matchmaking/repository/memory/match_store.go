@@ -50,8 +50,12 @@ func (s *MatchStore) Update(ctx context.Context, match *domain.Match) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, exists := s.matches[match.ID()]; !exists {
+	current, exists := s.matches[match.ID()]
+	if !exists {
 		return application.ErrMatchNotFound
+	}
+	if match.Revision() != current.Revision()+1 {
+		return application.ErrMatchRevisionConflict
 	}
 	s.matches[match.ID()] = match.Clone()
 	return nil

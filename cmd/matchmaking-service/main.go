@@ -46,31 +46,46 @@ func main() {
 	}
 	defer playerConnection.Close()
 
-	var store ticketRepository
-	switch backend := strings.ToLower(config.String("MATCHMAKING_TICKET_STORAGE_BACKEND", "memory")); backend {
-	case "memory":
-		store = memory.NewTicketStore()
-	case "postgres":
+	ticketBackend := strings.ToLower(config.String("MATCHMAKING_TICKET_STORAGE_BACKEND", "memory"))
+	matchBackend := strings.ToLower(config.String("MATCHMAKING_MATCH_STORAGE_BACKEND", ticketBackend))
+	var postgresPool *pgxpool.Pool
+	if ticketBackend == "postgres" || matchBackend == "postgres" {
 		connectContext, cancel := context.WithTimeout(ctx, 5*time.Second)
-		pool, err := pgxpool.New(connectContext, config.String(
+		postgresPool, err = pgxpool.New(connectContext, config.String(
 			"POSTGRES_DSN",
 			"postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable",
 		))
 		if err == nil {
-			err = pool.Ping(connectContext)
+			err = postgresPool.Ping(connectContext)
 		}
 		cancel()
 		if err != nil {
-			slog.Error("connect matchmaking PostgreSQL Ticket repository", "error", err)
+			slog.Error("connect matchmaking PostgreSQL repositories", "error", err)
 			os.Exit(1)
 		}
-		defer pool.Close()
-		store = matchpostgres.NewTicketStore(pool)
+		defer postgresPool.Close()
+	}
+
+	var store ticketRepository
+	switch ticketBackend {
+	case "memory":
+		store = memory.NewTicketStore()
+	case "postgres":
+		store = matchpostgres.NewTicketStore(postgresPool)
 	default:
-		slog.Error("unsupported matchmaking Ticket storage backend", "backend", backend)
+		slog.Error("unsupported matchmaking Ticket storage backend", "backend", ticketBackend)
 		os.Exit(1)
 	}
-	matchStore := memory.NewMatchStore()
+	var matchStore application.MatchRepository
+	switch matchBackend {
+	case "memory":
+		matchStore = memory.NewMatchStore()
+	case "postgres":
+		matchStore = matchpostgres.NewMatchStore(postgresPool)
+	default:
+		slog.Error("unsupported matchmaking Match storage backend", "backend", matchBackend)
+		os.Exit(1)
+	}
 	players := playergateway.NewClient(playerv1.NewPlayerServiceClient(playerConnection))
 	service := application.NewTicketService(store, players, nil, nil)
 	matchService := application.NewMatchService(matchStore, nil)

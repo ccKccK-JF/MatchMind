@@ -27,8 +27,10 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   ticket and match state machines, partitioned queues, dynamic rating windows,
   party-safe candidate selection, deterministic 5v5 team/role assignment,
   five-part quality scoring, atomic reservation, automatic workers, and match
-  connection details. Ticket queues can use memory or PostgreSQL with
-  transactional batch reservation and expiry recovery.
+  connection details. Ticket queues and Matches can use memory or PostgreSQL;
+  the PostgreSQL path includes batch reservation, expiry recovery, durable
+  Match snapshots, optimistic revisions, and atomic Match-ready/Ticket-assigned
+  commits.
 - `simulation-service` runs reproducible seeded matches, records process
   metrics, updates ranked Elo through `player-service`, and completes matches
   through `matchmaking-service`.
@@ -40,8 +42,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   failure, quality, reservation-conflict, and worker-duration metrics on
   `:8082`.
 
-The local process demo defaults to memory. Docker Compose runs Player and Elo
-history on PostgreSQL. Ticket/Match persistence, Redis coordination, an
+The local process demo defaults to memory. Docker Compose runs Player, Elo
+history, Ticket, and Match persistence on PostgreSQL. Redis coordination, an
 external message broker, distributed tracing backend, and durable telemetry
 storage remain later milestones.
 
@@ -130,6 +132,7 @@ Runtime configuration:
 | `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
 | `MATCHMAKING_WORKER_COUNT` | `1` |
 | `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
+| `MATCHMAKING_MATCH_STORAGE_BACKEND` | value of `MATCHMAKING_TICKET_STORAGE_BACKEND` |
 | `PLAYER_GRPC_TARGET` | `localhost:50051` |
 | `SIMULATION_GRPC_ADDRESS` | `:50053` |
 | `SIMULATION_HTTP_ADDRESS` | `:8083` |

@@ -81,6 +81,25 @@ type NewMatchParams struct {
 	CreatedAt     time.Time
 }
 
+// MatchSnapshot is the persistence representation of a Match aggregate.
+// RestoreMatch validates the snapshot before hydrating private domain state.
+type MatchSnapshot struct {
+	ID              string
+	Mode            string
+	TeamA           MatchTeam
+	TeamB           MatchTeam
+	State           MatchState
+	ServerRegion    string
+	ServerAddress   string
+	ConnectionToken string
+	PolicyVersion   string
+	Quality         MatchQuality
+	Result          *MatchResult
+	Revision        int64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type Match struct {
 	id              string
 	mode            string
@@ -93,6 +112,7 @@ type Match struct {
 	policyVersion   string
 	quality         MatchQuality
 	result          *MatchResult
+	revision        int64
 	createdAt       time.Time
 	updatedAt       time.Time
 }
@@ -121,9 +141,31 @@ func NewMatch(params NewMatchParams) (*Match, error) {
 		serverRegion:  params.ServerRegion,
 		policyVersion: params.PolicyVersion,
 		quality:       cloneMatchQuality(params.Quality),
+		revision:      1,
 		createdAt:     createdAt,
 		updatedAt:     createdAt,
 	}, nil
+}
+
+func RestoreMatch(snapshot MatchSnapshot) (*Match, error) {
+	match, err := NewMatch(NewMatchParams{
+		ID: snapshot.ID, Mode: snapshot.Mode, TeamA: snapshot.TeamA, TeamB: snapshot.TeamB,
+		ServerRegion: snapshot.ServerRegion, PolicyVersion: snapshot.PolicyVersion,
+		Quality: snapshot.Quality, CreatedAt: snapshot.CreatedAt,
+	})
+	if err != nil || snapshot.Revision < 1 || snapshot.UpdatedAt.IsZero() || snapshot.UpdatedAt.Before(snapshot.CreatedAt) {
+		return nil, ErrInvalidMatch
+	}
+	if err := validateRestoredMatchState(snapshot); err != nil {
+		return nil, err
+	}
+	match.state = snapshot.State
+	match.serverAddress = strings.TrimSpace(snapshot.ServerAddress)
+	match.connectionToken = strings.TrimSpace(snapshot.ConnectionToken)
+	match.result = cloneMatchResult(snapshot.Result)
+	match.revision = snapshot.Revision
+	match.updatedAt = snapshot.UpdatedAt.UTC()
+	return match, nil
 }
 
 func (m *Match) StartAllocation(now time.Time) error {
@@ -142,6 +184,7 @@ func (m *Match) MarkReady(address, token string, now time.Time) error {
 	m.serverAddress = address
 	m.connectionToken = token
 	m.state = MatchStateReady
+	m.revision++
 	m.updatedAt = now.UTC()
 	return nil
 }
@@ -162,6 +205,7 @@ func (m *Match) Complete(result MatchResult, now time.Time) error {
 	}
 	m.result = cloneMatchResult(&result)
 	m.state = MatchStateFinished
+	m.revision++
 	m.updatedAt = now.UTC()
 	return nil
 }
@@ -170,6 +214,7 @@ func (m *Match) Fail(now time.Time) error {
 	switch m.state {
 	case MatchStateCreated, MatchStateAllocating, MatchStateReady, MatchStateRunning:
 		m.state = MatchStateFailed
+		m.revision++
 		m.updatedAt = now.UTC()
 		return nil
 	default:
@@ -189,11 +234,25 @@ func (m *Match) PolicyVersion() string   { return m.policyVersion }
 func (m *Match) Quality() MatchQuality   { return cloneMatchQuality(m.quality) }
 func (m *Match) CreatedAt() time.Time    { return m.createdAt }
 func (m *Match) UpdatedAt() time.Time    { return m.updatedAt }
+func (m *Match) Revision() int64         { return m.revision }
 func (m *Match) Result() (MatchResult, bool) {
 	if m.result == nil {
 		return MatchResult{}, false
 	}
 	return *cloneMatchResult(m.result), true
+}
+
+func (m *Match) Snapshot() MatchSnapshot {
+	if m == nil {
+		return MatchSnapshot{}
+	}
+	return MatchSnapshot{
+		ID: m.id, Mode: m.mode, TeamA: cloneMatchTeam(m.teamA), TeamB: cloneMatchTeam(m.teamB),
+		State: m.state, ServerRegion: m.serverRegion, ServerAddress: m.serverAddress,
+		ConnectionToken: m.connectionToken, PolicyVersion: m.policyVersion,
+		Quality: cloneMatchQuality(m.quality), Result: cloneMatchResult(m.result),
+		Revision: m.revision, CreatedAt: m.createdAt, UpdatedAt: m.updatedAt,
+	}
 }
 
 func (m *Match) Clone() *Match {
@@ -213,7 +272,37 @@ func (m *Match) transition(from, to MatchState, now time.Time) error {
 		return matchTransitionError(m.state, to)
 	}
 	m.state = to
+	m.revision++
 	m.updatedAt = now.UTC()
+	return nil
+}
+
+func validateRestoredMatchState(snapshot MatchSnapshot) error {
+	hasAddress := strings.TrimSpace(snapshot.ServerAddress) != ""
+	hasToken := strings.TrimSpace(snapshot.ConnectionToken) != ""
+	if hasAddress != hasToken {
+		return ErrInvalidMatch
+	}
+	switch snapshot.State {
+	case MatchStateCreated, MatchStateAllocating:
+		if hasAddress || snapshot.Result != nil {
+			return ErrInvalidMatch
+		}
+	case MatchStateReady, MatchStateRunning:
+		if !hasAddress || snapshot.Result != nil {
+			return ErrInvalidMatch
+		}
+	case MatchStateFinished:
+		if !hasAddress || snapshot.Result == nil || validateMatchResult(*snapshot.Result) != nil {
+			return ErrInvalidMatch
+		}
+	case MatchStateFailed:
+		if snapshot.Result != nil {
+			return ErrInvalidMatch
+		}
+	default:
+		return ErrInvalidMatch
+	}
 	return nil
 }
 

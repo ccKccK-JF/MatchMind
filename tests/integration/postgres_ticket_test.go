@@ -2,11 +2,13 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	matchdomain "github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	matchpostgres "github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/postgres"
 	playerdomain "github.com/ccKccK-JF/MatchMind/internal/player/domain"
@@ -93,15 +95,75 @@ func TestPostgreSQLTicketPersistenceAndAtomicReservation(t *testing.T) {
 	if err != nil || len(reserved) != 10 {
 		t.Fatalf("ReserveAll() = %d tickets, %v", len(reserved), err)
 	}
-	assigned, err := tickets.AssignAll(ctx, "reservation-1", "match-1", now.Add(time.Second))
-	if err != nil || len(assigned) != 10 {
-		t.Fatalf("AssignAll() = %d tickets, %v", len(assigned), err)
+	matches := matchpostgres.NewMatchStore(pool)
+	match := newPersistentMatch(t, now)
+	if err := matches.Create(ctx, match); err != nil {
+		t.Fatal(err)
 	}
-	for _, ticket := range assigned {
-		if ticket.State() != matchdomain.TicketStateAssigned || ticket.MatchID() != "match-1" {
-			t.Fatalf("assigned ticket = state %s, match %s", ticket.State(), ticket.MatchID())
+	if err := match.StartAllocation(now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := matches.Update(ctx, match); err != nil {
+		t.Fatal(err)
+	}
+	stale := match.Clone()
+	if err := match.MarkReady("game:7001", "connection-token", now.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := matches.AssignReservedTickets(ctx, "reservation-1", match, now.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	for _, ticketID := range ticketIDs {
+		ticket, err := tickets.Get(ctx, ticketID)
+		if err != nil || ticket.State() != matchdomain.TicketStateAssigned || ticket.MatchID() != "match-1" {
+			t.Fatalf("assigned ticket = %#v, %v", ticket, err)
 		}
 	}
+	if err := stale.Fail(now.Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := matches.Update(ctx, stale); !errors.Is(err, application.ErrMatchRevisionConflict) {
+		t.Fatalf("stale Match Update() error = %v", err)
+	}
+	restored, err := matches.Get(ctx, match.ID())
+	if err != nil || restored.State() != matchdomain.MatchStateReady || restored.Revision() != 3 {
+		t.Fatalf("restored Match = %#v, %v", restored, err)
+	}
+}
+
+func newPersistentMatch(t *testing.T, now time.Time) *matchdomain.Match {
+	t.Helper()
+	team := func(prefix string) matchdomain.MatchTeam {
+		players := make([]matchdomain.MatchPlayer, 0, 5)
+		roles := []matchdomain.Role{
+			matchdomain.RoleVanguard, matchdomain.RoleRoamer, matchdomain.RoleCore,
+			matchdomain.RoleRanged, matchdomain.RoleSupport,
+		}
+		for index := range 5 {
+			players = append(players, matchdomain.MatchPlayer{
+				PlayerID: fmt.Sprintf("player-%02d", index),
+				TicketID: fmt.Sprintf("ticket-%02d", index),
+				Role:     roles[index], Rating: 1500,
+			})
+			if prefix == "b" {
+				players[index].PlayerID = fmt.Sprintf("player-%02d", index+5)
+				players[index].TicketID = fmt.Sprintf("ticket-%02d", index+5)
+			}
+		}
+		return matchdomain.MatchTeam{ID: "team-" + prefix, Players: players, AverageRating: 1500}
+	}
+	match, err := matchdomain.NewMatch(matchdomain.NewMatchParams{
+		ID: "match-1", Mode: "ranked_5v5", TeamA: team("a"), TeamB: team("b"),
+		ServerRegion: "hongkong", PolicyVersion: "v1", CreatedAt: now,
+		Quality: matchdomain.MatchQuality{
+			TotalScore: 90, SkillScore: 100, RoleScore: 100, LatencyScore: 80,
+			PartyScore: 100, WaitScore: 90, PredictedWinRateA: .5, PredictedWinRateB: .5,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return match
 }
 
 func newPersistentTicket(

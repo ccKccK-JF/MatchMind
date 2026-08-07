@@ -22,6 +22,7 @@ var (
 	ErrReservationConflict      = errors.New("ticket reservation conflict")
 	ErrMatchNotFound            = errors.New("match not found")
 	ErrMatchAlreadyExists       = errors.New("match already exists")
+	ErrMatchRevisionConflict    = errors.New("match revision conflict")
 )
 
 type PlayerSnapshot struct {

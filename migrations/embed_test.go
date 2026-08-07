@@ -28,3 +28,15 @@ func TestTicketMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestMatchMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("003_matches.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"CREATE TABLE IF NOT EXISTS matches", "revision BIGINT", "matches_state_updated_idx"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}
