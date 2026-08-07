@@ -13,6 +13,16 @@ scoring, reservation rollback and recovery, simulation reproducibility,
 idempotent rating updates, HTTP mapping, Prometheus output, and the complete
 three-service gRPC flow.
 
+With a real PostgreSQL instance, enable the isolated-schema persistence test:
+
+```powershell
+$env:MATCHMIND_POSTGRES_TEST_DSN = "postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable"
+go test -count=1 .\tests\integration -run PostgreSQL
+```
+
+The test applies embedded migrations in a temporary schema and verifies Player
+storage, idempotent Ticket creation, ten-row atomic reservation, and assignment.
+
 ## Concurrency and race detection
 
 Concurrency tests explicitly cover:

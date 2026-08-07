@@ -16,3 +16,15 @@ func TestPlayerMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestTicketMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("002_tickets.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"CREATE TABLE IF NOT EXISTS tickets", "tickets_one_active_per_player_idx", "ticket_cancel_idempotency"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

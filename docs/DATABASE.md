@@ -13,10 +13,11 @@ preserves response order with a per-Match sequence, and uses a unique
 updates use a serializable transaction plus a Match-scoped PostgreSQL advisory
 lock, making duplicate result delivery idempotent.
 
-`tickets` stores the durable Ticket state, idempotency keys, reservation
-metadata, Match ID, timestamps, and a numeric version for optimistic checks. A
-partial unique index on `player_id` for active states prevents duplicate active
-Tickets even when several API instances race.
+`tickets` now stores durable Ticket state, create/cancel idempotency keys,
+reservation metadata, Match ID, and timestamps. A partial unique index on
+`player_id` for active states prevents duplicate active Tickets even when
+several API instances race. PostgreSQL row locks make ten-Ticket reservation,
+assignment, release, and expiry recovery atomic.
 
 `matches` stores policy version, quality sub-scores, teams as normalized child
 rows, server allocation, state, prediction, result, and actual quality. Match
@@ -40,6 +41,6 @@ or change nothing. PostgreSQL remains the durable source of truth. At startup,
 the service rebuilds missing Redis queue entries from active PostgreSQL
 Tickets and reconciles expired reservations.
 
-The concrete migrations and integration tests are delivered with the
-persistence implementation rather than declaring this design complete in
-advance.
+Match persistence and Redis acceleration are still being implemented; until
+then the PostgreSQL Ticket adapter is a durable correctness baseline rather
+than a claim of complete distributed recovery.

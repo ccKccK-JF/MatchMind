@@ -50,6 +50,24 @@ type NewTicketParams struct {
 	CreatedAt      time.Time
 }
 
+type TicketSnapshot struct {
+	ID                   string
+	PlayerID             string
+	PartyID              string
+	Mode                 string
+	ClientVersion        string
+	Region               string
+	Rating               float64
+	PreferredRoles       []Role
+	RegionLatency        map[string]int
+	State                TicketState
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	ReservationID        string
+	ReservationExpiresAt time.Time
+	MatchID              string
+}
+
 type MatchTicket struct {
 	id                   string
 	playerID             string
@@ -114,6 +132,45 @@ func NewTicket(params NewTicketParams) (*MatchTicket, error) {
 		createdAt:      createdAt,
 		updatedAt:      createdAt,
 	}, nil
+}
+
+func RestoreTicket(snapshot TicketSnapshot) (*MatchTicket, error) {
+	ticket, err := NewTicket(NewTicketParams{
+		ID: snapshot.ID, PlayerID: snapshot.PlayerID, PartyID: snapshot.PartyID,
+		Mode: snapshot.Mode, ClientVersion: snapshot.ClientVersion, Region: snapshot.Region,
+		Rating: snapshot.Rating, PreferredRoles: snapshot.PreferredRoles,
+		RegionLatency: snapshot.RegionLatency, CreatedAt: snapshot.CreatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if snapshot.UpdatedAt.IsZero() || snapshot.UpdatedAt.Before(ticket.createdAt) {
+		return nil, invalidTicket("updated time must not precede created time")
+	}
+	snapshot.ReservationID = strings.TrimSpace(snapshot.ReservationID)
+	snapshot.MatchID = strings.TrimSpace(snapshot.MatchID)
+	switch snapshot.State {
+	case TicketStateCreated, TicketStateQueued, TicketStateCancelled, TicketStateExpired, TicketStateFailed:
+		if snapshot.ReservationID != "" || !snapshot.ReservationExpiresAt.IsZero() || snapshot.MatchID != "" {
+			return nil, invalidTicket("non-reserved ticket contains reservation or match data")
+		}
+	case TicketStateReserved:
+		if snapshot.ReservationID == "" || snapshot.ReservationExpiresAt.IsZero() || snapshot.MatchID != "" {
+			return nil, invalidTicket("reserved ticket has invalid reservation data")
+		}
+	case TicketStateAssigned:
+		if snapshot.ReservationID == "" || snapshot.ReservationExpiresAt.IsZero() || snapshot.MatchID == "" {
+			return nil, invalidTicket("assigned ticket has invalid match data")
+		}
+	default:
+		return nil, invalidTicket("unsupported ticket state")
+	}
+	ticket.state = snapshot.State
+	ticket.updatedAt = snapshot.UpdatedAt.UTC()
+	ticket.reservationID = snapshot.ReservationID
+	ticket.reservationExpiresAt = snapshot.ReservationExpiresAt.UTC()
+	ticket.matchID = snapshot.MatchID
+	return ticket, nil
 }
 
 func (t *MatchTicket) Queue(now time.Time) error {

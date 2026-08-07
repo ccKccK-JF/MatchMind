@@ -27,7 +27,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   ticket and match state machines, partitioned queues, dynamic rating windows,
   party-safe candidate selection, deterministic 5v5 team/role assignment,
   five-part quality scoring, atomic reservation, automatic workers, and match
-  connection details.
+  connection details. Ticket queues can use memory or PostgreSQL with
+  transactional batch reservation and expiry recovery.
 - `simulation-service` runs reproducible seeded matches, records process
   metrics, updates ranked Elo through `player-service`, and completes matches
   through `matchmaking-service`.
@@ -128,6 +129,7 @@ Runtime configuration:
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
 | `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
 | `MATCHMAKING_WORKER_COUNT` | `1` |
+| `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
 | `PLAYER_GRPC_TARGET` | `localhost:50051` |
 | `SIMULATION_GRPC_ADDRESS` | `:50053` |
 | `SIMULATION_HTTP_ADDRESS` | `:8083` |

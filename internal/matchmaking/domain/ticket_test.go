@@ -81,6 +81,36 @@ func TestNewTicketRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+func TestRestoreAssignedTicket(t *testing.T) {
+	now := time.Now().UTC()
+	ticket, err := RestoreTicket(TicketSnapshot{
+		ID: "ticket-1", PlayerID: "player-1", Mode: "ranked_5v5",
+		ClientVersion: "1.0.0", Region: "hongkong", Rating: 1500,
+		PreferredRoles: []Role{RoleCore}, RegionLatency: map[string]int{"hongkong": 30},
+		State: TicketStateAssigned, CreatedAt: now, UpdatedAt: now.Add(time.Second),
+		ReservationID: "reservation-1", ReservationExpiresAt: now.Add(time.Minute), MatchID: "match-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ticket.State() != TicketStateAssigned || ticket.ReservationID() != "reservation-1" || ticket.MatchID() != "match-1" {
+		t.Fatalf("restored ticket = state %s, reservation %q, match %q", ticket.State(), ticket.ReservationID(), ticket.MatchID())
+	}
+}
+
+func TestRestoreTicketRejectsInconsistentSnapshot(t *testing.T) {
+	now := time.Now().UTC()
+	_, err := RestoreTicket(TicketSnapshot{
+		ID: "ticket-1", PlayerID: "player-1", Mode: "ranked_5v5",
+		ClientVersion: "1.0.0", Region: "hongkong", Rating: 1500,
+		PreferredRoles: []Role{RoleCore}, RegionLatency: map[string]int{"hongkong": 30},
+		State: TicketStateReserved, CreatedAt: now, UpdatedAt: now,
+	})
+	if !errors.Is(err, ErrInvalidTicket) {
+		t.Fatalf("RestoreTicket() error = %v, want ErrInvalidTicket", err)
+	}
+}
+
 func newTestTicket(t *testing.T, now time.Time) *MatchTicket {
 	t.Helper()
 	ticket, err := NewTicket(NewTicketParams{
