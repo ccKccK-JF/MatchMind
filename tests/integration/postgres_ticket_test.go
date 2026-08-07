@@ -129,6 +129,25 @@ func TestPostgreSQLTicketPersistenceAndAtomicReservation(t *testing.T) {
 	if err != nil || restored.State() != matchdomain.MatchStateReady || restored.Revision() != 3 {
 		t.Fatalf("restored Match = %#v, %v", restored, err)
 	}
+	if err := restored.Start(now.Add(4 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := matches.Update(ctx, restored); err != nil {
+		t.Fatal(err)
+	}
+	if err := restored.Complete(matchdomain.MatchResult{
+		WinningTeam: matchdomain.WinningTeamA, RandomSeed: 42, DurationSeconds: 900,
+		ScoreA: 15, ScoreB: 10, MaxAdvantage: 1200, ActualQualityScore: 88,
+	}, now.Add(5*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := matches.CompleteMatchAndReleaseTickets(ctx, restored, now.Add(5*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	next := newPersistentTicket(t, "ticket-next", "player-00", roles[0], now.Add(6*time.Second))
+	if _, err := tickets.CreateQueued(ctx, next, "create-next"); err != nil {
+		t.Fatalf("create Ticket after Match completion: %v", err)
+	}
 }
 
 func newPersistentMatch(t *testing.T, now time.Time) *matchdomain.Match {

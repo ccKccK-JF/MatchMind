@@ -21,6 +21,12 @@ reservation metadata, Match ID, and timestamps. A partial unique index on
 several API instances race. PostgreSQL row locks make ten-Ticket reservation,
 assignment, release, and expiry recovery atomic.
 
+The `active` flag separates an assigned Ticket's immutable history from player
+eligibility. While a Match is READY or RUNNING, its assigned Tickets remain
+active. Completing the Match stores its result and clears all ten active flags
+in one transaction, allowing those players to queue again without deleting
+historical Tickets.
+
 `matches` stores policy version, quality sub-scores, team snapshots, server
 allocation, state, prediction, result, actual quality, and a monotonic
 revision. Updates reject stale revisions. The final READY Match update and all

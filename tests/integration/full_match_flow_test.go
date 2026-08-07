@@ -53,7 +53,7 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 		nil,
 		func() time.Time { return now },
 	)
-	matchService := matchmakingapp.NewMatchService(matchStore, func() time.Time { return now })
+	matchService := matchmakingapp.NewMatchService(matchStore, ticketStore, func() time.Time { return now })
 	matchmakingConnection := startBufconnServer(t, func(server *grpc.Server) {
 		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakinggrpc.NewServer(ticketService, matchService))
 	})
@@ -152,5 +152,14 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 	}
 	if len(history.GetChanges()) != 1 || history.GetChanges()[0].GetMatchId() != match.ID() {
 		t.Fatalf("rating history = %+v", history.GetChanges())
+	}
+	_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
+		PlayerId: firstPlayerID, Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		PreferredRoles:  []playerv1.Role{roles[0]},
+		RegionLatencyMs: map[string]int32{"hongkong": 30},
+		IdempotencyKey:  "create-after-finished-match",
+	})
+	if err != nil {
+		t.Fatalf("CreateTicket() after finished Match error = %v", err)
 	}
 }

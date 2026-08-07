@@ -40,3 +40,15 @@ func TestMatchMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestTicketActivityMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("004_ticket_activity.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"ADD COLUMN IF NOT EXISTS active", "WHERE active", "tickets_match_active_idx"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

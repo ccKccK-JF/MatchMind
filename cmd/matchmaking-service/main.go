@@ -31,6 +31,7 @@ import (
 type ticketRepository interface {
 	application.TicketStore
 	application.MatchQueue
+	application.AssignedTicketCompleter
 }
 
 func main() {
@@ -88,7 +89,7 @@ func main() {
 	}
 	players := playergateway.NewClient(playerv1.NewPlayerServiceClient(playerConnection))
 	service := application.NewTicketService(store, players, nil, nil)
-	matchService := application.NewMatchService(matchStore, nil)
+	matchService := application.NewMatchService(matchStore, store, nil)
 	policy := domain.DefaultPolicy()
 	workerCount, err := config.Int("MATCHMAKING_WORKER_COUNT", 1)
 	if err != nil {

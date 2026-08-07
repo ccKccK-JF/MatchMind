@@ -30,7 +30,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   connection details. Ticket queues and Matches can use memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable
   Match snapshots, optimistic revisions, and atomic Match-ready/Ticket-assigned
-  commits.
+  commits. Finishing a Match atomically releases each player's active-Ticket
+  guard so the next matchmaking session can start.
 - `simulation-service` runs reproducible seeded matches, records process
   metrics, updates ranked Elo through `player-service`, and completes matches
   through `matchmaking-service`.

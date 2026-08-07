@@ -188,6 +188,17 @@ func TestTicketStoreReserveAssignAll(t *testing.T) {
 			t.Fatalf("assigned ticket state = %s", ticket.State())
 		}
 	}
+	blocked := queuedTicket(t, "ticket-next-blocked", "player-0", now.Add(2*time.Second))
+	if _, err := store.CreateQueued(context.Background(), blocked, "create-next-blocked"); !errors.Is(err, application.ErrActiveTicketExists) {
+		t.Fatalf("CreateQueued() before completion error = %v, want ErrActiveTicketExists", err)
+	}
+	if err := store.CompleteAssignedTickets(context.Background(), "match-1", now.Add(3*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	next := queuedTicket(t, "ticket-next", "player-0", now.Add(4*time.Second))
+	if _, err := store.CreateQueued(context.Background(), next, "create-next"); err != nil {
+		t.Fatalf("CreateQueued() after completion error = %v", err)
+	}
 }
 
 func TestTicketStoreReservationIsAllOrNothing(t *testing.T) {

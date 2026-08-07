@@ -140,6 +140,41 @@ func (s *MatchStore) AssignReservedTickets(
 	return nil
 }
 
+// CompleteMatchAndReleaseTickets commits the FINISHED Match and makes all ten
+// assigned players eligible to create a new Ticket in the same transaction.
+func (s *MatchStore) CompleteMatchAndReleaseTickets(
+	ctx context.Context,
+	match *domain.Match,
+	now time.Time,
+) error {
+	if match == nil || match.State() != domain.MatchStateFinished || match.Revision() < 2 {
+		return domain.ErrInvalidMatch
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("begin match completion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := updateMatchRow(ctx, tx, match); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `
+		UPDATE tickets SET active = FALSE, updated_at = GREATEST(updated_at, $2)
+		WHERE match_id = $1 AND state = 'ASSIGNED' AND active
+	`, match.ID(), now)
+	if err != nil {
+		return fmt.Errorf("release completed Match tickets: %w", err)
+	}
+	expectedTickets := len(match.TeamA().Players) + len(match.TeamB().Players)
+	if tag.RowsAffected() != int64(expectedTickets) {
+		return fmt.Errorf("%w: released %d of %d assigned tickets", application.ErrReservationConflict, tag.RowsAffected(), expectedTickets)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return matchWriteError(err)
+	}
+	return nil
+}
+
 type matchExecer interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 	QueryRow(context.Context, string, ...any) pgx.Row

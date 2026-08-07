@@ -287,6 +287,27 @@ func (s *TicketStore) AssignAll(ctx context.Context, reservationID, matchID stri
 	return s.cloneTickets(ticketIDs), nil
 }
 
+func (s *TicketStore) CompleteAssignedTickets(ctx context.Context, matchID string, _ time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	matchID = strings.TrimSpace(matchID)
+	if matchID == "" {
+		return domain.ErrInvalidMatch
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, ticket := range s.tickets {
+		if ticket.State() != domain.TicketStateAssigned || ticket.MatchID() != matchID {
+			continue
+		}
+		if s.activeByPlayer[ticket.PlayerID()] == ticket.ID() {
+			delete(s.activeByPlayer, ticket.PlayerID())
+		}
+	}
+	return nil
+}
+
 func (s *TicketStore) RecoverExpiredReservations(ctx context.Context, now time.Time) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err

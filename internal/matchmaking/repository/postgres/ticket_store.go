@@ -351,6 +351,20 @@ func (s *TicketStore) QueueSize(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+func (s *TicketStore) CompleteAssignedTickets(ctx context.Context, matchID string, now time.Time) error {
+	matchID = strings.TrimSpace(matchID)
+	if matchID == "" {
+		return domain.ErrInvalidMatch
+	}
+	if _, err := s.pool.Exec(ctx, `
+		UPDATE tickets SET active = FALSE, updated_at = GREATEST(updated_at, $2)
+		WHERE match_id = $1 AND state = 'ASSIGNED' AND active
+	`, matchID, now); err != nil {
+		return fmt.Errorf("complete assigned tickets: %w", err)
+	}
+	return nil
+}
+
 func getTicketTx(ctx context.Context, tx pgx.Tx, ticketID string, lock bool) (*domain.MatchTicket, error) {
 	query := `SELECT ` + ticketColumns + ` FROM tickets WHERE id = $1`
 	if lock {
@@ -423,12 +437,12 @@ func updateTicket(ctx context.Context, tx pgx.Tx, ticket *domain.MatchTicket) er
 	tag, err := tx.Exec(ctx, `
 		UPDATE tickets SET
 			state = $1, reservation_id = $2, reservation_expires_at = $3,
-			match_id = $4, updated_at = $5
-		WHERE id = $6
+			match_id = $4, updated_at = $5, active = $6
+		WHERE id = $7
 	`,
 		string(ticket.State()), nullableString(ticket.ReservationID()),
 		nullableTime(ticket.ReservationExpiresAt()), nullableString(ticket.MatchID()),
-		ticket.UpdatedAt(), ticket.ID(),
+		ticket.UpdatedAt(), ticket.IsActive(), ticket.ID(),
 	)
 	if err != nil {
 		return reservationError(err)

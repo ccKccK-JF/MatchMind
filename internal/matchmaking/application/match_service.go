@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -14,16 +15,25 @@ type MatchRepository interface {
 	Update(ctx context.Context, match *domain.Match) error
 }
 
-type MatchService struct {
-	repository MatchRepository
-	clock      func() time.Time
+type AssignedTicketCompleter interface {
+	CompleteAssignedTickets(ctx context.Context, matchID string, now time.Time) error
 }
 
-func NewMatchService(repository MatchRepository, clock func() time.Time) *MatchService {
+type MatchCompletionCoordinator interface {
+	CompleteMatchAndReleaseTickets(ctx context.Context, match *domain.Match, now time.Time) error
+}
+
+type MatchService struct {
+	repository      MatchRepository
+	ticketCompleter AssignedTicketCompleter
+	clock           func() time.Time
+}
+
+func NewMatchService(repository MatchRepository, ticketCompleter AssignedTicketCompleter, clock func() time.Time) *MatchService {
 	if clock == nil {
 		clock = time.Now
 	}
-	return &MatchService{repository: repository, clock: clock}
+	return &MatchService{repository: repository, ticketCompleter: ticketCompleter, clock: clock}
 }
 
 func (s *MatchService) StartMatch(ctx context.Context, matchID string) (*domain.Match, error) {
@@ -38,6 +48,12 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID string) (*domain.
 		return nil, err
 	}
 	if err := s.repository.Update(ctx, match); err != nil {
+		if errors.Is(err, ErrMatchRevisionConflict) {
+			current, getErr := s.GetMatch(ctx, matchID)
+			if getErr == nil && current.State() == domain.MatchStateRunning {
+				return current, nil
+			}
+		}
 		return nil, err
 	}
 	return match.Clone(), nil
@@ -49,15 +65,48 @@ func (s *MatchService) CompleteMatch(ctx context.Context, matchID string, result
 		return nil, err
 	}
 	if match.State() == domain.MatchStateFinished {
+		if s.ticketCompleter != nil {
+			if err := s.ticketCompleter.CompleteAssignedTickets(ctx, match.ID(), s.clock()); err != nil {
+				return nil, err
+			}
+		}
 		return match, nil
 	}
-	if err := match.Complete(result, s.clock()); err != nil {
+	now := s.clock()
+	if err := match.Complete(result, now); err != nil {
 		return nil, err
 	}
-	if err := s.repository.Update(ctx, match); err != nil {
-		return nil, err
+	if coordinator, ok := s.repository.(MatchCompletionCoordinator); ok {
+		if err := coordinator.CompleteMatchAndReleaseTickets(ctx, match, now); err != nil {
+			return s.resolveCompletionConflict(ctx, matchID, err)
+		}
+	} else {
+		if err := s.repository.Update(ctx, match); err != nil {
+			return s.resolveCompletionConflict(ctx, matchID, err)
+		}
+		if s.ticketCompleter != nil {
+			if err := s.ticketCompleter.CompleteAssignedTickets(ctx, match.ID(), now); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return match.Clone(), nil
+}
+
+func (s *MatchService) resolveCompletionConflict(ctx context.Context, matchID string, cause error) (*domain.Match, error) {
+	if !errors.Is(cause, ErrMatchRevisionConflict) {
+		return nil, cause
+	}
+	current, err := s.GetMatch(ctx, matchID)
+	if err != nil || current.State() != domain.MatchStateFinished {
+		return nil, cause
+	}
+	if s.ticketCompleter != nil {
+		if err := s.ticketCompleter.CompleteAssignedTickets(ctx, current.ID(), s.clock()); err != nil {
+			return nil, err
+		}
+	}
+	return current, nil
 }
 
 func (s *MatchService) GetMatch(ctx context.Context, matchID string) (*domain.Match, error) {

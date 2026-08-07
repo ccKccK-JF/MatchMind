@@ -23,7 +23,8 @@ go test -count=1 .\tests\integration -run PostgreSQL
 The test applies embedded migrations in a temporary schema and verifies Player
 storage, idempotent Ticket creation, ten-row atomic reservation, durable Match
 recovery, optimistic revision conflicts, and transactional Match/Ticket
-assignment.
+assignment. The in-memory and PostgreSQL flows also verify that players cannot
+requeue during an assigned Match but can create a new Ticket after it finishes.
 
 ## Concurrency and race detection
 
