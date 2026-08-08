@@ -18,6 +18,10 @@ message BatchSimulationInput {
   double role_score = 6;
   double latency_score = 7;
   double party_score = 8;
+  double hero_proficiency_a = 9;
+  double hero_proficiency_b = 10;
+  double behavior_score_a = 11;
+  double behavior_score_b = 12;
 }
 
 message SimulateBatchRequest {

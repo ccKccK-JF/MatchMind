@@ -81,6 +81,34 @@ func TestNewTicketRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+func TestTicketCarriesImmutableSimulationFactors(t *testing.T) {
+	now := time.Now().UTC()
+	proficiency := map[string]float64{"starblade": 93}
+	ticket, err := NewTicket(NewTicketParams{
+		ID: "ticket-1", PlayerID: "player-1", Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		Region: "hongkong", Rating: 1500, PreferredRoles: []Role{RoleCore},
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 97,
+		HeroProficiency: proficiency, CreatedAt: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proficiency["starblade"] = 0
+	copy := ticket.HeroProficiency()
+	copy["starblade"] = 1
+	if ticket.BehaviorScore() != 97 || ticket.HeroProficiency()["starblade"] != 93 {
+		t.Fatalf("ticket simulation factors = %v/%v", ticket.BehaviorScore(), ticket.HeroProficiency())
+	}
+	if _, err := NewTicket(NewTicketParams{
+		ID: "ticket-2", PlayerID: "player-2", Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		Region: "hongkong", Rating: 1500, PreferredRoles: []Role{RoleCore},
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 97,
+		HeroProficiency: map[string]float64{"unknown": 90}, CreatedAt: now,
+	}); !errors.Is(err, ErrInvalidTicket) {
+		t.Fatalf("unknown hero error = %v", err)
+	}
+}
+
 func TestRestoreAssignedTicket(t *testing.T) {
 	now := time.Now().UTC()
 	ticket, err := RestoreTicket(TicketSnapshot{

@@ -79,6 +79,11 @@ func TestWorkerCreatesReadyMatchAndAssignsAllTickets(t *testing.T) {
 	if len(match.TeamA().Players) != 5 || len(match.TeamB().Players) != 5 {
 		t.Fatalf("team sizes = %d/%d", len(match.TeamA().Players), len(match.TeamB().Players))
 	}
+	for _, player := range append(match.TeamA().Players, match.TeamB().Players...) {
+		if player.HeroID == "" || player.HeroProficiency != 90 || player.BehaviorScore != 95 {
+			t.Fatalf("match player simulation factors = %+v", player)
+		}
+	}
 	for _, ticketID := range ticketIDs {
 		ticket, err := ticketStore.Get(context.Background(), ticketID)
 		if err != nil {
@@ -214,19 +219,25 @@ func TestWorkerRechecksEligibilityBeforeReservationAndCancelsNewlyBannedTicket(t
 func populateMatchableTickets(t *testing.T, store *memory.TicketStore, now time.Time) []string {
 	t.Helper()
 	roles := []domain.Role{domain.RoleVanguard, domain.RoleRoamer, domain.RoleCore, domain.RoleRanged, domain.RoleSupport}
+	heroes := map[domain.Role]string{
+		domain.RoleVanguard: "ironwall", domain.RoleRoamer: "shadowstep", domain.RoleCore: "starblade",
+		domain.RoleRanged: "windshot", domain.RoleSupport: "lifebloom",
+	}
 	ticketIDs := make([]string, 0, 10)
 	for index := range 10 {
 		ticketID := fmt.Sprintf("ticket-%02d", index)
 		ticket, err := domain.NewTicket(domain.NewTicketParams{
-			ID:             ticketID,
-			PlayerID:       fmt.Sprintf("player-%02d", index),
-			Mode:           "ranked_5v5",
-			ClientVersion:  "1.0.0",
-			Region:         "hongkong",
-			Rating:         1500 + float64(index%2)*10,
-			PreferredRoles: []domain.Role{roles[index%5]},
-			RegionLatency:  map[string]int{"hongkong": 30, "tokyo": 50, "singapore": 80},
-			CreatedAt:      now.Add(time.Duration(index) * time.Millisecond),
+			ID:              ticketID,
+			PlayerID:        fmt.Sprintf("player-%02d", index),
+			Mode:            "ranked_5v5",
+			ClientVersion:   "1.0.0",
+			Region:          "hongkong",
+			Rating:          1500 + float64(index%2)*10,
+			PreferredRoles:  []domain.Role{roles[index%5]},
+			RegionLatency:   map[string]int{"hongkong": 30, "tokyo": 50, "singapore": 80},
+			BehaviorScore:   95,
+			HeroProficiency: map[string]float64{heroes[roles[index%5]]: 90},
+			CreatedAt:       now.Add(time.Duration(index) * time.Millisecond),
 		})
 		if err != nil {
 			t.Fatal(err)

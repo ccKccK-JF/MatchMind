@@ -64,3 +64,60 @@ func TestSimulatorOutputRanges(t *testing.T) {
 		t.Fatalf("actual quality = %v", result.ActualQualityScore)
 	}
 }
+
+func TestHeroProficiencyChangesWinRate(t *testing.T) {
+	simulator := NewSimulator()
+	const simulations = 10000
+	winsA := 0
+	for seed := range simulations {
+		result, err := simulator.Simulate(Input{
+			MatchID: "match-hero", RandomSeed: int64(seed), RatingA: 1500, RatingB: 1500,
+			PredictedWinRateA: 0.5, RoleScore: 100, LatencyScore: 100, PartyScore: 100,
+			HeroProficiencyA: 100, HeroProficiencyB: 0, BehaviorScoreA: 100, BehaviorScoreB: 100,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.WinningTeam == WinningTeamA {
+			winsA++
+		}
+	}
+	winRate := float64(winsA) / simulations
+	if winRate < 0.56 || winRate > 0.62 {
+		t.Fatalf("high-proficiency team A win rate = %.4f", winRate)
+	}
+}
+
+func TestLowBehaviorScoreIncreasesAFKRate(t *testing.T) {
+	simulator := NewSimulator()
+	const simulations = 10000
+	lowBehaviorAFKs, highBehaviorAFKs := 0, 0
+	for seed := range simulations {
+		base := Input{
+			MatchID: "match-behavior", RandomSeed: int64(seed), RatingA: 1500, RatingB: 1500,
+			PredictedWinRateA: 0.5, RoleScore: 100, LatencyScore: 100, PartyScore: 100,
+			HeroProficiencyA: 50, HeroProficiencyB: 50,
+		}
+		low := base
+		low.BehaviorScoreA, low.BehaviorScoreB = 0, 0
+		high := base
+		high.BehaviorScoreA, high.BehaviorScoreB = 100, 100
+		lowResult, err := simulator.Simulate(low)
+		if err != nil {
+			t.Fatal(err)
+		}
+		highResult, err := simulator.Simulate(high)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if lowResult.HasAFK {
+			lowBehaviorAFKs++
+		}
+		if highResult.HasAFK {
+			highBehaviorAFKs++
+		}
+	}
+	if lowBehaviorAFKs < highBehaviorAFKs+1200 {
+		t.Fatalf("AFK counts low/high behavior = %d/%d", lowBehaviorAFKs, highBehaviorAFKs)
+	}
+}

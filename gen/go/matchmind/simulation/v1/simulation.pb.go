@@ -80,6 +80,10 @@ type BatchSimulationInput struct {
 	RoleScore         float64                `protobuf:"fixed64,6,opt,name=role_score,json=roleScore,proto3" json:"role_score,omitempty"`
 	LatencyScore      float64                `protobuf:"fixed64,7,opt,name=latency_score,json=latencyScore,proto3" json:"latency_score,omitempty"`
 	PartyScore        float64                `protobuf:"fixed64,8,opt,name=party_score,json=partyScore,proto3" json:"party_score,omitempty"`
+	HeroProficiencyA  float64                `protobuf:"fixed64,9,opt,name=hero_proficiency_a,json=heroProficiencyA,proto3" json:"hero_proficiency_a,omitempty"`
+	HeroProficiencyB  float64                `protobuf:"fixed64,10,opt,name=hero_proficiency_b,json=heroProficiencyB,proto3" json:"hero_proficiency_b,omitempty"`
+	BehaviorScoreA    float64                `protobuf:"fixed64,11,opt,name=behavior_score_a,json=behaviorScoreA,proto3" json:"behavior_score_a,omitempty"`
+	BehaviorScoreB    float64                `protobuf:"fixed64,12,opt,name=behavior_score_b,json=behaviorScoreB,proto3" json:"behavior_score_b,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -166,6 +170,34 @@ func (x *BatchSimulationInput) GetLatencyScore() float64 {
 func (x *BatchSimulationInput) GetPartyScore() float64 {
 	if x != nil {
 		return x.PartyScore
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetHeroProficiencyA() float64 {
+	if x != nil {
+		return x.HeroProficiencyA
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetHeroProficiencyB() float64 {
+	if x != nil {
+		return x.HeroProficiencyB
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetBehaviorScoreA() float64 {
+	if x != nil {
+		return x.BehaviorScoreA
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetBehaviorScoreB() float64 {
+	if x != nil {
+		return x.BehaviorScoreB
 	}
 	return 0
 }
@@ -502,7 +534,7 @@ var File_matchmind_simulation_v1_simulation_proto protoreflect.FileDescriptor
 
 const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"\n" +
-	"(matchmind/simulation/v1/simulation.proto\x12\x17matchmind.simulation.v1\"\x9c\x02\n" +
+	"(matchmind/simulation/v1/simulation.proto\x12\x17matchmind.simulation.v1\"\xcc\x03\n" +
 	"\x14BatchSimulationInput\x12\x17\n" +
 	"\acase_id\x18\x01 \x01(\tR\x06caseId\x12\x1f\n" +
 	"\vrandom_seed\x18\x02 \x01(\x03R\n" +
@@ -514,7 +546,12 @@ const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"role_score\x18\x06 \x01(\x01R\troleScore\x12#\n" +
 	"\rlatency_score\x18\a \x01(\x01R\flatencyScore\x12\x1f\n" +
 	"\vparty_score\x18\b \x01(\x01R\n" +
-	"partyScore\"\x7f\n" +
+	"partyScore\x12,\n" +
+	"\x12hero_proficiency_a\x18\t \x01(\x01R\x10heroProficiencyA\x12,\n" +
+	"\x12hero_proficiency_b\x18\n" +
+	" \x01(\x01R\x10heroProficiencyB\x12(\n" +
+	"\x10behavior_score_a\x18\v \x01(\x01R\x0ebehaviorScoreA\x12(\n" +
+	"\x10behavior_score_b\x18\f \x01(\x01R\x0ebehaviorScoreB\"\x7f\n" +
 	"\x14SimulateBatchRequest\x12E\n" +
 	"\x06inputs\x18\x01 \x03(\v2-.matchmind.simulation.v1.BatchSimulationInputR\x06inputs\x12 \n" +
 	"\vconcurrency\x18\x02 \x01(\x05R\vconcurrency\"\x96\x03\n" +

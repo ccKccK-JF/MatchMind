@@ -10,16 +10,18 @@ func TestNewPlayer(t *testing.T) {
 	createdAt := time.Date(2026, time.August, 1, 10, 0, 0, 0, time.FixedZone("CST", 8*60*60))
 	roles := []Role{RoleCore, RoleSupport}
 	latency := map[string]int{"singapore": 32, "hongkong": 48}
+	proficiency := map[string]float64{"starblade": 92, "lifebloom": 81}
 
 	player, err := NewPlayer(NewPlayerParams{
-		ID:             " player-1001 ",
-		Name:           " Nova ",
-		InitialRating:  1800,
-		PreferredRoles: roles,
-		HomeRegion:     " HONGKONG ",
-		RegionLatency:  latency,
-		BehaviorScore:  96,
-		CreatedAt:      createdAt,
+		ID:              " player-1001 ",
+		Name:            " Nova ",
+		InitialRating:   1800,
+		PreferredRoles:  roles,
+		HomeRegion:      " HONGKONG ",
+		RegionLatency:   latency,
+		BehaviorScore:   96,
+		HeroProficiency: proficiency,
+		CreatedAt:       createdAt,
 	})
 	if err != nil {
 		t.Fatalf("NewPlayer() error = %v", err)
@@ -46,11 +48,15 @@ func TestNewPlayer(t *testing.T) {
 
 	roles[0] = RoleVanguard
 	latency["hongkong"] = 999
+	proficiency["starblade"] = 0
 	if player.PreferredRoles()[0] != RoleCore {
 		t.Fatal("player roles changed when the constructor input was mutated")
 	}
 	if player.RegionLatency()["hongkong"] != 48 {
 		t.Fatal("player latency changed when the constructor input was mutated")
+	}
+	if player.HeroProficiency()["starblade"] != 92 {
+		t.Fatal("player hero proficiency changed when the constructor input was mutated")
 	}
 }
 
@@ -82,6 +88,8 @@ func TestNewPlayerRejectsInvalidInput(t *testing.T) {
 		{name: "missing latency", change: func(p *NewPlayerParams) { p.RegionLatency = nil }},
 		{name: "negative latency", change: func(p *NewPlayerParams) { p.RegionLatency = map[string]int{"hongkong": -1} }},
 		{name: "behavior over maximum", change: func(p *NewPlayerParams) { p.BehaviorScore = 101 }},
+		{name: "unknown hero", change: func(p *NewPlayerParams) { p.HeroProficiency = map[string]float64{"unknown": 90} }},
+		{name: "hero proficiency over maximum", change: func(p *NewPlayerParams) { p.HeroProficiency = map[string]float64{"starblade": 101} }},
 		{name: "missing created time", change: func(p *NewPlayerParams) { p.CreatedAt = time.Time{} }},
 	}
 
@@ -99,14 +107,15 @@ func TestNewPlayerRejectsInvalidInput(t *testing.T) {
 
 func TestPlayerAccessorsReturnCopies(t *testing.T) {
 	player, err := NewPlayer(NewPlayerParams{
-		ID:             "player-1001",
-		Name:           "Nova",
-		InitialRating:  1500,
-		PreferredRoles: []Role{RoleCore},
-		HomeRegion:     "hongkong",
-		RegionLatency:  map[string]int{"hongkong": 30},
-		BehaviorScore:  90,
-		CreatedAt:      time.Now(),
+		ID:              "player-1001",
+		Name:            "Nova",
+		InitialRating:   1500,
+		PreferredRoles:  []Role{RoleCore},
+		HomeRegion:      "hongkong",
+		RegionLatency:   map[string]int{"hongkong": 30},
+		BehaviorScore:   90,
+		HeroProficiency: map[string]float64{"starblade": 88},
+		CreatedAt:       time.Now(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -116,12 +125,17 @@ func TestPlayerAccessorsReturnCopies(t *testing.T) {
 	roles[0] = RoleSupport
 	latency := player.RegionLatency()
 	latency["hongkong"] = 500
+	proficiency := player.HeroProficiency()
+	proficiency["starblade"] = 0
 
 	if player.PreferredRoles()[0] != RoleCore {
 		t.Fatal("PreferredRoles returned mutable internal state")
 	}
 	if player.RegionLatency()["hongkong"] != 30 {
 		t.Fatal("RegionLatency returned mutable internal state")
+	}
+	if player.HeroProficiency()["starblade"] != 88 {
+		t.Fatal("HeroProficiency returned mutable internal state")
 	}
 }
 
@@ -131,12 +145,14 @@ func TestRestorePlayerPreservesDurableRatingDeviation(t *testing.T) {
 		ID: "player-1", Name: "Nova", Rating: 1725, RatingDeviation: 82, RatingVolatility: 0.045,
 		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
 		RegionLatency: map[string]int{"hongkong": 31}, BehaviorScore: 97,
-		CreatedAt: createdAt,
+		HeroProficiency: map[string]float64{"starblade": 94},
+		CreatedAt:       createdAt,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if player.Rating() != 1725 || player.RatingDeviation() != 82 || player.RatingVolatility() != 0.045 || !player.CreatedAt().Equal(createdAt) {
+	if player.Rating() != 1725 || player.RatingDeviation() != 82 || player.RatingVolatility() != 0.045 ||
+		player.HeroProficiency()["starblade"] != 94 || !player.CreatedAt().Equal(createdAt) {
 		t.Fatalf("restored player = rating %v, deviation %v, volatility %v, created %v", player.Rating(), player.RatingDeviation(), player.RatingVolatility(), player.CreatedAt())
 	}
 }

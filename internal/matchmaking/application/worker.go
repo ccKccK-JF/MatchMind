@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/engine"
 	platformid "github.com/ccKccK-JF/MatchMind/internal/platform/id"
@@ -440,9 +441,11 @@ func formationTickets(formation engine.TeamFormation) []*domain.MatchTicket {
 func matchTeamFromEngine(id string, team engine.Team) domain.MatchTeam {
 	result := domain.MatchTeam{ID: id, AverageRating: team.AverageRating, Players: make([]domain.MatchPlayer, 0, len(team.Players))}
 	for _, player := range team.Players {
+		selectedHero, proficiency, _ := hero.BestForRole(player.Ticket.HeroProficiency(), string(player.Role))
 		result.Players = append(result.Players, domain.MatchPlayer{
 			PlayerID: player.Ticket.PlayerID(), TicketID: player.Ticket.ID(), PartyID: player.Ticket.PartyID(),
-			Role: player.Role, Rating: player.Ticket.Rating(),
+			Role: player.Role, Rating: player.Ticket.Rating(), HeroID: selectedHero.ID,
+			HeroProficiency: proficiency, BehaviorScore: player.Ticket.BehaviorScore(),
 		})
 	}
 	return result

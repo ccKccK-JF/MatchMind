@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
 )
 
 var (
@@ -38,16 +40,18 @@ const (
 )
 
 type NewTicketParams struct {
-	ID             string
-	PlayerID       string
-	PartyID        string
-	Mode           string
-	ClientVersion  string
-	Region         string
-	Rating         float64
-	PreferredRoles []Role
-	RegionLatency  map[string]int
-	CreatedAt      time.Time
+	ID              string
+	PlayerID        string
+	PartyID         string
+	Mode            string
+	ClientVersion   string
+	Region          string
+	Rating          float64
+	BehaviorScore   float64
+	HeroProficiency map[string]float64
+	PreferredRoles  []Role
+	RegionLatency   map[string]int
+	CreatedAt       time.Time
 }
 
 type TicketSnapshot struct {
@@ -58,6 +62,8 @@ type TicketSnapshot struct {
 	ClientVersion        string
 	Region               string
 	Rating               float64
+	BehaviorScore        float64
+	HeroProficiency      map[string]float64
 	PreferredRoles       []Role
 	RegionLatency        map[string]int
 	State                TicketState
@@ -76,6 +82,8 @@ type MatchTicket struct {
 	clientVersion        string
 	region               string
 	rating               float64
+	behaviorScore        float64
+	heroProficiency      map[string]float64
 	preferredRoles       []Role
 	regionLatency        map[string]int
 	state                TicketState
@@ -107,6 +115,8 @@ func NewTicket(params NewTicketParams) (*MatchTicket, error) {
 		return nil, invalidTicket("region is required")
 	case params.Rating <= 0 || math.IsNaN(params.Rating) || math.IsInf(params.Rating, 0):
 		return nil, invalidTicket("rating must be finite and greater than zero")
+	case params.BehaviorScore < 0 || params.BehaviorScore > 100 || math.IsNaN(params.BehaviorScore) || math.IsInf(params.BehaviorScore, 0):
+		return nil, invalidTicket("behavior score must be between 0 and 100")
 	case params.CreatedAt.IsZero():
 		return nil, invalidTicket("created time is required")
 	}
@@ -116,21 +126,26 @@ func NewTicket(params NewTicketParams) (*MatchTicket, error) {
 	if err := validateTicketLatency(params.RegionLatency); err != nil {
 		return nil, err
 	}
+	if err := validateTicketHeroProficiency(params.HeroProficiency); err != nil {
+		return nil, err
+	}
 
 	createdAt := params.CreatedAt.UTC()
 	return &MatchTicket{
-		id:             params.ID,
-		playerID:       params.PlayerID,
-		partyID:        params.PartyID,
-		mode:           params.Mode,
-		clientVersion:  params.ClientVersion,
-		region:         params.Region,
-		rating:         params.Rating,
-		preferredRoles: cloneRoles(params.PreferredRoles),
-		regionLatency:  cloneLatency(params.RegionLatency),
-		state:          TicketStateCreated,
-		createdAt:      createdAt,
-		updatedAt:      createdAt,
+		id:              params.ID,
+		playerID:        params.PlayerID,
+		partyID:         params.PartyID,
+		mode:            params.Mode,
+		clientVersion:   params.ClientVersion,
+		region:          params.Region,
+		rating:          params.Rating,
+		behaviorScore:   params.BehaviorScore,
+		heroProficiency: cloneTicketProficiency(params.HeroProficiency),
+		preferredRoles:  cloneRoles(params.PreferredRoles),
+		regionLatency:   cloneLatency(params.RegionLatency),
+		state:           TicketStateCreated,
+		createdAt:       createdAt,
+		updatedAt:       createdAt,
 	}, nil
 }
 
@@ -139,6 +154,7 @@ func RestoreTicket(snapshot TicketSnapshot) (*MatchTicket, error) {
 		ID: snapshot.ID, PlayerID: snapshot.PlayerID, PartyID: snapshot.PartyID,
 		Mode: snapshot.Mode, ClientVersion: snapshot.ClientVersion, Region: snapshot.Region,
 		Rating: snapshot.Rating, PreferredRoles: snapshot.PreferredRoles,
+		BehaviorScore: snapshot.BehaviorScore, HeroProficiency: snapshot.HeroProficiency,
 		RegionLatency: snapshot.RegionLatency, CreatedAt: snapshot.CreatedAt,
 	})
 	if err != nil {
@@ -284,6 +300,7 @@ func (t *MatchTicket) Mode() string                    { return t.mode }
 func (t *MatchTicket) ClientVersion() string           { return t.clientVersion }
 func (t *MatchTicket) Region() string                  { return t.region }
 func (t *MatchTicket) Rating() float64                 { return t.rating }
+func (t *MatchTicket) BehaviorScore() float64          { return t.behaviorScore }
 func (t *MatchTicket) State() TicketState              { return t.state }
 func (t *MatchTicket) CreatedAt() time.Time            { return t.createdAt }
 func (t *MatchTicket) UpdatedAt() time.Time            { return t.updatedAt }
@@ -292,6 +309,9 @@ func (t *MatchTicket) ReservationExpiresAt() time.Time { return t.reservationExp
 func (t *MatchTicket) MatchID() string                 { return t.matchID }
 func (t *MatchTicket) PreferredRoles() []Role          { return cloneRoles(t.preferredRoles) }
 func (t *MatchTicket) RegionLatency() map[string]int   { return cloneLatency(t.regionLatency) }
+func (t *MatchTicket) HeroProficiency() map[string]float64 {
+	return cloneTicketProficiency(t.heroProficiency)
+}
 
 func (t *MatchTicket) Clone() *MatchTicket {
 	if t == nil {
@@ -300,6 +320,7 @@ func (t *MatchTicket) Clone() *MatchTicket {
 	clone := *t
 	clone.preferredRoles = cloneRoles(t.preferredRoles)
 	clone.regionLatency = cloneLatency(t.regionLatency)
+	clone.heroProficiency = cloneTicketProficiency(t.heroProficiency)
 	return &clone
 }
 
@@ -344,6 +365,24 @@ func validateTicketLatency(latencies map[string]int) error {
 	return nil
 }
 
+func validateTicketHeroProficiency(values map[string]float64) error {
+	if len(values) > 100 {
+		return invalidTicket("hero proficiency cannot contain more than 100 heroes")
+	}
+	seen := make(map[string]struct{}, len(values))
+	for heroID, score := range values {
+		normalizedID := strings.ToLower(strings.TrimSpace(heroID))
+		if _, duplicate := seen[normalizedID]; duplicate {
+			return invalidTicket("hero proficiency contains duplicate normalized hero ids")
+		}
+		seen[normalizedID] = struct{}{}
+		if _, exists := hero.Get(heroID); !exists || score < 0 || score > 100 || math.IsNaN(score) || math.IsInf(score, 0) {
+			return invalidTicket("hero proficiency must reference known heroes with scores between 0 and 100")
+		}
+	}
+	return nil
+}
+
 func invalidTicket(message string) error {
 	return fmt.Errorf("%w: %s", ErrInvalidTicket, message)
 }
@@ -360,6 +399,14 @@ func cloneLatency(latencies map[string]int) map[string]int {
 	clone := make(map[string]int, len(latencies))
 	for region, latency := range latencies {
 		clone[region] = latency
+	}
+	return clone
+}
+
+func cloneTicketProficiency(values map[string]float64) map[string]float64 {
+	clone := make(map[string]float64, len(values))
+	for heroID, score := range values {
+		clone[strings.ToLower(strings.TrimSpace(heroID))] = score
 	}
 	return clone
 }

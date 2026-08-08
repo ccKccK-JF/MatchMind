@@ -49,12 +49,22 @@ func (c *Client) GetPlayer(ctx context.Context, playerID string) (application.Pl
 		latency[region] = int(milliseconds)
 	}
 	return application.PlayerSnapshot{
-		ID:             player.GetId(),
-		Rating:         player.GetRating(),
-		Banned:         player.GetBanned(),
-		PreferredRoles: roles,
-		RegionLatency:  latency,
+		ID:              player.GetId(),
+		Rating:          player.GetRating(),
+		Banned:          player.GetBanned(),
+		BehaviorScore:   player.GetBehaviorScore(),
+		HeroProficiency: cloneFloatMap(player.GetHeroProficiency()),
+		PreferredRoles:  roles,
+		RegionLatency:   latency,
 	}, nil
+}
+
+func cloneFloatMap(values map[string]float64) map[string]float64 {
+	result := make(map[string]float64, len(values))
+	for key, value := range values {
+		result[key] = value
+	}
+	return result
 }
 
 func (c *Client) CheckPlayersEligibility(ctx context.Context, playerIDs []string) (map[string]bool, error) {

@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
 )
 
 var (
@@ -25,11 +27,14 @@ const (
 )
 
 type MatchPlayer struct {
-	PlayerID string
-	TicketID string
-	PartyID  string
-	Role     Role
-	Rating   float64
+	PlayerID        string
+	TicketID        string
+	PartyID         string
+	Role            Role
+	Rating          float64
+	HeroID          string
+	HeroProficiency float64
+	BehaviorScore   float64
 }
 
 type MatchTeam struct {
@@ -313,8 +318,22 @@ func validateMatchTeams(teamA, teamB MatchTeam) error {
 	seenPlayers := make(map[string]struct{}, 10)
 	seenTickets := make(map[string]struct{}, 10)
 	for _, player := range append(append([]MatchPlayer(nil), teamA.Players...), teamB.Players...) {
-		if strings.TrimSpace(player.PlayerID) == "" || strings.TrimSpace(player.TicketID) == "" || player.Rating <= 0 {
+		if strings.TrimSpace(player.PlayerID) == "" || strings.TrimSpace(player.TicketID) == "" || player.Rating <= 0 ||
+			!validMatchRole(player.Role) || !scoreInRange(player.HeroProficiency) || !scoreInRange(player.BehaviorScore) {
 			return ErrInvalidMatch
+		}
+		heroID := strings.TrimSpace(player.HeroID)
+		// Matches persisted before hero assignment was introduced have no HeroID.
+		// Keep those snapshots readable, while all newly-created worker matches carry one.
+		if heroID == "" {
+			if player.HeroProficiency != 0 {
+				return ErrInvalidMatch
+			}
+		} else {
+			entry, exists := hero.Get(heroID)
+			if !exists || entry.Role != string(player.Role) {
+				return ErrInvalidMatch
+			}
 		}
 		if _, duplicate := seenPlayers[player.PlayerID]; duplicate {
 			return ErrInvalidMatch
@@ -326,6 +345,15 @@ func validateMatchTeams(teamA, teamB MatchTeam) error {
 		seenTickets[player.TicketID] = struct{}{}
 	}
 	return nil
+}
+
+func validMatchRole(role Role) bool {
+	switch role {
+	case RoleVanguard, RoleRoamer, RoleCore, RoleRanged, RoleSupport:
+		return true
+	default:
+		return false
+	}
 }
 
 func cloneMatchTeam(team MatchTeam) MatchTeam {

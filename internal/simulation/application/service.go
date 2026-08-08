@@ -16,18 +16,22 @@ var (
 )
 
 type MatchSnapshot struct {
-	ID                 string
-	Mode               string
-	State              string
-	TeamAPlayerIDs     []string
-	TeamBPlayerIDs     []string
-	TeamAAverageRating float64
-	TeamBAverageRating float64
-	PredictedWinRateA  float64
-	RoleScore          float64
-	LatencyScore       float64
-	PartyScore         float64
-	ExistingResult     *simulationdomain.Result
+	ID                   string
+	Mode                 string
+	State                string
+	TeamAPlayerIDs       []string
+	TeamBPlayerIDs       []string
+	TeamAAverageRating   float64
+	TeamBAverageRating   float64
+	PredictedWinRateA    float64
+	RoleScore            float64
+	LatencyScore         float64
+	PartyScore           float64
+	TeamAHeroProficiency float64
+	TeamBHeroProficiency float64
+	TeamABehaviorScore   float64
+	TeamBBehaviorScore   float64
+	ExistingResult       *simulationdomain.Result
 }
 
 type MatchGateway interface {
@@ -102,6 +106,8 @@ func (s *Service) SimulateMatch(ctx context.Context, matchID string, randomSeed 
 		RatingA: match.TeamAAverageRating, RatingB: match.TeamBAverageRating,
 		PredictedWinRateA: match.PredictedWinRateA,
 		RoleScore:         match.RoleScore, LatencyScore: match.LatencyScore, PartyScore: match.PartyScore,
+		HeroProficiencyA: match.TeamAHeroProficiency, HeroProficiencyB: match.TeamBHeroProficiency,
+		BehaviorScoreA: match.TeamABehaviorScore, BehaviorScoreB: match.TeamBBehaviorScore,
 	})
 	if err != nil {
 		return simulationdomain.Result{}, err

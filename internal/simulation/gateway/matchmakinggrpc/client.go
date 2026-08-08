@@ -40,6 +40,8 @@ func (c *Client) GetMatch(ctx context.Context, matchID string) (application.Matc
 		PredictedWinRateA:  match.GetPredictedWinRateA(), RoleScore: match.GetRoleScore(),
 		LatencyScore: match.GetLatencyScore(), PartyScore: match.GetPartyScore(),
 	}
+	snapshot.TeamAHeroProficiency, snapshot.TeamABehaviorScore = teamSimulationFactors(match.GetTeamA())
+	snapshot.TeamBHeroProficiency, snapshot.TeamBBehaviorScore = teamSimulationFactors(match.GetTeamB())
 	if match.GetResult() != nil {
 		result, err := resultFromProto(match.GetId(), match.GetResult())
 		if err != nil {
@@ -48,6 +50,25 @@ func (c *Client) GetMatch(ctx context.Context, matchID string) (application.Matc
 		snapshot.ExistingResult = &result
 	}
 	return snapshot, nil
+}
+
+func teamSimulationFactors(team *matchmakingv1.Team) (float64, float64) {
+	players := team.GetPlayerDetails()
+	if len(players) == 0 {
+		return 50, 100
+	}
+	var proficiency, behavior float64
+	for _, player := range players {
+		if player.GetHeroId() == "" {
+			proficiency += 50
+			behavior += 100
+			continue
+		}
+		proficiency += player.GetHeroProficiency()
+		behavior += player.GetBehaviorScore()
+	}
+	count := float64(len(players))
+	return proficiency / count, behavior / count
 }
 
 func (c *Client) StartMatch(ctx context.Context, matchID string) error {

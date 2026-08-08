@@ -9,7 +9,8 @@ selects the PostgreSQL-durable/Redis-coordinated Ticket adapter, while
 ## PostgreSQL ownership
 
 `players` stores profile, current rating, rating deviation, Glicko-2
-volatility, and the current ban flag/reason/operator/timestamp. A database
+volatility, behavior score, per-Hero proficiency JSON, and the current ban
+flag/reason/operator/timestamp. A database
 constraint requires complete ban metadata for banned players and no stale ban
 metadata for active players. `rating_changes` is append-only and records the before/after value
 of all three rating-state components plus the selected rating system. It
@@ -18,8 +19,9 @@ preserves response order with a per-Match sequence, and uses a unique
 Elo and Glicko-2 updates use a serializable transaction plus a Match-scoped PostgreSQL advisory
 lock, making duplicate result delivery idempotent.
 
-`tickets` now stores durable Ticket state, create/cancel idempotency keys,
-reservation metadata, Match ID, and timestamps. A partial unique index on
+`tickets` now stores durable Ticket state, snapshotted behavior and Hero
+proficiency, create/cancel idempotency keys, reservation metadata, Match ID,
+and timestamps. A partial unique index on
 `player_id` for active states prevents duplicate active Tickets even when
 several API instances race. PostgreSQL row locks make ten-Ticket reservation,
 assignment, release, and expiry recovery atomic.
@@ -30,7 +32,8 @@ active. Completing the Match stores its result and clears all ten active flags
 in one transaction, allowing those players to queue again without deleting
 historical Tickets.
 
-`matches` stores policy version, quality sub-scores, team snapshots, server
+`matches` stores policy version, quality sub-scores, team snapshots (including
+assigned Hero, Hero proficiency, and behavior stability), server
 allocation, state, prediction, result, actual quality, and a monotonic
 revision. Updates reject stale revisions. The final READY Match update and all
 reserved-to-assigned Ticket transitions share one database transaction.

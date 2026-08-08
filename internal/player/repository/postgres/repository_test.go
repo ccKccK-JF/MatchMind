@@ -20,6 +20,7 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	bannedAt := createdAt.Add(-time.Hour)
 	latencies, _ := json.Marshal(map[string]int{"hongkong": 32})
+	proficiency, _ := json.Marshal(map[string]float64{"emberlord": 91})
 	player, err := scanPlayer(scanFunc(func(dest ...any) error {
 		*dest[0].(*string) = "player-1"
 		*dest[1].(*string) = "Nova"
@@ -34,7 +35,8 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 		*dest[10].(*string) = "hongkong"
 		*dest[11].(*[]byte) = latencies
 		*dest[12].(*float64) = 98
-		*dest[13].(*time.Time) = createdAt
+		*dest[13].(*[]byte) = proficiency
+		*dest[14].(*time.Time) = createdAt
 		return nil
 	}))
 	if err != nil {
@@ -48,6 +50,9 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 	}
 	if player.PreferredRoles()[1] != domain.RoleSupport || player.RegionLatency()["hongkong"] != 32 {
 		t.Fatalf("player roles/latency = %v/%v", player.PreferredRoles(), player.RegionLatency())
+	}
+	if player.HeroProficiency()["emberlord"] != 91 {
+		t.Fatalf("player hero proficiency = %v", player.HeroProficiency())
 	}
 }
 
@@ -65,7 +70,8 @@ func TestScanPlayerRejectsCorruptPersistentData(t *testing.T) {
 		*dest[10].(*string) = "hongkong"
 		*dest[11].(*[]byte) = []byte(`{"hongkong":32}`)
 		*dest[12].(*float64) = 98
-		*dest[13].(*time.Time) = time.Now()
+		*dest[13].(*[]byte) = []byte(`{}`)
+		*dest[14].(*time.Time) = time.Now()
 		return nil
 	}))
 	if err == nil {

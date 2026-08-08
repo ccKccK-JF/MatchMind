@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
 )
 
 const (
@@ -20,14 +22,15 @@ const (
 var ErrInvalidPlayer = errors.New("invalid player")
 
 type NewPlayerParams struct {
-	ID             string
-	Name           string
-	InitialRating  float64
-	PreferredRoles []Role
-	HomeRegion     string
-	RegionLatency  map[string]int
-	BehaviorScore  float64
-	CreatedAt      time.Time
+	ID              string
+	Name            string
+	InitialRating   float64
+	PreferredRoles  []Role
+	HomeRegion      string
+	RegionLatency   map[string]int
+	BehaviorScore   float64
+	HeroProficiency map[string]float64
+	CreatedAt       time.Time
 }
 
 // PlayerSnapshot is the durable representation accepted when restoring a
@@ -47,6 +50,7 @@ type PlayerSnapshot struct {
 	HomeRegion       string
 	RegionLatency    map[string]int
 	BehaviorScore    float64
+	HeroProficiency  map[string]float64
 	CreatedAt        time.Time
 }
 
@@ -66,6 +70,7 @@ type Player struct {
 	homeRegion       string
 	regionLatency    map[string]int
 	behaviorScore    float64
+	heroProficiency  map[string]float64
 	createdAt        time.Time
 }
 
@@ -90,8 +95,12 @@ func NewPlayer(params NewPlayerParams) (*Player, error) {
 	if params.CreatedAt.IsZero() {
 		return nil, invalidPlayer("created time is required")
 	}
-	if params.BehaviorScore < minimumBehaviorScore || params.BehaviorScore > maximumBehaviorScore {
+	if params.BehaviorScore < minimumBehaviorScore || params.BehaviorScore > maximumBehaviorScore ||
+		math.IsNaN(params.BehaviorScore) || math.IsInf(params.BehaviorScore, 0) {
 		return nil, invalidPlayer("behavior score must be between 0 and 100")
+	}
+	if err := validateHeroProficiency(params.HeroProficiency); err != nil {
+		return nil, err
 	}
 	if err := validateRoles(params.PreferredRoles); err != nil {
 		return nil, err
@@ -110,6 +119,7 @@ func NewPlayer(params NewPlayerParams) (*Player, error) {
 		homeRegion:       params.HomeRegion,
 		regionLatency:    cloneLatency(params.RegionLatency),
 		behaviorScore:    params.BehaviorScore,
+		heroProficiency:  cloneProficiency(params.HeroProficiency),
 		createdAt:        params.CreatedAt.UTC(),
 	}, nil
 }
@@ -134,14 +144,15 @@ func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 		return nil, invalidPlayer("active player cannot contain ban metadata")
 	}
 	player, err := NewPlayer(NewPlayerParams{
-		ID:             snapshot.ID,
-		Name:           snapshot.Name,
-		InitialRating:  snapshot.Rating,
-		PreferredRoles: snapshot.PreferredRoles,
-		HomeRegion:     snapshot.HomeRegion,
-		RegionLatency:  snapshot.RegionLatency,
-		BehaviorScore:  snapshot.BehaviorScore,
-		CreatedAt:      snapshot.CreatedAt,
+		ID:              snapshot.ID,
+		Name:            snapshot.Name,
+		InitialRating:   snapshot.Rating,
+		PreferredRoles:  snapshot.PreferredRoles,
+		HomeRegion:      snapshot.HomeRegion,
+		RegionLatency:   snapshot.RegionLatency,
+		BehaviorScore:   snapshot.BehaviorScore,
+		HeroProficiency: snapshot.HeroProficiency,
+		CreatedAt:       snapshot.CreatedAt,
 	})
 	if err != nil {
 		return nil, err
@@ -155,20 +166,21 @@ func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 	return player, nil
 }
 
-func (p *Player) ID() string                    { return p.id }
-func (p *Player) Name() string                  { return p.name }
-func (p *Player) Rating() float64               { return p.rating }
-func (p *Player) RatingDeviation() float64      { return p.ratingDeviation }
-func (p *Player) RatingVolatility() float64     { return p.ratingVolatility }
-func (p *Player) Banned() bool                  { return p.banned }
-func (p *Player) BanReason() string             { return p.banReason }
-func (p *Player) BannedAt() time.Time           { return p.bannedAt }
-func (p *Player) BannedBy() string              { return p.bannedBy }
-func (p *Player) HomeRegion() string            { return p.homeRegion }
-func (p *Player) BehaviorScore() float64        { return p.behaviorScore }
-func (p *Player) CreatedAt() time.Time          { return p.createdAt }
-func (p *Player) PreferredRoles() []Role        { return cloneRoles(p.preferredRoles) }
-func (p *Player) RegionLatency() map[string]int { return cloneLatency(p.regionLatency) }
+func (p *Player) ID() string                          { return p.id }
+func (p *Player) Name() string                        { return p.name }
+func (p *Player) Rating() float64                     { return p.rating }
+func (p *Player) RatingDeviation() float64            { return p.ratingDeviation }
+func (p *Player) RatingVolatility() float64           { return p.ratingVolatility }
+func (p *Player) Banned() bool                        { return p.banned }
+func (p *Player) BanReason() string                   { return p.banReason }
+func (p *Player) BannedAt() time.Time                 { return p.bannedAt }
+func (p *Player) BannedBy() string                    { return p.bannedBy }
+func (p *Player) HomeRegion() string                  { return p.homeRegion }
+func (p *Player) BehaviorScore() float64              { return p.behaviorScore }
+func (p *Player) HeroProficiency() map[string]float64 { return cloneProficiency(p.heroProficiency) }
+func (p *Player) CreatedAt() time.Time                { return p.createdAt }
+func (p *Player) PreferredRoles() []Role              { return cloneRoles(p.preferredRoles) }
+func (p *Player) RegionLatency() map[string]int       { return cloneLatency(p.regionLatency) }
 
 func (p *Player) WithBanState(banned bool, reason, operatorID string, changedAt time.Time) (*Player, error) {
 	reason = strings.TrimSpace(reason)
@@ -200,6 +212,7 @@ func (p *Player) Clone() *Player {
 	clone := *p
 	clone.preferredRoles = cloneRoles(p.preferredRoles)
 	clone.regionLatency = cloneLatency(p.regionLatency)
+	clone.heroProficiency = cloneProficiency(p.heroProficiency)
 	return &clone
 }
 
@@ -251,6 +264,24 @@ func validateRegionLatency(latencies map[string]int) error {
 	return nil
 }
 
+func validateHeroProficiency(values map[string]float64) error {
+	if len(values) > 100 {
+		return invalidPlayer("hero proficiency cannot contain more than 100 heroes")
+	}
+	seen := make(map[string]struct{}, len(values))
+	for heroID, score := range values {
+		normalizedID := strings.ToLower(strings.TrimSpace(heroID))
+		if _, duplicate := seen[normalizedID]; duplicate {
+			return invalidPlayer("hero proficiency contains duplicate normalized hero ids")
+		}
+		seen[normalizedID] = struct{}{}
+		if _, exists := hero.Get(heroID); !exists || score < 0 || score > 100 || math.IsNaN(score) || math.IsInf(score, 0) {
+			return invalidPlayer("hero proficiency must reference known heroes with scores between 0 and 100")
+		}
+	}
+	return nil
+}
+
 func invalidPlayer(message string) error {
 	return fmt.Errorf("%w: %s", ErrInvalidPlayer, message)
 }
@@ -263,6 +294,14 @@ func cloneLatency(latencies map[string]int) map[string]int {
 	clone := make(map[string]int, len(latencies))
 	for region, latency := range latencies {
 		clone[region] = latency
+	}
+	return clone
+}
+
+func cloneProficiency(values map[string]float64) map[string]float64 {
+	clone := make(map[string]float64, len(values))
+	for heroID, score := range values {
+		clone[strings.ToLower(strings.TrimSpace(heroID))] = score
 	}
 	return clone
 }

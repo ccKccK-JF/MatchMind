@@ -28,6 +28,8 @@ type storedTicket struct {
 	ClientVersion        string             `json:"client_version"`
 	Region               string             `json:"region"`
 	Rating               float64            `json:"rating"`
+	BehaviorScore        float64            `json:"behavior_score"`
+	HeroProficiency      map[string]float64 `json:"hero_proficiency"`
 	PreferredRoles       []domain.Role      `json:"preferred_roles"`
 	RegionLatency        map[string]int     `json:"region_latency"`
 	State                domain.TicketState `json:"state"`
@@ -227,7 +229,8 @@ func storedTicketFromDomain(ticket *domain.MatchTicket) storedTicket {
 	return storedTicket{
 		ID: ticket.ID(), PlayerID: ticket.PlayerID(), PartyID: ticket.PartyID(),
 		Mode: ticket.Mode(), ClientVersion: ticket.ClientVersion(), Region: ticket.Region(),
-		Rating: ticket.Rating(), PreferredRoles: ticket.PreferredRoles(), RegionLatency: ticket.RegionLatency(),
+		Rating: ticket.Rating(), BehaviorScore: ticket.BehaviorScore(), HeroProficiency: ticket.HeroProficiency(),
+		PreferredRoles: ticket.PreferredRoles(), RegionLatency: ticket.RegionLatency(),
 		State: ticket.State(), CreatedAt: ticket.CreatedAt(), UpdatedAt: ticket.UpdatedAt(),
 		ReservationID: ticket.ReservationID(), ReservationExpiresAt: ticket.ReservationExpiresAt(), MatchID: ticket.MatchID(),
 	}
@@ -237,7 +240,8 @@ func (ticket storedTicket) restore() (*domain.MatchTicket, error) {
 	return domain.RestoreTicket(domain.TicketSnapshot{
 		ID: ticket.ID, PlayerID: ticket.PlayerID, PartyID: ticket.PartyID,
 		Mode: ticket.Mode, ClientVersion: ticket.ClientVersion, Region: ticket.Region,
-		Rating: ticket.Rating, PreferredRoles: ticket.PreferredRoles, RegionLatency: ticket.RegionLatency,
+		Rating: ticket.Rating, BehaviorScore: ticket.BehaviorScore, HeroProficiency: ticket.HeroProficiency,
+		PreferredRoles: ticket.PreferredRoles, RegionLatency: ticket.RegionLatency,
 		State: ticket.State, CreatedAt: ticket.CreatedAt, UpdatedAt: ticket.UpdatedAt,
 		ReservationID: ticket.ReservationID, ReservationExpiresAt: ticket.ReservationExpiresAt, MatchID: ticket.MatchID,
 	})

@@ -32,13 +32,14 @@ type Service struct {
 }
 
 type CreatePlayerCommand struct {
-	ID             string
-	Name           string
-	InitialRating  float64
-	PreferredRoles []domain.Role
-	HomeRegion     string
-	RegionLatency  map[string]int
-	BehaviorScore  float64
+	ID              string
+	Name            string
+	InitialRating   float64
+	PreferredRoles  []domain.Role
+	HomeRegion      string
+	RegionLatency   map[string]int
+	BehaviorScore   float64
+	HeroProficiency map[string]float64
 }
 
 type UpdateRegionLatencyCommand struct {
@@ -62,14 +63,15 @@ func NewService(repository Repository, clock Clock) *Service {
 
 func (s *Service) CreatePlayer(ctx context.Context, command CreatePlayerCommand) (*domain.Player, error) {
 	player, err := domain.NewPlayer(domain.NewPlayerParams{
-		ID:             command.ID,
-		Name:           command.Name,
-		InitialRating:  command.InitialRating,
-		PreferredRoles: command.PreferredRoles,
-		HomeRegion:     command.HomeRegion,
-		RegionLatency:  command.RegionLatency,
-		BehaviorScore:  command.BehaviorScore,
-		CreatedAt:      s.clock(),
+		ID:              command.ID,
+		Name:            command.Name,
+		InitialRating:   command.InitialRating,
+		PreferredRoles:  command.PreferredRoles,
+		HomeRegion:      command.HomeRegion,
+		RegionLatency:   command.RegionLatency,
+		BehaviorScore:   command.BehaviorScore,
+		HeroProficiency: command.HeroProficiency,
+		CreatedAt:       s.clock(),
 	})
 	if err != nil {
 		return nil, err

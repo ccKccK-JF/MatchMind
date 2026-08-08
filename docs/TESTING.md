@@ -23,6 +23,11 @@ queued player is banned, removed before reservation, unbanned, and requeued.
 Trace tests cover untrusted ID replacement, context/metadata preservation,
 multi-hop client/server propagation, gRPC response metadata, correlated JSON
 logs, and a real HTTP-to-Player-gRPC integration path.
+Hero tests cover catalog role completeness, immutable proficiency maps,
+PostgreSQL/Redis snapshot codecs, deterministic role-compatible assignment,
+REST/gRPC mapping, and statistical win-rate impact. Behavior tests verify the
+Player-to-Ticket-to-Match chain and a statistically higher AFK rate for low
+stability scores.
 
 Algorithm tests use a crafted candidate pool where Beam Search must improve
 role coverage and total quality over greedy selection. They also verify stable

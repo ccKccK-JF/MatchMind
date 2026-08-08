@@ -31,15 +31,19 @@ func (r *Repository) Create(ctx context.Context, player *domain.Player) error {
 	if err != nil {
 		return fmt.Errorf("marshal player latency: %w", err)
 	}
+	proficiency, err := json.Marshal(player.HeroProficiency())
+	if err != nil {
+		return fmt.Errorf("marshal player hero proficiency: %w", err)
+	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO players (
 			id, name, rating, rating_deviation, rating_volatility, preferred_roles,
-			home_region, region_latency, behavior_score, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)
+			home_region, region_latency, behavior_score, hero_proficiency, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11)
 	`,
 		player.ID(), player.Name(), player.Rating(), player.RatingDeviation(), player.RatingVolatility(),
 		rolesToStrings(player.PreferredRoles()), player.HomeRegion(), latencies,
-		player.BehaviorScore(), player.CreatedAt(),
+		player.BehaviorScore(), proficiency, player.CreatedAt(),
 	)
 	if uniqueViolation(err) {
 		return application.ErrPlayerAlreadyExists
@@ -54,7 +58,7 @@ func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Play
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, name, rating, rating_deviation, rating_volatility,
 		       banned, COALESCE(ban_reason, ''), banned_at, COALESCE(banned_by, ''), preferred_roles,
-		       home_region, region_latency, behavior_score, created_at
+		       home_region, region_latency, behavior_score, hero_proficiency, created_at
 		FROM players
 		WHERE id = $1
 	`, strings.TrimSpace(playerID))
@@ -299,11 +303,12 @@ func scanPlayer(row rowScanner) (*domain.Player, error) {
 	var snapshot domain.PlayerSnapshot
 	var roles []string
 	var latencyJSON []byte
+	var proficiencyJSON []byte
 	var bannedAt *time.Time
 	if err := row.Scan(
 		&snapshot.ID, &snapshot.Name, &snapshot.Rating, &snapshot.RatingDeviation, &snapshot.RatingVolatility,
 		&snapshot.Banned, &snapshot.BanReason, &bannedAt, &snapshot.BannedBy,
-		&roles, &snapshot.HomeRegion, &latencyJSON, &snapshot.BehaviorScore, &snapshot.CreatedAt,
+		&roles, &snapshot.HomeRegion, &latencyJSON, &snapshot.BehaviorScore, &proficiencyJSON, &snapshot.CreatedAt,
 	); err != nil {
 		return nil, err
 	}
@@ -317,6 +322,9 @@ func scanPlayer(row rowScanner) (*domain.Player, error) {
 	snapshot.PreferredRoles = parsedRoles
 	if err := json.Unmarshal(latencyJSON, &snapshot.RegionLatency); err != nil {
 		return nil, fmt.Errorf("decode player latency: %w", err)
+	}
+	if err := json.Unmarshal(proficiencyJSON, &snapshot.HeroProficiency); err != nil {
+		return nil, fmt.Errorf("decode player hero proficiency: %w", err)
 	}
 	return domain.RestorePlayer(snapshot)
 }

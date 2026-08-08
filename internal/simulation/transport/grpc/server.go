@@ -45,6 +45,8 @@ func (s *Server) SimulateBatch(ctx context.Context, request *simulationv1.Simula
 			RatingA: input.GetRatingA(), RatingB: input.GetRatingB(),
 			PredictedWinRateA: input.GetPredictedWinRateA(), RoleScore: input.GetRoleScore(),
 			LatencyScore: input.GetLatencyScore(), PartyScore: input.GetPartyScore(),
+			HeroProficiencyA: input.GetHeroProficiencyA(), HeroProficiencyB: input.GetHeroProficiencyB(),
+			BehaviorScoreA: input.GetBehaviorScoreA(), BehaviorScoreB: input.GetBehaviorScoreB(),
 		}
 	}
 	report, err := s.service.SimulateBatch(ctx, inputs, int(request.GetConcurrency()))

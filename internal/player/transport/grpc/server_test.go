@@ -27,7 +27,8 @@ func TestServerCreateAndGetPlayer(t *testing.T) {
 			"hongkong":  32,
 			"singapore": 48,
 		},
-		BehaviorScore: 96,
+		BehaviorScore:   96,
+		HeroProficiency: map[string]float64{"starblade": 93, "lifebloom": 84},
 	}
 
 	created, err := server.CreatePlayer(context.Background(), request)
@@ -42,6 +43,9 @@ func TestServerCreateAndGetPlayer(t *testing.T) {
 	}
 	if created.GetPlayer().GetRatingVolatility() != 0.06 {
 		t.Fatalf("rating volatility = %v, want 0.06", created.GetPlayer().GetRatingVolatility())
+	}
+	if created.GetPlayer().GetHeroProficiency()["starblade"] != 93 {
+		t.Fatalf("hero proficiency = %v", created.GetPlayer().GetHeroProficiency())
 	}
 
 	got, err := server.GetPlayer(context.Background(), &playerv1.GetPlayerRequest{PlayerId: request.GetId()})

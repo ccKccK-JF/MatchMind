@@ -88,3 +88,15 @@ func TestPlayerBanMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestHeroProficiencyMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("008_hero_proficiency.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"players", "tickets", "hero_proficiency", "behavior_score", "jsonb_typeof"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

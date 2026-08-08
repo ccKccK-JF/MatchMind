@@ -23,7 +23,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   health checks, reflection, and graceful shutdown are complete.
 - `player-service` supports player creation/query, configurable Elo or
   Glicko-2 updates, rating deviation and volatility, regional latency
-  replacement, administrator-controlled player bans, rating history, result idempotency, a
+  replacement, validated per-Hero proficiency, behavior stability,
+  administrator-controlled player bans, rating history, result idempotency, a
   concurrency-safe memory store, and an optional transactional PostgreSQL
   repository. Player rating views include recent Match IDs and current
   matchmaking status.
@@ -31,7 +32,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   ticket and match state machines, partitioned queues, dynamic rating windows,
   bounded wait-driven latency windows, time-based non-preferred-role
   relaxation, party-safe candidate selection, deterministic 5v5 team/role
-  assignment, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
+  assignment, deterministic role-compatible Hero selection, immutable Hero
+  and behavior Match snapshots, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
   workers, and match connection details. Ticket queues and Matches can use
   memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable
@@ -52,7 +54,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   replayed read-only through multiple policies to compare counterfactual team
   formation and predicted quality.
 - `simulation-service` runs reproducible seeded matches, records process
-  metrics, updates the configured ranked rating through `player-service`, and completes matches
+  metrics, models Hero proficiency and behavior-driven AFK risk, updates the
+  configured ranked rating through `player-service`, and completes matches
   through `matchmaking-service`. Its offline batch API evaluates up to 10,000
   seeded cases with bounded concurrency without changing live Match or rating
   state.
@@ -207,6 +210,7 @@ Runtime configuration:
 
 - [System architecture](docs/ARCHITECTURE.md)
 - [HTTP API](docs/API.md)
+- [Hero catalog](docs/HEROES.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Testing and load testing](docs/TESTING.md)
 - [Reproducible demo](docs/DEMO.md)

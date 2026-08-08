@@ -10,7 +10,7 @@ import (
 )
 
 const ticketColumns = `
-	id, player_id, party_id, mode, client_version, region, rating,
+	id, player_id, party_id, mode, client_version, region, rating, behavior_score, hero_proficiency,
 	preferred_roles, region_latency, state, created_at, updated_at,
 	reservation_id, reservation_expires_at, match_id
 `
@@ -23,12 +23,14 @@ func scanTicket(row rowScanner) (*domain.MatchTicket, error) {
 	var snapshot domain.TicketSnapshot
 	var roles []string
 	var latencyJSON []byte
+	var proficiencyJSON []byte
 	var state string
 	var reservationID, matchID pgtype.Text
 	var reservationExpiresAt pgtype.Timestamptz
 	if err := row.Scan(
 		&snapshot.ID, &snapshot.PlayerID, &snapshot.PartyID, &snapshot.Mode,
 		&snapshot.ClientVersion, &snapshot.Region, &snapshot.Rating,
+		&snapshot.BehaviorScore, &proficiencyJSON,
 		&roles, &latencyJSON, &state, &snapshot.CreatedAt, &snapshot.UpdatedAt,
 		&reservationID, &reservationExpiresAt, &matchID,
 	); err != nil {
@@ -39,6 +41,9 @@ func scanTicket(row rowScanner) (*domain.MatchTicket, error) {
 		return nil, err
 	}
 	snapshot.PreferredRoles = parsedRoles
+	if err := json.Unmarshal(proficiencyJSON, &snapshot.HeroProficiency); err != nil {
+		return nil, fmt.Errorf("decode ticket hero proficiency: %w", err)
+	}
 	if err := json.Unmarshal(latencyJSON, &snapshot.RegionLatency); err != nil {
 		return nil, fmt.Errorf("decode ticket latency: %w", err)
 	}

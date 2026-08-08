@@ -36,9 +36,19 @@ Content-Type: application/json
     "hongkong": 32,
     "singapore": 48
   },
-  "behavior_score": 95
+  "behavior_score": 95,
+  "hero_proficiency": {
+    "starblade": 92,
+    "lifebloom": 81
+  }
 }
 ```
+
+`hero_proficiency` is a map from a catalog Hero ID to a score from 0 to 100.
+Omitted catalog Heroes have proficiency 0 when at least one score is supplied;
+an entirely empty map uses a neutral score of 50 during automatic assignment.
+See [the Hero catalog](HEROES.md) for roles and IDs. `behavior_score` is also
+bounded from 0 to 100 and is snapshotted into every Ticket.
 
 Query the player's current rating and complete rating history:
 
@@ -170,7 +180,11 @@ Content-Type: application/json
       "predicted_win_rate_a": 0.5,
       "role_score": 95,
       "latency_score": 90,
-      "party_score": 100
+      "party_score": 100,
+      "hero_proficiency_a": 85,
+      "hero_proficiency_b": 80,
+      "behavior_score_a": 98,
+      "behavior_score_b": 92
     }
   ]
 }
@@ -179,7 +193,9 @@ Content-Type: application/json
 The batch accepts 1 to 10,000 cases, preserves input order, and returns every
 simulation plus aggregate win-rate, duration, actual-quality, one-sided, AFK,
 and surrender statistics. `concurrency` defaults to the available CPU count
-and is capped at 64.
+and is capped at 64. Every score field is bounded from 0 to 100. Hero
+proficiency affects effective team strength and actual quality; behavior
+stability affects effective strength and AFK probability.
 
 ## Historical analysis and replay
 

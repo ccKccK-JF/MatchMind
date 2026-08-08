@@ -59,7 +59,8 @@ func TestPlayerServiceGRPCFlow(t *testing.T) {
 			"hongkong":  32,
 			"singapore": 48,
 		},
-		BehaviorScore: 96,
+		BehaviorScore:   96,
+		HeroProficiency: map[string]float64{"starblade": 93},
 	})
 	if err != nil {
 		t.Fatalf("CreatePlayer RPC error = %v", err)
@@ -69,7 +70,7 @@ func TestPlayerServiceGRPCFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPlayer RPC error = %v", err)
 	}
-	if got.GetPlayer().GetName() != "Nova" || got.GetPlayer().GetRating() != 1800 {
+	if got.GetPlayer().GetName() != "Nova" || got.GetPlayer().GetRating() != 1800 || got.GetPlayer().GetHeroProficiency()["starblade"] != 93 {
 		t.Fatalf("GetPlayer RPC returned unexpected player: %+v", got.GetPlayer())
 	}
 }

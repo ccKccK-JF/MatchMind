@@ -27,14 +27,16 @@ func TestScanTicketRestoresReservedSnapshot(t *testing.T) {
 		*dest[4].(*string) = "1.0.0"
 		*dest[5].(*string) = "hongkong"
 		*dest[6].(*float64) = 1500
-		*dest[7].(*[]string) = []string{"core"}
-		*dest[8].(*[]byte) = []byte(`{"hongkong":30}`)
-		*dest[9].(*string) = "RESERVED"
-		*dest[10].(*time.Time) = now
-		*dest[11].(*time.Time) = now.Add(time.Second)
-		*dest[12].(*pgtype.Text) = pgtype.Text{String: "reservation-1", Valid: true}
-		*dest[13].(*pgtype.Timestamptz) = pgtype.Timestamptz{Time: now.Add(time.Minute), Valid: true}
-		*dest[14].(*pgtype.Text) = pgtype.Text{}
+		*dest[7].(*float64) = 96
+		*dest[8].(*[]byte) = []byte(`{"starblade":88}`)
+		*dest[9].(*[]string) = []string{"core"}
+		*dest[10].(*[]byte) = []byte(`{"hongkong":30}`)
+		*dest[11].(*string) = "RESERVED"
+		*dest[12].(*time.Time) = now
+		*dest[13].(*time.Time) = now.Add(time.Second)
+		*dest[14].(*pgtype.Text) = pgtype.Text{String: "reservation-1", Valid: true}
+		*dest[15].(*pgtype.Timestamptz) = pgtype.Timestamptz{Time: now.Add(time.Minute), Valid: true}
+		*dest[16].(*pgtype.Text) = pgtype.Text{}
 		return nil
 	}))
 	if err != nil {
@@ -42,6 +44,9 @@ func TestScanTicketRestoresReservedSnapshot(t *testing.T) {
 	}
 	if ticket.State() != domain.TicketStateReserved || ticket.ReservationID() != "reservation-1" {
 		t.Fatalf("ticket state/reservation = %s/%q", ticket.State(), ticket.ReservationID())
+	}
+	if ticket.BehaviorScore() != 96 || ticket.HeroProficiency()["starblade"] != 88 {
+		t.Fatalf("ticket simulation factors = %v/%v", ticket.BehaviorScore(), ticket.HeroProficiency())
 	}
 }
 

@@ -42,6 +42,16 @@ func TestMatchRejectsDuplicatePlayer(t *testing.T) {
 	}
 }
 
+func TestMatchRejectsHeroAssignedToWrongRole(t *testing.T) {
+	params := validMatchParams(time.Now())
+	params.TeamA.Players[0].HeroID = "starblade"
+	params.TeamA.Players[0].HeroProficiency = 90
+	params.TeamA.Players[0].BehaviorScore = 95
+	if _, err := NewMatch(params); !errors.Is(err, ErrInvalidMatch) {
+		t.Fatalf("NewMatch() error = %v, want ErrInvalidMatch", err)
+	}
+}
+
 func TestRestoreFinishedMatchSnapshot(t *testing.T) {
 	now := time.Now().UTC()
 	match := newTestMatch(t, now)

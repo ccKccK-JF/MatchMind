@@ -33,13 +33,14 @@ func (s *Server) CreatePlayer(ctx context.Context, request *playerv1.CreatePlaye
 	}
 
 	player, err := s.service.CreatePlayer(ctx, application.CreatePlayerCommand{
-		ID:             request.GetId(),
-		Name:           request.GetName(),
-		InitialRating:  request.GetInitialRating(),
-		PreferredRoles: roles,
-		HomeRegion:     request.GetHomeRegion(),
-		RegionLatency:  latencyFromProto(request.GetRegionLatencyMs()),
-		BehaviorScore:  request.GetBehaviorScore(),
+		ID:              request.GetId(),
+		Name:            request.GetName(),
+		InitialRating:   request.GetInitialRating(),
+		PreferredRoles:  roles,
+		HomeRegion:      request.GetHomeRegion(),
+		RegionLatency:   latencyFromProto(request.GetRegionLatencyMs()),
+		BehaviorScore:   request.GetBehaviorScore(),
+		HeroProficiency: cloneFloatMap(request.GetHeroProficiency()),
 	})
 	if err != nil {
 		return nil, playerError(err)
@@ -236,9 +237,18 @@ func playerToProto(player *domain.Player) *playerv1.Player {
 		Banned:           player.Banned(),
 		BanReason:        player.BanReason(),
 		BannedBy:         player.BannedBy(),
+		HeroProficiency:  player.HeroProficiency(),
 	}
 	if !player.BannedAt().IsZero() {
 		result.BannedAt = timestamppb.New(player.BannedAt())
+	}
+	return result
+}
+
+func cloneFloatMap(values map[string]float64) map[string]float64 {
+	result := make(map[string]float64, len(values))
+	for key, value := range values {
+		result[key] = value
 	}
 	return result
 }

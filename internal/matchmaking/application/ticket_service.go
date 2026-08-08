@@ -27,11 +27,13 @@ var (
 )
 
 type PlayerSnapshot struct {
-	ID             string
-	Rating         float64
-	Banned         bool
-	PreferredRoles []domain.Role
-	RegionLatency  map[string]int
+	ID              string
+	Rating          float64
+	Banned          bool
+	BehaviorScore   float64
+	HeroProficiency map[string]float64
+	PreferredRoles  []domain.Role
+	RegionLatency   map[string]int
 }
 
 type PlayerReader interface {
@@ -105,16 +107,18 @@ func (s *TicketService) CreateTicket(ctx context.Context, command CreateTicketCo
 	}
 	now := s.clock()
 	ticket, err := domain.NewTicket(domain.NewTicketParams{
-		ID:             ticketID,
-		PlayerID:       player.ID,
-		PartyID:        command.PartyID,
-		Mode:           command.Mode,
-		ClientVersion:  command.ClientVersion,
-		Region:         region,
-		Rating:         player.Rating,
-		PreferredRoles: command.PreferredRoles,
-		RegionLatency:  command.RegionLatency,
-		CreatedAt:      now,
+		ID:              ticketID,
+		PlayerID:        player.ID,
+		PartyID:         command.PartyID,
+		Mode:            command.Mode,
+		ClientVersion:   command.ClientVersion,
+		Region:          region,
+		Rating:          player.Rating,
+		BehaviorScore:   player.BehaviorScore,
+		HeroProficiency: player.HeroProficiency,
+		PreferredRoles:  command.PreferredRoles,
+		RegionLatency:   command.RegionLatency,
+		CreatedAt:       now,
 	})
 	if err != nil {
 		return nil, err

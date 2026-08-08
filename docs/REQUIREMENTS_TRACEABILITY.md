@@ -11,6 +11,7 @@ an automated check exist. Planned items are not counted as complete.
 | FR-PLAYER-001 create player | Verified | Player domain/application, memory and PostgreSQL repositories, REST/gRPC and tests |
 | FR-PLAYER-002 rating, uncertainty, recent Matches, matchmaking status | Verified | Rating view returns rating/deviation/volatility/history, recent Match IDs and active Ticket status; HTTP and end-to-end tests |
 | FR-PLAYER-003 update regional latency | Verified | Validated immutable domain update, memory/PostgreSQL persistence, owner-gated REST, gRPC and tests |
+| Game content: Hero catalog, proficiency and behavior stability | Verified | Ten-Hero five-role catalog; validated Player/Ticket persistence; role-compatible Match assignment; proficiency/behavior-aware seeded simulation; domain, codec, transport and statistical tests |
 | FR-RATING-001..004 Elo prediction/update/config/history | Verified | Configurable Elo calculator, atomic idempotent ten-player update and rating history tests |
 | FR-TICKET-001..005 lifecycle, expiry and idempotency | Verified | Domain state machine, active-player uniqueness, timeout recovery and repository/API tests |
 | FR-QUEUE-001..005 partition, ordering and concurrency | Verified | Mode/version/region pools, oldest-first snapshots, validity filtering, memory/Redis tests and race suite |
@@ -24,7 +25,7 @@ an automated check exist. Planned items are not counted as complete.
 | FR-RESERVE-001..005 atomic reservation/recovery/uniqueness | Verified | Memory, PostgreSQL and Redis all-or-nothing paths, TTL recovery and concurrent worker tests |
 | FR-MATCH-001,003..005 lifecycle, rollback, connection | Verified | Match state machine, allocation rollback, address/token and persistence tests |
 | FR-MATCH-002 latency/capacity server selection | Verified | Every live-capacity region is evaluated using average/max latency, team difference and variance; local capacity lifecycle, cross-region Worker flow and Agones API adapter have automated tests |
-| FR-SIM-001..004 deterministic and batch simulation | Verified | Seeded simulator, statistical rating test, complete result fields and bounded offline batch tests |
+| FR-SIM-001..004 deterministic and batch simulation | Verified | Seeded simulator, statistical rating/Hero/behavior tests, complete result fields and bounded offline batch tests |
 | FR-AGENT-001..006 allowlist/advice/replay/risk/approval/audit | Verified | Separate Agent service, five-tool gateway, five risk checks, approval state machine, persistence and integration tests |
 
 ## Non-functional and delivery requirements

@@ -53,6 +53,7 @@ message Player {
   string ban_reason = 12;
   google.protobuf.Timestamp banned_at = 13;
   string banned_by = 14;
+  map<string, double> hero_proficiency = 15;
 }
 
 message CreatePlayerRequest {
@@ -63,6 +64,7 @@ message CreatePlayerRequest {
   string home_region = 5;
   map<string, int32> region_latency_ms = 6;
   double behavior_score = 7;
+  map<string, double> hero_proficiency = 8;
 }
 
 message CreatePlayerResponse {

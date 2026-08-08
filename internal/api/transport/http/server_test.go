@@ -312,7 +312,9 @@ func TestBatchSimulationMapsJSONToGRPC(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/simulations/batch", strings.NewReader(`{
 		"concurrency":4,"inputs":[{"case_id":"case-1","random_seed":42,
 		"rating_a":1520,"rating_b":1480,"predicted_win_rate_a":0.557,
-		"role_score":90,"latency_score":85,"party_score":100}]
+		"role_score":90,"latency_score":85,"party_score":100,
+		"hero_proficiency_a":92,"hero_proficiency_b":75,
+		"behavior_score_a":98,"behavior_score_b":90}]
 	}`))
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, request)
@@ -321,6 +323,9 @@ func TestBatchSimulationMapsJSONToGRPC(t *testing.T) {
 	}
 	if captured == nil || captured.Concurrency != 4 || len(captured.Inputs) != 1 || captured.Inputs[0].CaseId != "case-1" {
 		t.Fatalf("captured request = %#v", captured)
+	}
+	if captured.Inputs[0].HeroProficiencyA != 92 || captured.Inputs[0].BehaviorScoreB != 90 {
+		t.Fatalf("captured simulation factors = %#v", captured.Inputs[0])
 	}
 	if !strings.Contains(response.Body.String(), `"simulation_count":1`) {
 		t.Fatalf("response = %s", response.Body.String())

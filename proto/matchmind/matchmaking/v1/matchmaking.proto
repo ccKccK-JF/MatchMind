@@ -64,6 +64,8 @@ message MatchTicket {
   string reservation_id = 12;
   google.protobuf.Timestamp reservation_expires_at = 13;
   string match_id = 14;
+  double behavior_score = 15;
+  map<string, double> hero_proficiency = 16;
 }
 
 message Team {
@@ -79,6 +81,9 @@ message TeamPlayer {
   string party_id = 3;
   matchmind.player.v1.Role role = 4;
   double rating = 5;
+  string hero_id = 6;
+  double hero_proficiency = 7;
+  double behavior_score = 8;
 }
 
 message Match {

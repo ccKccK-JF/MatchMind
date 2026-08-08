@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/engine"
 )
@@ -91,11 +92,14 @@ type ReplayRequest struct {
 }
 
 type ReplayPlayer struct {
-	PlayerID string
-	TicketID string
-	PartyID  string
-	Role     domain.Role
-	Rating   float64
+	PlayerID        string
+	TicketID        string
+	PartyID         string
+	Role            domain.Role
+	Rating          float64
+	HeroID          string
+	HeroProficiency float64
+	BehaviorScore   float64
 }
 
 type ReplayTeam struct {
@@ -411,9 +415,11 @@ func rebuildQueuedTicket(historical *domain.MatchTicket) (*domain.MatchTicket, e
 func replayTeam(team engine.Team) ReplayTeam {
 	result := ReplayTeam{AverageRating: team.AverageRating, RoleScore: team.RoleScore}
 	for _, player := range team.Players {
+		selectedHero, proficiency, _ := hero.BestForRole(player.Ticket.HeroProficiency(), string(player.Role))
 		result.Players = append(result.Players, ReplayPlayer{
 			PlayerID: player.Ticket.PlayerID(), TicketID: player.Ticket.ID(), PartyID: player.Ticket.PartyID(),
-			Role: player.Role, Rating: player.Ticket.Rating(),
+			Role: player.Role, Rating: player.Ticket.Rating(), HeroID: selectedHero.ID,
+			HeroProficiency: proficiency, BehaviorScore: player.Ticket.BehaviorScore(),
 		})
 	}
 	return result

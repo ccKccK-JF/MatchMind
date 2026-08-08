@@ -409,7 +409,8 @@ func replayTeamToProto(team application.ReplayTeam) *matchmakingv1.ReplayTeam {
 	for _, player := range team.Players {
 		result.Players = append(result.Players, &matchmakingv1.TeamPlayer{
 			PlayerId: player.PlayerID, TicketId: player.TicketID, PartyId: player.PartyID,
-			Role: roleToProto(player.Role), Rating: player.Rating,
+			Role: roleToProto(player.Role), Rating: player.Rating, HeroId: player.HeroID,
+			HeroProficiency: player.HeroProficiency, BehaviorScore: player.BehaviorScore,
 		})
 	}
 	return result
@@ -464,6 +465,8 @@ func ticketToProto(ticket *domain.MatchTicket) *matchmakingv1.MatchTicket {
 		State:           stateToProto(ticket.State()),
 		PreferredRoles:  roles,
 		RegionLatencyMs: latency,
+		BehaviorScore:   ticket.BehaviorScore(),
+		HeroProficiency: ticket.HeroProficiency(),
 		CreatedAt:       timestamppb.New(ticket.CreatedAt()),
 		ReservationId:   ticket.ReservationID(),
 		MatchId:         ticket.MatchID(),
@@ -540,11 +543,14 @@ func matchTeamToProto(team domain.MatchTeam) *matchmakingv1.Team {
 	for _, player := range team.Players {
 		result.PlayerIds = append(result.PlayerIds, player.PlayerID)
 		result.PlayerDetails = append(result.PlayerDetails, &matchmakingv1.TeamPlayer{
-			PlayerId: player.PlayerID,
-			TicketId: player.TicketID,
-			PartyId:  player.PartyID,
-			Role:     roleToProto(player.Role),
-			Rating:   player.Rating,
+			PlayerId:        player.PlayerID,
+			TicketId:        player.TicketID,
+			PartyId:         player.PartyID,
+			Role:            roleToProto(player.Role),
+			Rating:          player.Rating,
+			HeroId:          player.HeroID,
+			HeroProficiency: player.HeroProficiency,
+			BehaviorScore:   player.BehaviorScore,
 		})
 	}
 	return result

@@ -43,19 +43,23 @@ func (s *TicketStore) CreateQueued(
 	if err != nil {
 		return nil, fmt.Errorf("marshal ticket latency: %w", err)
 	}
+	proficiency, err := json.Marshal(ticket.HeroProficiency())
+	if err != nil {
+		return nil, fmt.Errorf("marshal ticket hero proficiency: %w", err)
+	}
 	var ticketID string
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO tickets (
 			id, player_id, party_id, mode, client_version, region, rating,
-			preferred_roles, region_latency, state, create_idempotency_key,
+			behavior_score, hero_proficiency, preferred_roles, region_latency, state, create_idempotency_key,
 			created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 		ON CONFLICT ON CONSTRAINT tickets_player_create_key_unique
 		DO UPDATE SET create_idempotency_key = EXCLUDED.create_idempotency_key
 		RETURNING id
 	`,
 		ticket.ID(), ticket.PlayerID(), ticket.PartyID(), ticket.Mode(),
-		ticket.ClientVersion(), ticket.Region(), ticket.Rating(),
+		ticket.ClientVersion(), ticket.Region(), ticket.Rating(), ticket.BehaviorScore(), proficiency,
 		rolesToStrings(ticket.PreferredRoles()), latencies, string(ticket.State()),
 		idempotencyKey, ticket.CreatedAt(), ticket.UpdatedAt(),
 	).Scan(&ticketID)

@@ -117,13 +117,14 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 }
 
 type createPlayerRequest struct {
-	ID             string           `json:"id"`
-	Name           string           `json:"name"`
-	InitialRating  float64          `json:"initial_rating"`
-	PreferredRoles []string         `json:"preferred_roles"`
-	HomeRegion     string           `json:"home_region"`
-	RegionLatency  map[string]int32 `json:"region_latency"`
-	BehaviorScore  float64          `json:"behavior_score"`
+	ID              string             `json:"id"`
+	Name            string             `json:"name"`
+	InitialRating   float64            `json:"initial_rating"`
+	PreferredRoles  []string           `json:"preferred_roles"`
+	HomeRegion      string             `json:"home_region"`
+	RegionLatency   map[string]int32   `json:"region_latency"`
+	BehaviorScore   float64            `json:"behavior_score"`
+	HeroProficiency map[string]float64 `json:"hero_proficiency"`
 }
 
 func (s *Server) createPlayer(response http.ResponseWriter, request *http.Request) {
@@ -141,6 +142,7 @@ func (s *Server) createPlayer(response http.ResponseWriter, request *http.Reques
 		Id: body.ID, Name: body.Name, InitialRating: body.InitialRating,
 		PreferredRoles: roles, HomeRegion: body.HomeRegion,
 		RegionLatencyMs: body.RegionLatency, BehaviorScore: body.BehaviorScore,
+		HeroProficiency: body.HeroProficiency,
 	})
 	if err != nil {
 		writeError(response, err)
@@ -269,6 +271,10 @@ type batchSimulationInput struct {
 	RoleScore         float64 `json:"role_score"`
 	LatencyScore      float64 `json:"latency_score"`
 	PartyScore        float64 `json:"party_score"`
+	HeroProficiencyA  float64 `json:"hero_proficiency_a"`
+	HeroProficiencyB  float64 `json:"hero_proficiency_b"`
+	BehaviorScoreA    float64 `json:"behavior_score_a"`
+	BehaviorScoreB    float64 `json:"behavior_score_b"`
 }
 
 type batchSimulationRequest struct {
@@ -288,6 +294,8 @@ func (s *Server) simulateBatch(response http.ResponseWriter, request *http.Reque
 			CaseId: input.CaseID, RandomSeed: input.RandomSeed,
 			RatingA: input.RatingA, RatingB: input.RatingB, PredictedWinRateA: input.PredictedWinRateA,
 			RoleScore: input.RoleScore, LatencyScore: input.LatencyScore, PartyScore: input.PartyScore,
+			HeroProficiencyA: input.HeroProficiencyA, HeroProficiencyB: input.HeroProficiencyB,
+			BehaviorScoreA: input.BehaviorScoreA, BehaviorScoreB: input.BehaviorScoreB,
 		}
 	}
 	result, err := s.simulation.SimulateBatch(request.Context(), &simulationv1.SimulateBatchRequest{
