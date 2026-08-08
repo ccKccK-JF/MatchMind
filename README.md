@@ -29,13 +29,19 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
 - `matchmaking-service` supports idempotent ticket create/cancel/query, strict
   ticket and match state machines, partitioned queues, dynamic rating windows,
   bounded wait-driven latency windows, time-based non-preferred-role
-  relaxation, party-safe candidate selection, deterministic 5v5 team/role assignment,
-  five-part quality scoring, atomic reservation, automatic workers, and match
-  connection details. Ticket queues and Matches can use memory or PostgreSQL;
+  relaxation, party-safe candidate selection, deterministic 5v5 team/role
+  assignment, five-part quality scoring, atomic reservation, automatic
+  workers, and match connection details. Ticket queues and Matches can use
+  memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable
   Match snapshots, optimistic revisions, and atomic Match-ready/Ticket-assigned
   commits. Finishing a Match atomically releases each player's active-Ticket
-  guard so the next matchmaking session can start. The production adapter uses
+  guard and local game-server capacity so the next session can start. Server
+  selection scores every available region using average/max latency, team
+  latency difference, variance, and live capacity. The local allocator is
+  concurrency-safe, and the Agones adapter reads Fleet ready replicas and
+  creates atomic `GameServerAllocation` resources through the Kubernetes API.
+  The production queue adapter uses
   Redis sorted-set queues and Lua all-or-nothing reservation while PostgreSQL
   remains durable and can rebuild missing Redis state at startup. Team
   formation supports both the baseline greedy strategy and a deterministic
@@ -161,6 +167,15 @@ Runtime configuration:
 | `MATCHMAKING_BEAM_WIDTH` | `64` |
 | `MATCHMAKING_AB_TREATMENT_BPS` | `5000` |
 | `MATCHMAKING_AB_SALT` | `matchmind-team-formation-v2` |
+| `MATCHMAKING_ALLOCATOR_BACKEND` | `local` (`local` or `agones`) |
+| `MATCHMAKING_LOCAL_REGION_CAPACITIES` | `hongkong=100,singapore=100,tokyo=100` |
+| `AGONES_API_URL` | `https://kubernetes.default.svc` |
+| `AGONES_NAMESPACE` | `matchmind` |
+| `AGONES_CA_FILE` | in-cluster service-account CA file |
+| `AGONES_BEARER_TOKEN_FILE` | in-cluster service-account token file |
+| `AGONES_HTTP_TIMEOUT_SECONDS` | `5` |
+| `AGONES_GAME_LABEL_KEY` / `AGONES_GAME_LABEL_VALUE` | `matchmind.dev/game` / `matchmind` |
+| `AGONES_REGION_LABEL_KEY` | `matchmind.dev/region` |
 | `AGENT_CONTROL_TOKEN` | `matchmind-local-agent-control` (must match Agent and Matchmaking) |
 | `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
 | `MATCHMAKING_MATCH_STORAGE_BACKEND` | Ticket backend (`postgres` when Ticket backend is `redis`) |

@@ -23,7 +23,7 @@ an automated check exist. Planned items are not counted as complete.
 | FR-EXPAND-004 immutable hard constraints | Partial | Version, active Ticket and party integrity are hard constraints; explicit banned-player state is not modeled |
 | FR-RESERVE-001..005 atomic reservation/recovery/uniqueness | Verified | Memory, PostgreSQL and Redis all-or-nothing paths, TTL recovery and concurrent worker tests |
 | FR-MATCH-001,003..005 lifecycle, rollback, connection | Verified | Match state machine, allocation rollback, address/token and persistence tests |
-| FR-MATCH-002 latency/capacity server selection | Pending | Region latency affects pool and quality; allocator capacity and cross-region selection are not implemented |
+| FR-MATCH-002 latency/capacity server selection | Verified | Every live-capacity region is evaluated using average/max latency, team difference and variance; local capacity lifecycle, cross-region Worker flow and Agones API adapter have automated tests |
 | FR-SIM-001..004 deterministic and batch simulation | Verified | Seeded simulator, statistical rating test, complete result fields and bounded offline batch tests |
 | FR-AGENT-001..006 allowlist/advice/replay/risk/approval/audit | Verified | Separate Agent service, five-tool gateway, five risk checks, approval state machine, persistence and integration tests |
 
@@ -39,14 +39,14 @@ an automated check exist. Planned items are not counted as complete.
 | 500 requests/s, 100k queue, P95/P99 targets | Pending verification | Load generator exists, but no current machine/run artifact proves the targets |
 | Reproducible complete demo | Implemented | Five-process PowerShell demo covers Match, Elo, analysis, replay and Agent; runtime execution remains an acceptance gate while services are intentionally kept off |
 | Glicko rating | Pending optional phase-two item | Elo is complete; Glicko has not been implemented |
-| Agones allocation | Pending optional phase-three item | `ServerAllocator` boundary exists; only the local allocator is implemented |
+| Agones allocation | Implemented, environment-gated | Kubernetes adapter reads Fleet ready replicas and creates v1 `GameServerAllocation` resources with RBAC and HTTP contract tests; a live Agones cluster is required for deployment verification |
 | NATS/outbox | Pending extension | Architecture keeps the boundary open; no message broker is required by the first-version acceptance flow |
 
 ## Next acceptance order
 
-1. Add capacity-aware multi-region allocation and an Agones-compatible adapter.
-2. Propagate Trace ID through internal gRPC calls and structured logs.
-3. Decide and implement the documented Glicko option without changing ranked
+1. Propagate Trace ID through internal gRPC calls and structured logs.
+2. Decide and implement the documented Glicko option without changing ranked
    Elo compatibility.
-4. Run the full local demo and environment-gated PostgreSQL/Redis/load gates,
+3. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
+   gates,
    preserving raw results before declaring the project complete.

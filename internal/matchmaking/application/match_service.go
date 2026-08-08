@@ -26,7 +26,12 @@ type MatchCompletionCoordinator interface {
 type MatchService struct {
 	repository      MatchRepository
 	ticketCompleter AssignedTicketCompleter
+	serverReleaser  ServerReleaser
 	clock           func() time.Time
+}
+
+func (s *MatchService) SetServerReleaser(releaser ServerReleaser) {
+	s.serverReleaser = releaser
 }
 
 func NewMatchService(repository MatchRepository, ticketCompleter AssignedTicketCompleter, clock func() time.Time) *MatchService {
@@ -70,6 +75,9 @@ func (s *MatchService) CompleteMatch(ctx context.Context, matchID string, result
 				return nil, err
 			}
 		}
+		if err := s.releaseServer(ctx, match); err != nil {
+			return nil, err
+		}
 		return match, nil
 	}
 	now := s.clock()
@@ -90,7 +98,17 @@ func (s *MatchService) CompleteMatch(ctx context.Context, matchID string, result
 			}
 		}
 	}
+	if err := s.releaseServer(ctx, match); err != nil {
+		return nil, err
+	}
 	return match.Clone(), nil
+}
+
+func (s *MatchService) releaseServer(ctx context.Context, match *domain.Match) error {
+	if s.serverReleaser == nil {
+		return nil
+	}
+	return s.serverReleaser.Release(ctx, match.ID(), match.ServerRegion())
 }
 
 func (s *MatchService) resolveCompletionConflict(ctx context.Context, matchID string, cause error) (*domain.Match, error) {
@@ -105,6 +123,9 @@ func (s *MatchService) resolveCompletionConflict(ctx context.Context, matchID st
 		if err := s.ticketCompleter.CompleteAssignedTickets(ctx, current.ID(), s.clock()); err != nil {
 			return nil, err
 		}
+	}
+	if err := s.releaseServer(ctx, current); err != nil {
+		return nil, err
 	}
 	return current, nil
 }

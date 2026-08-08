@@ -14,6 +14,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/config"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
+	agonesgateway "github.com/ccKccK-JF/MatchMind/internal/matchmaking/gateway/agones"
 	playergateway "github.com/ccKccK-JF/MatchMind/internal/matchmaking/gateway/playergrpc"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/observability"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/memory"
@@ -128,6 +129,66 @@ func main() {
 	players := playergateway.NewClient(playerv1.NewPlayerServiceClient(playerConnection))
 	service := application.NewTicketService(store, players, nil, nil)
 	matchService := application.NewMatchService(matchStore, store, nil)
+	allocatorBackend := strings.ToLower(config.String("MATCHMAKING_ALLOCATOR_BACKEND", "local"))
+	var allocator application.ServerAllocator
+	switch allocatorBackend {
+	case "local":
+		capacities, capacityErr := application.ParseRegionCapacities(config.String(
+			"MATCHMAKING_LOCAL_REGION_CAPACITIES",
+			"hongkong=100,singapore=100,tokyo=100",
+		))
+		if capacityErr != nil {
+			slog.Error("invalid local game server capacities", "error", capacityErr)
+			os.Exit(1)
+		}
+		allocator, err = application.NewLocalAllocatorWithCapacities(capacities, nil)
+	case "agones":
+		timeoutSeconds, configErr := config.Int("AGONES_HTTP_TIMEOUT_SECONDS", 5)
+		if configErr != nil || timeoutSeconds <= 0 {
+			slog.Error("invalid Agones HTTP timeout", "error", configErr, "seconds", timeoutSeconds)
+			os.Exit(1)
+		}
+		insecureSkipVerify, configErr := config.Bool("AGONES_INSECURE_SKIP_TLS_VERIFY", false)
+		if configErr != nil {
+			slog.Error("invalid Agones TLS configuration", "error", configErr)
+			os.Exit(1)
+		}
+		httpClient, clientErr := agonesgateway.NewHTTPClient(
+			config.String("AGONES_CA_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"),
+			insecureSkipVerify,
+			time.Duration(timeoutSeconds)*time.Second,
+		)
+		if clientErr != nil {
+			slog.Error("create Agones HTTP client", "error", clientErr)
+			os.Exit(1)
+		}
+		bearerToken, tokenErr := agonesgateway.LoadBearerToken(
+			config.String("AGONES_BEARER_TOKEN", ""),
+			config.String("AGONES_BEARER_TOKEN_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/token"),
+		)
+		if tokenErr != nil {
+			slog.Error("load Agones bearer token", "error", tokenErr)
+			os.Exit(1)
+		}
+		allocator, err = agonesgateway.NewAllocator(agonesgateway.Config{
+			APIURL:    config.String("AGONES_API_URL", "https://kubernetes.default.svc"),
+			Namespace: config.String("AGONES_NAMESPACE", "matchmind"), BearerToken: bearerToken,
+			GameLabelKey:   config.String("AGONES_GAME_LABEL_KEY", "matchmind.dev/game"),
+			GameLabelValue: config.String("AGONES_GAME_LABEL_VALUE", "matchmind"),
+			RegionLabelKey: config.String("AGONES_REGION_LABEL_KEY", "matchmind.dev/region"),
+			HTTPClient:     httpClient,
+		})
+	default:
+		slog.Error("unsupported game server allocator backend", "backend", allocatorBackend)
+		os.Exit(1)
+	}
+	if err != nil {
+		slog.Error("configure game server allocator", "backend", allocatorBackend, "error", err)
+		os.Exit(1)
+	}
+	if releaser, ok := allocator.(application.ServerReleaser); ok {
+		matchService.SetServerReleaser(releaser)
+	}
 	greedyPolicy := domain.DefaultPolicy()
 	beamPolicy := domain.BeamPolicy()
 	beamWidth, err := config.Int("MATCHMAKING_BEAM_WIDTH", beamPolicy.BeamWidth)
@@ -189,7 +250,7 @@ func main() {
 	workerMetrics := observability.NewMatchmakingMetrics(registry)
 	for workerIndex := range workerCount {
 		worker, workerErr := application.NewWorker(
-			store, matchStore, application.NewLocalAllocator(nil), policy, nil, nil,
+			store, matchStore, allocator, policy, nil, nil,
 		)
 		if workerErr != nil {
 			slog.Error("create matchmaking worker", "worker_index", workerIndex, "error", workerErr)

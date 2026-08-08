@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: matchmind
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: matchmind-matchmaking
+  namespace: matchmind
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: matchmind-agones-allocator
+  namespace: matchmind
+rules:
+  - apiGroups: ["agones.dev"]
+    resources: ["fleets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["allocation.agones.dev"]
+    resources: ["gameserverallocations"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: matchmind-agones-allocator
+  namespace: matchmind
+subjects:
+  - kind: ServiceAccount
+    name: matchmind-matchmaking
+    namespace: matchmind
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: matchmind-agones-allocator

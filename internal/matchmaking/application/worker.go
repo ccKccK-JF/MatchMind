@@ -12,7 +12,11 @@ import (
 	platformid "github.com/ccKccK-JF/MatchMind/internal/platform/id"
 )
 
-var ErrNoMatchAvailable = errors.New("no match available")
+var (
+	ErrNoMatchAvailable       = errors.New("no match available")
+	ErrNoServerCapacity       = errors.New("no game server capacity")
+	ErrNoSuitableServerRegion = errors.New("no suitable game server region")
+)
 
 type MatchQueue interface {
 	PoolKeys(ctx context.Context) ([]domain.PoolKey, error)
@@ -36,8 +40,18 @@ type Allocation struct {
 	Token   string
 }
 
+type RegionCapacity struct {
+	Region           string
+	AvailableServers int
+}
+
 type ServerAllocator interface {
+	Capacities(ctx context.Context) ([]RegionCapacity, error)
 	Allocate(ctx context.Context, matchID, region string) (Allocation, error)
+}
+
+type ServerReleaser interface {
+	Release(ctx context.Context, matchID, region string) error
 }
 
 type WorkerMetrics interface {
@@ -154,7 +168,8 @@ func (w *Worker) RunOnce(ctx context.Context) (*domain.Match, error) {
 		switch {
 		case err == nil:
 			return match, nil
-		case errors.Is(err, ErrNoMatchAvailable), errors.Is(err, engine.ErrInsufficientPlayers), errors.Is(err, engine.ErrNoValidTeamSplit):
+		case errors.Is(err, ErrNoMatchAvailable), errors.Is(err, ErrNoServerCapacity), errors.Is(err, ErrNoSuitableServerRegion),
+			errors.Is(err, engine.ErrInsufficientPlayers), errors.Is(err, engine.ErrNoValidTeamSplit):
 			continue
 		default:
 			return nil, err
@@ -196,10 +211,13 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	if err != nil {
 		return nil, err
 	}
-	formation, quality, search, err := engine.OptimizeTeams(candidates, poolKey.Region, now, policy)
+	regionSelection, err := selectServerRegion(ctx, w.allocator, candidates, now, policy)
 	if err != nil {
 		return nil, err
 	}
+	formation := regionSelection.Formation
+	quality := regionSelection.Quality
+	search := regionSelection.Diagnostics
 	w.metrics.ObserveTeamFormation(search.Algorithm, search.Duration.Seconds(), quality.TotalScore)
 	w.metrics.ObserveQualityScore(quality.TotalScore)
 	if quality.TotalScore < policy.MinQualityScore {
@@ -227,7 +245,7 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		Mode:          poolKey.Mode,
 		TeamA:         matchTeamFromEngine(matchID+"-a", formation.TeamA),
 		TeamB:         matchTeamFromEngine(matchID+"-b", formation.TeamB),
-		ServerRegion:  poolKey.Region,
+		ServerRegion:  regionSelection.Region,
 		PolicyVersion: policy.Version,
 		Quality:       matchQualityFromEngine(quality),
 		CreatedAt:     now,
@@ -256,12 +274,14 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		return nil, err
 	}
 	if err := match.MarkReady(allocation.Address, allocation.Token, now); err != nil {
+		w.releaseAllocation(ctx, match.ID(), match.ServerRegion())
 		w.failStoredMatch(ctx, match.ID(), now)
 		_ = w.queue.ReleaseAll(ctx, reservationID, now)
 		return nil, err
 	}
 	if coordinator, ok := w.matches.(MatchAssignmentCoordinator); ok {
 		if err := coordinator.AssignReservedTickets(ctx, reservationID, match, now); err != nil {
+			w.releaseAllocation(ctx, match.ID(), match.ServerRegion())
 			w.failStoredMatch(ctx, match.ID(), now)
 			_ = w.queue.ReleaseAll(ctx, reservationID, now)
 			return nil, err
@@ -273,6 +293,7 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		}
 	} else {
 		if _, err := w.queue.AssignAll(ctx, reservationID, match.ID(), now); err != nil {
+			w.releaseAllocation(ctx, match.ID(), match.ServerRegion())
 			w.failStoredMatch(ctx, match.ID(), now)
 			_ = w.queue.ReleaseAll(ctx, reservationID, now)
 			return nil, err
@@ -297,9 +318,19 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		"team_algorithm", search.Algorithm,
 		"formation_duration_seconds", search.Duration.Seconds(),
 		"formations_evaluated", search.FormationsEvaluated,
-		"server_region", poolKey.Region,
+		"server_region", match.ServerRegion(),
+		"region_score", regionSelection.Score,
+		"region_available_servers", regionSelection.AvailableServers,
 	)
 	return match.Clone(), nil
+}
+
+func (w *Worker) releaseAllocation(ctx context.Context, matchID, region string) {
+	if releaser, ok := w.allocator.(ServerReleaser); ok {
+		if err := releaser.Release(ctx, matchID, region); err != nil {
+			slog.Warn("release game server allocation failed", "error", err, "match_id", matchID, "server_region", region)
+		}
+	}
 }
 
 func (w *Worker) failStoredMatch(ctx context.Context, matchID string, now time.Time) {

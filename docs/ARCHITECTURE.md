@@ -46,11 +46,16 @@ player-service  matchmaking-service  simulation-service  agent-service
    control/treatment bucket. Both algorithms keep parties intact, assign five
    unique players per side, and cover all five roles. Non-preferred-role scores
    begin increasing only after a configured wait and stop at a policy cap.
-5. Quality scoring combines skill, roles, latency, party symmetry, and wait
+5. Workers query current server capacity, optimize the formation for every
+   admissible region, and select one using average/max latency, team-average
+   difference, latency standard deviation, and available-server capacity.
+   Quality scoring combines skill, roles, latency, party symmetry, and wait
    time. A low-quality candidate is rejected with reasons.
 6. All ten Tickets are atomically reserved. A Match is created only after the
    reservation succeeds.
-7. Server allocation marks the Match READY and atomically assigns all Tickets.
+7. The shared local allocator reserves a capacity slot, or the Agones adapter
+   creates an atomic `GameServerAllocation`; success marks the Match READY and
+   atomically assigns all Tickets.
 8. The seeded simulator starts and finishes the Match, records process
    metrics, and applies one idempotent Elo batch.
 9. Quality analysis reads finished Match snapshots and groups prediction

@@ -114,6 +114,40 @@ func TestConcurrentWorkersCannotDuplicatePlayers(t *testing.T) {
 	}
 }
 
+func TestWorkerSelectsAnotherRegionWhenPoolRegionHasNoCapacity(t *testing.T) {
+	now := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC)
+	ticketStore := memory.NewTicketStore()
+	populateMatchableTickets(t, ticketStore, now)
+	matchStore := memory.NewMatchStore()
+	allocator, err := application.NewLocalAllocatorWithCapacities(map[string]int{
+		"hongkong": 0,
+		"tokyo":    2,
+	}, func() (string, error) { return "token", nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{"reservation-1", "match-1"}
+	worker, err := application.NewWorker(
+		ticketStore, matchStore, allocator, domain.DefaultPolicy(),
+		func() (string, error) {
+			id := ids[0]
+			ids = ids[1:]
+			return id, nil
+		},
+		func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	match, err := worker.RunOnce(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if match.ServerRegion() != "tokyo" || match.ServerAddress() != "tokyo.game.matchmind.local:7000" {
+		t.Fatalf("server region/address = %s/%s", match.ServerRegion(), match.ServerAddress())
+	}
+}
+
 func populateMatchableTickets(t *testing.T, store *memory.TicketStore, now time.Time) []string {
 	t.Helper()
 	roles := []domain.Role{domain.RoleVanguard, domain.RoleRoamer, domain.RoleCore, domain.RoleRanged, domain.RoleSupport}
@@ -128,7 +162,7 @@ func populateMatchableTickets(t *testing.T, store *memory.TicketStore, now time.
 			Region:         "hongkong",
 			Rating:         1500 + float64(index%2)*10,
 			PreferredRoles: []domain.Role{roles[index%5]},
-			RegionLatency:  map[string]int{"hongkong": 30},
+			RegionLatency:  map[string]int{"hongkong": 30, "tokyo": 50, "singapore": 80},
 			CreatedAt:      now.Add(time.Duration(index) * time.Millisecond),
 		})
 		if err != nil {

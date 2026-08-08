@@ -37,3 +37,15 @@ func Int(key string, fallback int) (int, error) {
 	}
 	return parsed, nil
 }
+
+func Bool(key string, fallback bool) (bool, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("parse %s: %w", key, err)
+	}
+	return parsed, nil
+}

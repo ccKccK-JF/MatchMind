@@ -65,3 +65,31 @@ Use a randomly generated `AGENT_CONTROL_TOKEN` outside local development and
 provide the same value only to Matchmaking and Agent. The REST role headers are
 a local/reference authorization boundary; place the API behind authenticated
 identity middleware or a trusted gateway before production exposure.
+
+## Agones allocation
+
+The local backend is the default and advertises capacity from
+`MATCHMAKING_LOCAL_REGION_CAPACITIES`. For Kubernetes/Agones, apply the
+least-privilege service account and namespace-scoped permissions:
+
+```powershell
+kubectl apply -f .\deployments\agones\matchmaking-rbac.yaml
+```
+
+Run the Matchmaking Pod with `serviceAccountName: matchmind-matchmaking` and:
+
+```text
+MATCHMAKING_ALLOCATOR_BACKEND=agones
+AGONES_NAMESPACE=matchmind
+AGONES_API_URL=https://kubernetes.default.svc
+```
+
+Each Agones Fleet must carry `matchmind.dev/game=matchmind` and one regional
+label such as `matchmind.dev/region=hongkong`, `tokyo`, or `singapore`.
+MatchMind sums each region's `status.readyReplicas`, rejects zero-capacity or
+latency-inadmissible regions, then creates an
+`allocation.agones.dev/v1 GameServerAllocation` using the selected labels.
+The in-cluster CA and bearer-token files are used by default; never enable
+`AGONES_INSECURE_SKIP_TLS_VERIFY` outside disposable local clusters.
+See the official [Agones GameServerAllocation specification](https://agones.dev/site/docs/reference/gameserverallocation/)
+for Fleet selectors and returned connection fields.
