@@ -28,6 +28,10 @@ PostgreSQL/Redis snapshot codecs, deterministic role-compatible assignment,
 REST/gRPC mapping, and statistical win-rate impact. Behavior tests verify the
 Player-to-Ticket-to-Match chain and a statistically higher AFK rate for low
 stability scores.
+Mode tests reject unknown identifiers at Ticket and Match boundaries, compare
+all three derived policies, prove a rating spread admitted by normal but not
+ranked matchmaking, and verify that only ranked simulation invokes the rating
+gateway. Historical replay uses the same deterministic policy derivation.
 
 Algorithm tests use a crafted candidate pool where Beam Search must improve
 role coverage and total quality over greedy selection. They also verify stable

@@ -221,6 +221,10 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		selection = w.policies.SelectPolicy(tickets[0].PlayerID())
 	}
 	policy := selection.Policy
+	policy, err = policy.ForMode(poolKey.Mode)
+	if err != nil {
+		return nil, err
+	}
 	if err := policy.Validate(); err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
+	gamemode "github.com/ccKccK-JF/MatchMind/internal/game/mode"
 )
 
 var (
@@ -130,6 +131,11 @@ func NewMatch(params NewMatchParams) (*Match, error) {
 	if params.ID == "" || params.Mode == "" || params.ServerRegion == "" || params.PolicyVersion == "" || params.CreatedAt.IsZero() {
 		return nil, ErrInvalidMatch
 	}
+	modeID, err := gamemode.Parse(params.Mode)
+	if err != nil {
+		return nil, ErrInvalidMatch
+	}
+	params.Mode = string(modeID)
 	if err := validateMatchTeams(params.TeamA, params.TeamB); err != nil {
 		return nil, err
 	}

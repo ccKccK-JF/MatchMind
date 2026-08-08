@@ -52,6 +52,14 @@ func TestMatchRejectsHeroAssignedToWrongRole(t *testing.T) {
 	}
 }
 
+func TestMatchRejectsUnsupportedGameMode(t *testing.T) {
+	params := validMatchParams(time.Now())
+	params.Mode = "custom_5v5"
+	if _, err := NewMatch(params); !errors.Is(err, ErrInvalidMatch) {
+		t.Fatalf("NewMatch() error = %v, want ErrInvalidMatch", err)
+	}
+}
+
 func TestRestoreFinishedMatchSnapshot(t *testing.T) {
 	now := time.Now().UTC()
 	match := newTestMatch(t, now)

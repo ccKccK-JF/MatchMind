@@ -102,6 +102,12 @@ headers. Analyst and reviewer roles are rejected.
 
 ## Match tickets
 
+`mode` accepts only `ranked_5v5`, `normal_5v5`, or `training_5v5`. Ranked
+Matches use the strict base policy and update rating after completion. Normal
+Matches widen rating and role constraints faster and never update ranked
+rating. Training Matches use sandbox matchmaking rules and also leave ranked
+rating unchanged. See [Game modes](GAME_MODES.md) for the exact behavior.
+
 Create an idempotent ticket:
 
 ```http

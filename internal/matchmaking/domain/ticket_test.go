@@ -81,6 +81,27 @@ func TestNewTicketRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+func TestTicketValidatesAndNormalizesGameMode(t *testing.T) {
+	now := time.Now()
+	params := NewTicketParams{
+		ID: "ticket-1", PlayerID: "player-1", Mode: " TRAINING_5V5 ", ClientVersion: "1.0.0",
+		Region: "hongkong", Rating: 1500, PreferredRoles: []Role{RoleCore},
+		RegionLatency: map[string]int{"hongkong": 30}, CreatedAt: now,
+	}
+	ticket, err := NewTicket(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ticket.Mode() != "training_5v5" {
+		t.Fatalf("normalized mode = %q", ticket.Mode())
+	}
+	params.ID = "ticket-2"
+	params.Mode = "custom_5v5"
+	if _, err := NewTicket(params); !errors.Is(err, ErrInvalidTicket) {
+		t.Fatalf("unsupported mode error = %v", err)
+	}
+}
+
 func TestTicketCarriesImmutableSimulationFactors(t *testing.T) {
 	now := time.Now().UTC()
 	proficiency := map[string]float64{"starblade": 93}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ccKccK-JF/MatchMind/internal/game/hero"
+	gamemode "github.com/ccKccK-JF/MatchMind/internal/game/mode"
 )
 
 var (
@@ -120,6 +121,11 @@ func NewTicket(params NewTicketParams) (*MatchTicket, error) {
 	case params.CreatedAt.IsZero():
 		return nil, invalidTicket("created time is required")
 	}
+	modeID, err := gamemode.Parse(params.Mode)
+	if err != nil {
+		return nil, invalidTicket("unsupported game mode")
+	}
+	params.Mode = string(modeID)
 	if err := validateTicketRoles(params.PreferredRoles); err != nil {
 		return nil, err
 	}

@@ -135,6 +135,45 @@ func TestConcurrentWorkersCannotDuplicatePlayers(t *testing.T) {
 	}
 }
 
+func TestWorkerUsesFasterNormalModeRatingWindow(t *testing.T) {
+	now := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		mode        string
+		shouldMatch bool
+	}{
+		{mode: "ranked_5v5", shouldMatch: false},
+		{mode: "normal_5v5", shouldMatch: true},
+	} {
+		t.Run(test.mode, func(t *testing.T) {
+			ticketStore := memory.NewTicketStore()
+			populateRatingWindowTickets(t, ticketStore, now, test.mode)
+			ids := []string{"reservation-1", "match-1"}
+			worker, err := application.NewWorker(
+				ticketStore, memory.NewMatchStore(),
+				application.NewLocalAllocator(func() (string, error) { return "token", nil }),
+				allPlayersEligible, domain.DefaultPolicy(),
+				func() (string, error) {
+					id := ids[0]
+					ids = ids[1:]
+					return id, nil
+				},
+				func() time.Time { return now },
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			match, runErr := worker.RunOnce(context.Background())
+			if test.shouldMatch {
+				if runErr != nil || match == nil || match.Mode() != test.mode {
+					t.Fatalf("normal mode match = %+v, %v", match, runErr)
+				}
+			} else if !errors.Is(runErr, application.ErrNoMatchAvailable) {
+				t.Fatalf("ranked mode error = %v, want ErrNoMatchAvailable", runErr)
+			}
+		})
+	}
+}
+
 func TestWorkerSelectsAnotherRegionWhenPoolRegionHasNoCapacity(t *testing.T) {
 	now := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC)
 	ticketStore := memory.NewTicketStore()
@@ -251,4 +290,30 @@ func populateMatchableTickets(t *testing.T, store *memory.TicketStore, now time.
 		ticketIDs = append(ticketIDs, ticketID)
 	}
 	return ticketIDs
+}
+
+func populateRatingWindowTickets(t *testing.T, store *memory.TicketStore, now time.Time, mode string) {
+	t.Helper()
+	roles := []domain.Role{domain.RoleVanguard, domain.RoleRoamer, domain.RoleCore, domain.RoleRanged, domain.RoleSupport}
+	for index := range 10 {
+		rating := 1500.0
+		if index >= 5 {
+			rating = 1640
+		}
+		ticket, err := domain.NewTicket(domain.NewTicketParams{
+			ID: fmt.Sprintf("%s-ticket-%02d", mode, index), PlayerID: fmt.Sprintf("%s-player-%02d", mode, index),
+			Mode: mode, ClientVersion: "1.0.0", Region: "hongkong", Rating: rating,
+			PreferredRoles: []domain.Role{roles[index%5]}, RegionLatency: map[string]int{"hongkong": 30},
+			BehaviorScore: 95, CreatedAt: now.Add(time.Duration(index) * time.Millisecond),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ticket.Queue(now); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.CreateQueued(context.Background(), ticket, fmt.Sprintf("create-%02d", index)); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

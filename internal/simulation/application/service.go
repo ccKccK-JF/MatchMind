@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	gamemode "github.com/ccKccK-JF/MatchMind/internal/game/mode"
 	simulationdomain "github.com/ccKccK-JF/MatchMind/internal/simulation/domain"
 )
 
@@ -95,6 +96,10 @@ func (s *Service) SimulateMatch(ctx context.Context, matchID string, randomSeed 
 	if match.State != "READY" && match.State != "RUNNING" {
 		return simulationdomain.Result{}, ErrMatchNotReady
 	}
+	modeRules, err := gamemode.Get(match.Mode)
+	if err != nil {
+		return simulationdomain.Result{}, simulationdomain.ErrInvalidSimulation
+	}
 	if match.State == "READY" {
 		if err := s.matches.StartMatch(ctx, matchID); err != nil {
 			return simulationdomain.Result{}, err
@@ -112,7 +117,10 @@ func (s *Service) SimulateMatch(ctx context.Context, matchID string, randomSeed 
 	if err != nil {
 		return simulationdomain.Result{}, err
 	}
-	if match.Mode == "ranked_5v5" {
+	if modeRules.Rated {
+		if s.ratings == nil {
+			return simulationdomain.Result{}, errors.New("rating gateway is required for rated mode")
+		}
 		if err := s.ratings.ApplyMatchResult(
 			ctx, match.ID, match.TeamAPlayerIDs, match.TeamBPlayerIDs, result.WinningTeam,
 		); err != nil {

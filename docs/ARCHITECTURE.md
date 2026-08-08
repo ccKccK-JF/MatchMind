@@ -39,7 +39,9 @@ player-service  matchmaking-service  simulation-service  agent-service
 1. The player service validates and stores a player profile, including
    behavior stability and per-Hero proficiency from the static Hero catalog.
 2. The matchmaking service creates an idempotent Ticket and places it in a
-   pool partitioned by mode, client version, and region.
+   pool partitioned by validated mode, client version, and region. Ranked uses
+   the strict policy, normal mode expands rating and role constraints faster,
+   and training uses sandbox bounds. Unknown mode strings are rejected.
 3. One or more workers batch-check current Player eligibility, cancel queued
    Tickets whose players became banned, then select candidates using bounded,
    wait-driven rating and latency windows. Player eligibility is checked again
@@ -67,8 +69,9 @@ player-service  matchmaking-service  simulation-service  agent-service
    proficiency and behavior stability. Behavior also changes AFK risk, while
    role, latency, party symmetry, and Hero proficiency contribute to actual
    quality. It then finishes the Match, records process metrics, and applies
-   one idempotent rating batch. Player service selects Elo by default or
-   Glicko-2 by configuration.
+   one idempotent rating batch only for `ranked_5v5`; normal and training
+   results never modify formal rating. Player service selects Elo by default
+   or Glicko-2 by configuration.
 9. Quality analysis reads finished Match snapshots and groups prediction
    errors and process outcomes by persisted policy version.
 10. Historical replay rebuilds queued copies of durable Ticket snapshots and
@@ -85,6 +88,9 @@ simulation model but deliberately bypasses Match completion and rating updates.
 Historical replay is also read-only. It evaluates counterfactual formation
 quality, while the historical actual-quality result remains attached only to
 the source Match because an unplayed counterfactual has no real outcome.
+Real-time formation and historical replay derive the same mode-specific
+tuning from the persisted Match mode while retaining the selected algorithm's
+policy version.
 
 ## Rating model
 

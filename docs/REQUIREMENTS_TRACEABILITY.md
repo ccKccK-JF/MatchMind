@@ -12,6 +12,7 @@ an automated check exist. Planned items are not counted as complete.
 | FR-PLAYER-002 rating, uncertainty, recent Matches, matchmaking status | Verified | Rating view returns rating/deviation/volatility/history, recent Match IDs and active Ticket status; HTTP and end-to-end tests |
 | FR-PLAYER-003 update regional latency | Verified | Validated immutable domain update, memory/PostgreSQL persistence, owner-gated REST, gRPC and tests |
 | Game content: Hero catalog, proficiency and behavior stability | Verified | Ten-Hero five-role catalog; validated Player/Ticket persistence; role-compatible Match assignment; proficiency/behavior-aware seeded simulation; domain, codec, transport and statistical tests |
+| Game content: ranked, normal and training modes | Verified | Shared allowlisted mode registry; Ticket/Match validation; strict ranked, faster normal and sandbox training policy derivation shared by live Worker and replay; only ranked applies rating; domain, Worker and simulation tests |
 | FR-RATING-001..004 Elo prediction/update/config/history | Verified | Configurable Elo calculator, atomic idempotent ten-player update and rating history tests |
 | FR-TICKET-001..005 lifecycle, expiry and idempotency | Verified | Domain state machine, active-player uniqueness, timeout recovery and repository/API tests |
 | FR-QUEUE-001..005 partition, ordering and concurrency | Verified | Mode/version/region pools, oldest-first snapshots, validity filtering, memory/Redis tests and race suite |

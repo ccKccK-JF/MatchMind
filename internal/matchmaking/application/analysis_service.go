@@ -276,7 +276,10 @@ func (s *AnalysisService) ReplayHistoricalMatch(ctx context.Context, request Rep
 		TicketCount:         len(tickets), Outcomes: make([]ReplayOutcome, 0, len(versions)),
 	}
 	for _, version := range versions {
-		policy := policies[version]
+		policy, modeErr := policies[version].ForMode(source.Mode())
+		if modeErr != nil {
+			return ReplayReport{}, modeErr
+		}
 		outcome := ReplayOutcome{PolicyVersion: version, Algorithm: policy.TeamAlgorithm}
 		candidates, candidateErr := engine.GenerateCandidates(tickets, source.CreatedAt(), policy)
 		outcome.AcceptedTickets = len(candidates.Tickets)

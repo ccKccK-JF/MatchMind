@@ -5,6 +5,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	gamemode "github.com/ccKccK-JF/MatchMind/internal/game/mode"
 )
 
 var ErrInvalidPolicy = errors.New("invalid match policy")
@@ -76,6 +78,42 @@ func BeamPolicy() MatchPolicy {
 	policy.Version = "v2-beam"
 	policy.TeamAlgorithm = TeamAlgorithmBeam
 	return policy
+}
+
+// ForMode derives matchmaking behavior from the selected algorithm policy.
+// The policy version remains stable because mode is persisted separately and
+// the same deterministic derivation is applied during historical replay.
+func (p MatchPolicy) ForMode(value string) (MatchPolicy, error) {
+	modeID, err := gamemode.Parse(value)
+	if err != nil {
+		return MatchPolicy{}, ErrInvalidPolicy
+	}
+	result := p
+	switch modeID {
+	case gamemode.Ranked5v5:
+	case gamemode.Normal5v5:
+		result.InitialRatingRange *= 1.5
+		result.MaxRatingRange *= 1.5
+		result.RatingExpansionPerSecond *= 2
+		result.RoleRelaxationAfter /= 2
+		result.RoleRelaxationPerSecond *= 2
+		result.MinQualityScore = math.Max(0, result.MinQualityScore-10)
+	case gamemode.Training5v5:
+		result.InitialRatingRange = math.Max(result.InitialRatingRange, 10000)
+		result.MaxRatingRange = result.InitialRatingRange
+		result.RatingExpansionPerSecond = 0
+		result.InitialLatencyMS = 1000
+		result.MaxLatencyMS = 1000
+		result.LatencyExpansionPerSecond = 0
+		result.RoleRelaxationAfter = 0
+		result.RoleRelaxationPerSecond = 100
+		result.MaxNonPreferredRoleScore = 100
+		result.MinQualityScore = 0
+	}
+	if err := result.Validate(); err != nil {
+		return MatchPolicy{}, err
+	}
+	return result, nil
 }
 
 func (p MatchPolicy) Validate() error {

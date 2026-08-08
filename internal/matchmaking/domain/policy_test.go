@@ -69,3 +69,32 @@ func TestPolicyRejectsInvalidWeights(t *testing.T) {
 		t.Fatalf("Validate() error = %v, want ErrInvalidPolicy", err)
 	}
 }
+
+func TestPolicyDerivesGameModeRules(t *testing.T) {
+	base := BeamPolicy()
+	ranked, err := base.ForMode("ranked_5v5")
+	if err != nil || ranked != base {
+		t.Fatalf("ranked policy = %+v, %v", ranked, err)
+	}
+	normal, err := base.ForMode("normal_5v5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if normal.InitialRatingRange <= base.InitialRatingRange ||
+		normal.RatingExpansionPerSecond <= base.RatingExpansionPerSecond ||
+		normal.RoleRelaxationAfter >= base.RoleRelaxationAfter ||
+		normal.MinQualityScore >= base.MinQualityScore || normal.Version != base.Version {
+		t.Fatalf("normal policy was not speed-oriented: %+v", normal)
+	}
+	training, err := base.ForMode("training_5v5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if training.InitialRatingRange != training.MaxRatingRange || training.MinQualityScore != 0 ||
+		training.MaxLatencyMS != 1000 || training.RoleRelaxationAfter != 0 || training.Version != base.Version {
+		t.Fatalf("training policy was not sandbox-oriented: %+v", training)
+	}
+	if _, err := base.ForMode("custom"); !errors.Is(err, ErrInvalidPolicy) {
+		t.Fatalf("unsupported mode policy error = %v", err)
+	}
+}

@@ -33,7 +33,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   bounded wait-driven latency windows, time-based non-preferred-role
   relaxation, party-safe candidate selection, deterministic 5v5 team/role
   assignment, deterministic role-compatible Hero selection, immutable Hero
-  and behavior Match snapshots, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
+  and behavior Match snapshots, allowlisted ranked/normal/training modes with
+  distinct matchmaking and rating behavior, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
   workers, and match connection details. Ticket queues and Matches can use
   memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable
@@ -211,6 +212,7 @@ Runtime configuration:
 - [System architecture](docs/ARCHITECTURE.md)
 - [HTTP API](docs/API.md)
 - [Hero catalog](docs/HEROES.md)
+- [Game modes](docs/GAME_MODES.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Testing and load testing](docs/TESTING.md)
 - [Reproducible demo](docs/DEMO.md)
