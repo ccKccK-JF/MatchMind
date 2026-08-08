@@ -60,7 +60,9 @@ services:
     environment:
       PLAYER_GRPC_ADDRESS: ":50051"
       PLAYER_HTTP_ADDRESS: ":8081"
+      PLAYER_RATING_SYSTEM: "elo"
       PLAYER_ELO_K_FACTOR: "32"
+      PLAYER_GLICKO2_TAU: "0.5"
       PLAYER_STORAGE_BACKEND: "postgres"
       POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
     depends_on:

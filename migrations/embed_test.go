@@ -64,3 +64,15 @@ func TestAgentMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestGlickoMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("006_glicko2.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"rating_volatility", "deviation_before", "volatility_after", "rating_system", "glicko2"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

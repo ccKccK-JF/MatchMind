@@ -30,6 +30,12 @@ enum MatchOutcome {
   MATCH_OUTCOME_DRAW = 3;
 }
 
+enum RatingSystem {
+  RATING_SYSTEM_UNSPECIFIED = 0;
+  RATING_SYSTEM_ELO = 1;
+  RATING_SYSTEM_GLICKO2 = 2;
+}
+
 message Player {
   string id = 1;
   string name = 2;
@@ -40,6 +46,7 @@ message Player {
   map<string, int32> region_latency_ms = 7;
   double behavior_score = 8;
   google.protobuf.Timestamp created_at = 9;
+  double rating_volatility = 10;
 }
 
 message CreatePlayerRequest {
@@ -81,6 +88,11 @@ message RatingChange {
   double delta = 5;
   string reason = 6;
   google.protobuf.Timestamp created_at = 7;
+  double rating_deviation_before = 8;
+  double rating_deviation_after = 9;
+  double rating_volatility_before = 10;
+  double rating_volatility_after = 11;
+  RatingSystem rating_system = 12;
 }
 
 message ApplyMatchResultRequest {

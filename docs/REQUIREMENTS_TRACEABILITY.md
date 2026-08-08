@@ -9,7 +9,7 @@ an automated check exist. Planned items are not counted as complete.
 | Requirement | Status | Evidence |
 |---|---|---|
 | FR-PLAYER-001 create player | Verified | Player domain/application, memory and PostgreSQL repositories, REST/gRPC and tests |
-| FR-PLAYER-002 rating, uncertainty, recent Matches, matchmaking status | Verified | Rating view returns rating/deviation/history, recent Match IDs and active Ticket status; HTTP and end-to-end tests |
+| FR-PLAYER-002 rating, uncertainty, recent Matches, matchmaking status | Verified | Rating view returns rating/deviation/volatility/history, recent Match IDs and active Ticket status; HTTP and end-to-end tests |
 | FR-PLAYER-003 update regional latency | Verified | Validated immutable domain update, memory/PostgreSQL persistence, owner-gated REST, gRPC and tests |
 | FR-RATING-001..004 Elo prediction/update/config/history | Verified | Configurable Elo calculator, atomic idempotent ten-player update and rating history tests |
 | FR-TICKET-001..005 lifecycle, expiry and idempotency | Verified | Domain state machine, active-player uniqueness, timeout recovery and repository/API tests |
@@ -38,14 +38,13 @@ an automated check exist. Planned items are not counted as complete.
 | Real PostgreSQL/Redis integration | Implemented, environment-gated | Isolated-schema PostgreSQL and isolated Redis tests exist; live external services are required to execute the gated variants |
 | 500 requests/s, 100k queue, P95/P99 targets | Pending verification | Load generator exists, but no current machine/run artifact proves the targets |
 | Reproducible complete demo | Implemented | Five-process PowerShell demo covers Match, Elo, analysis, replay and Agent; runtime execution remains an acceptance gate while services are intentionally kept off |
-| Glicko rating | Pending optional phase-two item | Elo is complete; Glicko has not been implemented |
+| Glicko-2 rating | Verified optional mode | Official worked example, configurable tau, aggregate-team application, atomic uncertainty persistence, idempotency, gRPC/REST fields and automated tests; Elo remains the default |
 | Agones allocation | Implemented, environment-gated | Kubernetes adapter reads Fleet ready replicas and creates v1 `GameServerAllocation` resources with RBAC and HTTP contract tests; a live Agones cluster is required for deployment verification |
 | NATS/outbox | Pending extension | Architecture keeps the boundary open; no message broker is required by the first-version acceptance flow |
 
 ## Next acceptance order
 
-1. Decide and implement the documented Glicko option without changing ranked
-   Elo compatibility.
+1. Model and enforce the remaining explicit banned-player hard constraint.
 2. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
    gates,
    preserving raw results before declaring the project complete.

@@ -12,6 +12,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/player/domain"
 	"github.com/ccKccK-JF/MatchMind/internal/player/repository/memory"
 	"github.com/ccKccK-JF/MatchMind/internal/rating/elo"
+	"github.com/ccKccK-JF/MatchMind/internal/rating/glicko2"
 )
 
 func TestRatingServiceRecordsIdempotentTeamResult(t *testing.T) {
@@ -99,6 +100,78 @@ func TestRatingServiceRejectsInvalidTeams(t *testing.T) {
 	})
 	if !errors.Is(err, application.ErrInvalidMatchResult) {
 		t.Fatalf("RecordMatchResult() error = %v, want ErrInvalidMatchResult", err)
+	}
+}
+
+func TestGlicko2RatingServiceUpdatesUncertaintyAndIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	repository := memory.NewRepository()
+	playerService := application.NewService(repository, nil)
+	teamA := createRatedTeam(t, ctx, playerService, "glicko-a", 1600)
+	teamB := createRatedTeam(t, ctx, playerService, "glicko-b", 1500)
+	calculator, err := glicko2.NewCalculator(0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ratingService := application.NewGlicko2RatingService(repository, calculator, nil)
+	if ratingService.System() != domain.RatingSystemGlicko2 {
+		t.Fatalf("System() = %q, want %q", ratingService.System(), domain.RatingSystemGlicko2)
+	}
+	command := application.RecordMatchResultCommand{
+		MatchID:        "glicko-match-1",
+		TeamAPlayerIDs: teamA,
+		TeamBPlayerIDs: teamB,
+		Outcome:        application.MatchOutcomeTeamAWin,
+		Reason:         "ranked_match",
+	}
+
+	changes, err := ratingService.RecordMatchResult(ctx, command)
+	if err != nil {
+		t.Fatalf("RecordMatchResult() error = %v", err)
+	}
+	if len(changes) != 10 {
+		t.Fatalf("changes = %d, want 10", len(changes))
+	}
+	for index, change := range changes {
+		if change.System() != domain.RatingSystemGlicko2 || !change.HasUncertaintyState() {
+			t.Fatalf("change %d system/state = %q/%v", index, change.System(), change.HasUncertaintyState())
+		}
+		if change.DeviationAfter() >= change.DeviationBefore() {
+			t.Fatalf("change %d deviation = %v -> %v, want decrease", index, change.DeviationBefore(), change.DeviationAfter())
+		}
+		if change.VolatilityAfter() <= 0 {
+			t.Fatalf("change %d volatility = %v, want positive", index, change.VolatilityAfter())
+		}
+		if index < 5 && change.Delta() <= 0 {
+			t.Fatalf("team A change %d delta = %v, want positive", index, change.Delta())
+		}
+		if index >= 5 && change.Delta() >= 0 {
+			t.Fatalf("team B change %d delta = %v, want negative", index, change.Delta())
+		}
+	}
+
+	firstPlayer, err := playerService.GetPlayer(ctx, teamA[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstPlayer.RatingDeviation() != changes[0].DeviationAfter() ||
+		firstPlayer.RatingVolatility() != changes[0].VolatilityAfter() {
+		t.Fatalf("stored state = %+v, change = %+v", firstPlayer.RatingState(), changes[0])
+	}
+	duplicate, err := ratingService.RecordMatchResult(ctx, command)
+	if err != nil {
+		t.Fatalf("duplicate RecordMatchResult() error = %v", err)
+	}
+	if len(duplicate) != len(changes) || duplicate[0].After() != changes[0].After() ||
+		duplicate[0].DeviationAfter() != changes[0].DeviationAfter() {
+		t.Fatalf("duplicate result = %+v, want original %+v", duplicate, changes)
+	}
+	secondPlayer, err := playerService.GetPlayer(ctx, teamA[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondPlayer.RatingState() != firstPlayer.RatingState() {
+		t.Fatalf("duplicate changed state from %+v to %+v", firstPlayer.RatingState(), secondPlayer.RatingState())
 	}
 }
 

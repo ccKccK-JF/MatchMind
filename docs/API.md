@@ -46,7 +46,10 @@ Query the player's current rating and complete rating history:
 GET /api/v1/players/player-1001/rating
 ```
 
-The rating response also includes up to ten recent Match IDs, the current
+The rating response includes the current rating, rating deviation, Glicko-2
+volatility, and complete rating history. Each history entry includes the
+before/after uncertainty state and `rating_system` (`1` for Elo or `2` for
+Glicko-2 in the REST JSON representation). It also includes up to ten recent Match IDs, the current
 matchmaking status (`IDLE`, `QUEUED`, `RESERVED`, or `ASSIGNED`), and the active
 Ticket when one exists.
 
@@ -174,7 +177,7 @@ score, win rate, duration, and one-sided/AFK/surrender rates. The default limit
 is 100 finished Matches and the maximum is 1,000.
 
 Replay a finished Match without reserving Tickets, creating a Match, or
-changing Elo:
+changing live rating state:
 
 ```http
 POST /api/v1/matches/{match_id}/replay

@@ -24,17 +24,18 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 		*dest[1].(*string) = "Nova"
 		*dest[2].(*float64) = 1650
 		*dest[3].(*float64) = 90
-		*dest[4].(*[]string) = []string{"core", "support"}
-		*dest[5].(*string) = "hongkong"
-		*dest[6].(*[]byte) = latencies
-		*dest[7].(*float64) = 98
-		*dest[8].(*time.Time) = createdAt
+		*dest[4].(*float64) = 0.05
+		*dest[5].(*[]string) = []string{"core", "support"}
+		*dest[6].(*string) = "hongkong"
+		*dest[7].(*[]byte) = latencies
+		*dest[8].(*float64) = 98
+		*dest[9].(*time.Time) = createdAt
 		return nil
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if player.ID() != "player-1" || player.Rating() != 1650 || player.RatingDeviation() != 90 {
+	if player.ID() != "player-1" || player.Rating() != 1650 || player.RatingDeviation() != 90 || player.RatingVolatility() != 0.05 {
 		t.Fatalf("player = %+v", player)
 	}
 	if player.PreferredRoles()[1] != domain.RoleSupport || player.RegionLatency()["hongkong"] != 32 {
@@ -48,11 +49,12 @@ func TestScanPlayerRejectsCorruptPersistentData(t *testing.T) {
 		*dest[1].(*string) = "Nova"
 		*dest[2].(*float64) = 1650
 		*dest[3].(*float64) = 90
-		*dest[4].(*[]string) = []string{"unknown"}
-		*dest[5].(*string) = "hongkong"
-		*dest[6].(*[]byte) = []byte(`{"hongkong":32}`)
-		*dest[7].(*float64) = 98
-		*dest[8].(*time.Time) = time.Now()
+		*dest[4].(*float64) = 0.06
+		*dest[5].(*[]string) = []string{"unknown"}
+		*dest[6].(*string) = "hongkong"
+		*dest[7].(*[]byte) = []byte(`{"hongkong":32}`)
+		*dest[8].(*float64) = 98
+		*dest[9].(*time.Time) = time.Now()
 		return nil
 	}))
 	if err == nil {

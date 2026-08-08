@@ -57,7 +57,8 @@ player-service  matchmaking-service  simulation-service  agent-service
    creates an atomic `GameServerAllocation`; success marks the Match READY and
    atomically assigns all Tickets.
 8. The seeded simulator starts and finishes the Match, records process
-   metrics, and applies one idempotent Elo batch.
+   metrics, and applies one idempotent rating batch. Player service selects
+   Elo by default or Glicko-2 by configuration.
 9. Quality analysis reads finished Match snapshots and groups prediction
    errors and process outcomes by persisted policy version.
 10. Historical replay rebuilds queued copies of durable Ticket snapshots and
@@ -70,10 +71,20 @@ player-service  matchmaking-service  simulation-service  agent-service
 The chosen policy version is stored on each Match. This makes later replay and
 predicted-versus-actual quality analysis possible without reconstructing the
 active experiment. Offline batch simulation uses the same deterministic
-simulation model but deliberately bypasses Match completion and Elo updates.
+simulation model but deliberately bypasses Match completion and rating updates.
 Historical replay is also read-only. It evaluates counterfactual formation
 quality, while the historical actual-quality result remains attached only to
 the source Match because an unplayed counterfactual has no real outcome.
+
+## Rating model
+
+Elo remains the compatibility default and applies a zero-sum team-average
+update. With `PLAYER_RATING_SYSTEM=glicko2`, each completed 5v5 Match is one
+rating-period observation per player against an aggregate opposing-team
+rating and uncertainty; it is not expanded into five artificial games.
+Rating, deviation, and volatility are updated atomically and stored with the
+rating-system identifier in append-only history. Both algorithms use the same
+Match-level idempotency boundary.
 
 ## Concurrency guarantees
 

@@ -132,19 +132,69 @@ func (MatchOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{1}
 }
 
+type RatingSystem int32
+
+const (
+	RatingSystem_RATING_SYSTEM_UNSPECIFIED RatingSystem = 0
+	RatingSystem_RATING_SYSTEM_ELO         RatingSystem = 1
+	RatingSystem_RATING_SYSTEM_GLICKO2     RatingSystem = 2
+)
+
+// Enum value maps for RatingSystem.
+var (
+	RatingSystem_name = map[int32]string{
+		0: "RATING_SYSTEM_UNSPECIFIED",
+		1: "RATING_SYSTEM_ELO",
+		2: "RATING_SYSTEM_GLICKO2",
+	}
+	RatingSystem_value = map[string]int32{
+		"RATING_SYSTEM_UNSPECIFIED": 0,
+		"RATING_SYSTEM_ELO":         1,
+		"RATING_SYSTEM_GLICKO2":     2,
+	}
+)
+
+func (x RatingSystem) Enum() *RatingSystem {
+	p := new(RatingSystem)
+	*p = x
+	return p
+}
+
+func (x RatingSystem) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RatingSystem) Descriptor() protoreflect.EnumDescriptor {
+	return file_matchmind_player_v1_player_proto_enumTypes[2].Descriptor()
+}
+
+func (RatingSystem) Type() protoreflect.EnumType {
+	return &file_matchmind_player_v1_player_proto_enumTypes[2]
+}
+
+func (x RatingSystem) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RatingSystem.Descriptor instead.
+func (RatingSystem) EnumDescriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{2}
+}
+
 type Player struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Rating          float64                `protobuf:"fixed64,3,opt,name=rating,proto3" json:"rating,omitempty"`
-	RatingDeviation float64                `protobuf:"fixed64,4,opt,name=rating_deviation,json=ratingDeviation,proto3" json:"rating_deviation,omitempty"`
-	PreferredRoles  []Role                 `protobuf:"varint,5,rep,packed,name=preferred_roles,json=preferredRoles,proto3,enum=matchmind.player.v1.Role" json:"preferred_roles,omitempty"`
-	HomeRegion      string                 `protobuf:"bytes,6,opt,name=home_region,json=homeRegion,proto3" json:"home_region,omitempty"`
-	RegionLatencyMs map[string]int32       `protobuf:"bytes,7,rep,name=region_latency_ms,json=regionLatencyMs,proto3" json:"region_latency_ms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	BehaviorScore   float64                `protobuf:"fixed64,8,opt,name=behavior_score,json=behaviorScore,proto3" json:"behavior_score,omitempty"`
-	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Rating           float64                `protobuf:"fixed64,3,opt,name=rating,proto3" json:"rating,omitempty"`
+	RatingDeviation  float64                `protobuf:"fixed64,4,opt,name=rating_deviation,json=ratingDeviation,proto3" json:"rating_deviation,omitempty"`
+	PreferredRoles   []Role                 `protobuf:"varint,5,rep,packed,name=preferred_roles,json=preferredRoles,proto3,enum=matchmind.player.v1.Role" json:"preferred_roles,omitempty"`
+	HomeRegion       string                 `protobuf:"bytes,6,opt,name=home_region,json=homeRegion,proto3" json:"home_region,omitempty"`
+	RegionLatencyMs  map[string]int32       `protobuf:"bytes,7,rep,name=region_latency_ms,json=regionLatencyMs,proto3" json:"region_latency_ms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	BehaviorScore    float64                `protobuf:"fixed64,8,opt,name=behavior_score,json=behaviorScore,proto3" json:"behavior_score,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	RatingVolatility float64                `protobuf:"fixed64,10,opt,name=rating_volatility,json=ratingVolatility,proto3" json:"rating_volatility,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
@@ -238,6 +288,13 @@ func (x *Player) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *Player) GetRatingVolatility() float64 {
+	if x != nil {
+		return x.RatingVolatility
+	}
+	return 0
 }
 
 type CreatePlayerRequest struct {
@@ -561,16 +618,21 @@ func (x *UpdateRegionLatencyResponse) GetPlayer() *Player {
 }
 
 type RatingChange struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
-	MatchId       string                 `protobuf:"bytes,2,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
-	Before        float64                `protobuf:"fixed64,3,opt,name=before,proto3" json:"before,omitempty"`
-	After         float64                `protobuf:"fixed64,4,opt,name=after,proto3" json:"after,omitempty"`
-	Delta         float64                `protobuf:"fixed64,5,opt,name=delta,proto3" json:"delta,omitempty"`
-	Reason        string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId               string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	MatchId                string                 `protobuf:"bytes,2,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
+	Before                 float64                `protobuf:"fixed64,3,opt,name=before,proto3" json:"before,omitempty"`
+	After                  float64                `protobuf:"fixed64,4,opt,name=after,proto3" json:"after,omitempty"`
+	Delta                  float64                `protobuf:"fixed64,5,opt,name=delta,proto3" json:"delta,omitempty"`
+	Reason                 string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt              *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	RatingDeviationBefore  float64                `protobuf:"fixed64,8,opt,name=rating_deviation_before,json=ratingDeviationBefore,proto3" json:"rating_deviation_before,omitempty"`
+	RatingDeviationAfter   float64                `protobuf:"fixed64,9,opt,name=rating_deviation_after,json=ratingDeviationAfter,proto3" json:"rating_deviation_after,omitempty"`
+	RatingVolatilityBefore float64                `protobuf:"fixed64,10,opt,name=rating_volatility_before,json=ratingVolatilityBefore,proto3" json:"rating_volatility_before,omitempty"`
+	RatingVolatilityAfter  float64                `protobuf:"fixed64,11,opt,name=rating_volatility_after,json=ratingVolatilityAfter,proto3" json:"rating_volatility_after,omitempty"`
+	RatingSystem           RatingSystem           `protobuf:"varint,12,opt,name=rating_system,json=ratingSystem,proto3,enum=matchmind.player.v1.RatingSystem" json:"rating_system,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RatingChange) Reset() {
@@ -650,6 +712,41 @@ func (x *RatingChange) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *RatingChange) GetRatingDeviationBefore() float64 {
+	if x != nil {
+		return x.RatingDeviationBefore
+	}
+	return 0
+}
+
+func (x *RatingChange) GetRatingDeviationAfter() float64 {
+	if x != nil {
+		return x.RatingDeviationAfter
+	}
+	return 0
+}
+
+func (x *RatingChange) GetRatingVolatilityBefore() float64 {
+	if x != nil {
+		return x.RatingVolatilityBefore
+	}
+	return 0
+}
+
+func (x *RatingChange) GetRatingVolatilityAfter() float64 {
+	if x != nil {
+		return x.RatingVolatilityAfter
+	}
+	return 0
+}
+
+func (x *RatingChange) GetRatingSystem() RatingSystem {
+	if x != nil {
+		return x.RatingSystem
+	}
+	return RatingSystem_RATING_SYSTEM_UNSPECIFIED
 }
 
 type ApplyMatchResultRequest struct {
@@ -864,7 +961,7 @@ var File_matchmind_player_v1_player_proto protoreflect.FileDescriptor
 
 const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\n" +
-	" matchmind/player/v1/player.proto\x12\x13matchmind.player.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x03\n" +
+	" matchmind/player/v1/player.proto\x12\x13matchmind.player.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x04\n" +
 	"\x06Player\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -876,7 +973,9 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x11region_latency_ms\x18\a \x03(\v20.matchmind.player.v1.Player.RegionLatencyMsEntryR\x0fregionLatencyMs\x12%\n" +
 	"\x0ebehavior_score\x18\b \x01(\x01R\rbehaviorScore\x129\n" +
 	"\n" +
-	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1aB\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12+\n" +
+	"\x11rating_volatility\x18\n" +
+	" \x01(\x01R\x10ratingVolatility\x1aB\n" +
 	"\x14RegionLatencyMsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x9b\x03\n" +
@@ -905,7 +1004,7 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"R\n" +
 	"\x1bUpdateRegionLatencyResponse\x123\n" +
-	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"\xdd\x01\n" +
+	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"\x85\x04\n" +
 	"\fRatingChange\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x19\n" +
 	"\bmatch_id\x18\x02 \x01(\tR\amatchId\x12\x16\n" +
@@ -914,7 +1013,13 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x05delta\x18\x05 \x01(\x01R\x05delta\x12\x16\n" +
 	"\x06reason\x18\x06 \x01(\tR\x06reason\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xdf\x01\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x126\n" +
+	"\x17rating_deviation_before\x18\b \x01(\x01R\x15ratingDeviationBefore\x124\n" +
+	"\x16rating_deviation_after\x18\t \x01(\x01R\x14ratingDeviationAfter\x128\n" +
+	"\x18rating_volatility_before\x18\n" +
+	" \x01(\x01R\x16ratingVolatilityBefore\x126\n" +
+	"\x17rating_volatility_after\x18\v \x01(\x01R\x15ratingVolatilityAfter\x12F\n" +
+	"\rrating_system\x18\f \x01(\x0e2!.matchmind.player.v1.RatingSystemR\fratingSystem\"\xdf\x01\n" +
 	"\x17ApplyMatchResultRequest\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12)\n" +
 	"\x11team_a_player_ids\x18\x02 \x03(\tR\x0eteamAPlayerIds\x12)\n" +
@@ -938,7 +1043,11 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x19MATCH_OUTCOME_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18MATCH_OUTCOME_TEAM_A_WIN\x10\x01\x12\x1c\n" +
 	"\x18MATCH_OUTCOME_TEAM_B_WIN\x10\x02\x12\x16\n" +
-	"\x12MATCH_OUTCOME_DRAW\x10\x032\xac\x04\n" +
+	"\x12MATCH_OUTCOME_DRAW\x10\x03*_\n" +
+	"\fRatingSystem\x12\x1d\n" +
+	"\x19RATING_SYSTEM_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11RATING_SYSTEM_ELO\x10\x01\x12\x19\n" +
+	"\x15RATING_SYSTEM_GLICKO2\x10\x022\xac\x04\n" +
 	"\rPlayerService\x12c\n" +
 	"\fCreatePlayer\x12(.matchmind.player.v1.CreatePlayerRequest\x1a).matchmind.player.v1.CreatePlayerResponse\x12Z\n" +
 	"\tGetPlayer\x12%.matchmind.player.v1.GetPlayerRequest\x1a&.matchmind.player.v1.GetPlayerResponse\x12x\n" +
@@ -958,57 +1067,59 @@ func file_matchmind_player_v1_player_proto_rawDescGZIP() []byte {
 	return file_matchmind_player_v1_player_proto_rawDescData
 }
 
-var file_matchmind_player_v1_player_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_matchmind_player_v1_player_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_matchmind_player_v1_player_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_matchmind_player_v1_player_proto_goTypes = []any{
 	(Role)(0),                           // 0: matchmind.player.v1.Role
 	(MatchOutcome)(0),                   // 1: matchmind.player.v1.MatchOutcome
-	(*Player)(nil),                      // 2: matchmind.player.v1.Player
-	(*CreatePlayerRequest)(nil),         // 3: matchmind.player.v1.CreatePlayerRequest
-	(*CreatePlayerResponse)(nil),        // 4: matchmind.player.v1.CreatePlayerResponse
-	(*GetPlayerRequest)(nil),            // 5: matchmind.player.v1.GetPlayerRequest
-	(*GetPlayerResponse)(nil),           // 6: matchmind.player.v1.GetPlayerResponse
-	(*UpdateRegionLatencyRequest)(nil),  // 7: matchmind.player.v1.UpdateRegionLatencyRequest
-	(*UpdateRegionLatencyResponse)(nil), // 8: matchmind.player.v1.UpdateRegionLatencyResponse
-	(*RatingChange)(nil),                // 9: matchmind.player.v1.RatingChange
-	(*ApplyMatchResultRequest)(nil),     // 10: matchmind.player.v1.ApplyMatchResultRequest
-	(*ApplyMatchResultResponse)(nil),    // 11: matchmind.player.v1.ApplyMatchResultResponse
-	(*GetRatingHistoryRequest)(nil),     // 12: matchmind.player.v1.GetRatingHistoryRequest
-	(*GetRatingHistoryResponse)(nil),    // 13: matchmind.player.v1.GetRatingHistoryResponse
-	nil,                                 // 14: matchmind.player.v1.Player.RegionLatencyMsEntry
-	nil,                                 // 15: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	nil,                                 // 16: matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
-	(*timestamppb.Timestamp)(nil),       // 17: google.protobuf.Timestamp
+	(RatingSystem)(0),                   // 2: matchmind.player.v1.RatingSystem
+	(*Player)(nil),                      // 3: matchmind.player.v1.Player
+	(*CreatePlayerRequest)(nil),         // 4: matchmind.player.v1.CreatePlayerRequest
+	(*CreatePlayerResponse)(nil),        // 5: matchmind.player.v1.CreatePlayerResponse
+	(*GetPlayerRequest)(nil),            // 6: matchmind.player.v1.GetPlayerRequest
+	(*GetPlayerResponse)(nil),           // 7: matchmind.player.v1.GetPlayerResponse
+	(*UpdateRegionLatencyRequest)(nil),  // 8: matchmind.player.v1.UpdateRegionLatencyRequest
+	(*UpdateRegionLatencyResponse)(nil), // 9: matchmind.player.v1.UpdateRegionLatencyResponse
+	(*RatingChange)(nil),                // 10: matchmind.player.v1.RatingChange
+	(*ApplyMatchResultRequest)(nil),     // 11: matchmind.player.v1.ApplyMatchResultRequest
+	(*ApplyMatchResultResponse)(nil),    // 12: matchmind.player.v1.ApplyMatchResultResponse
+	(*GetRatingHistoryRequest)(nil),     // 13: matchmind.player.v1.GetRatingHistoryRequest
+	(*GetRatingHistoryResponse)(nil),    // 14: matchmind.player.v1.GetRatingHistoryResponse
+	nil,                                 // 15: matchmind.player.v1.Player.RegionLatencyMsEntry
+	nil,                                 // 16: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	nil,                                 // 17: matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
+	(*timestamppb.Timestamp)(nil),       // 18: google.protobuf.Timestamp
 }
 var file_matchmind_player_v1_player_proto_depIdxs = []int32{
 	0,  // 0: matchmind.player.v1.Player.preferred_roles:type_name -> matchmind.player.v1.Role
-	14, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
-	17, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
+	15, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
+	18, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: matchmind.player.v1.CreatePlayerRequest.preferred_roles:type_name -> matchmind.player.v1.Role
-	15, // 4: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	2,  // 5: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
-	2,  // 6: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
-	16, // 7: matchmind.player.v1.UpdateRegionLatencyRequest.region_latency_ms:type_name -> matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
-	2,  // 8: matchmind.player.v1.UpdateRegionLatencyResponse.player:type_name -> matchmind.player.v1.Player
-	17, // 9: matchmind.player.v1.RatingChange.created_at:type_name -> google.protobuf.Timestamp
-	1,  // 10: matchmind.player.v1.ApplyMatchResultRequest.outcome:type_name -> matchmind.player.v1.MatchOutcome
-	9,  // 11: matchmind.player.v1.ApplyMatchResultResponse.changes:type_name -> matchmind.player.v1.RatingChange
-	9,  // 12: matchmind.player.v1.GetRatingHistoryResponse.changes:type_name -> matchmind.player.v1.RatingChange
-	3,  // 13: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
-	5,  // 14: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
-	7,  // 15: matchmind.player.v1.PlayerService.UpdateRegionLatency:input_type -> matchmind.player.v1.UpdateRegionLatencyRequest
-	10, // 16: matchmind.player.v1.PlayerService.ApplyMatchResult:input_type -> matchmind.player.v1.ApplyMatchResultRequest
-	12, // 17: matchmind.player.v1.PlayerService.GetRatingHistory:input_type -> matchmind.player.v1.GetRatingHistoryRequest
-	4,  // 18: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
-	6,  // 19: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
-	8,  // 20: matchmind.player.v1.PlayerService.UpdateRegionLatency:output_type -> matchmind.player.v1.UpdateRegionLatencyResponse
-	11, // 21: matchmind.player.v1.PlayerService.ApplyMatchResult:output_type -> matchmind.player.v1.ApplyMatchResultResponse
-	13, // 22: matchmind.player.v1.PlayerService.GetRatingHistory:output_type -> matchmind.player.v1.GetRatingHistoryResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	16, // 4: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	3,  // 5: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
+	3,  // 6: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
+	17, // 7: matchmind.player.v1.UpdateRegionLatencyRequest.region_latency_ms:type_name -> matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
+	3,  // 8: matchmind.player.v1.UpdateRegionLatencyResponse.player:type_name -> matchmind.player.v1.Player
+	18, // 9: matchmind.player.v1.RatingChange.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 10: matchmind.player.v1.RatingChange.rating_system:type_name -> matchmind.player.v1.RatingSystem
+	1,  // 11: matchmind.player.v1.ApplyMatchResultRequest.outcome:type_name -> matchmind.player.v1.MatchOutcome
+	10, // 12: matchmind.player.v1.ApplyMatchResultResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	10, // 13: matchmind.player.v1.GetRatingHistoryResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	4,  // 14: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
+	6,  // 15: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
+	8,  // 16: matchmind.player.v1.PlayerService.UpdateRegionLatency:input_type -> matchmind.player.v1.UpdateRegionLatencyRequest
+	11, // 17: matchmind.player.v1.PlayerService.ApplyMatchResult:input_type -> matchmind.player.v1.ApplyMatchResultRequest
+	13, // 18: matchmind.player.v1.PlayerService.GetRatingHistory:input_type -> matchmind.player.v1.GetRatingHistoryRequest
+	5,  // 19: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
+	7,  // 20: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
+	9,  // 21: matchmind.player.v1.PlayerService.UpdateRegionLatency:output_type -> matchmind.player.v1.UpdateRegionLatencyResponse
+	12, // 22: matchmind.player.v1.PlayerService.ApplyMatchResult:output_type -> matchmind.player.v1.ApplyMatchResultResponse
+	14, // 23: matchmind.player.v1.PlayerService.GetRatingHistory:output_type -> matchmind.player.v1.GetRatingHistoryResponse
+	19, // [19:24] is the sub-list for method output_type
+	14, // [14:19] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_matchmind_player_v1_player_proto_init() }
@@ -1021,7 +1132,7 @@ func file_matchmind_player_v1_player_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matchmind_player_v1_player_proto_rawDesc), len(file_matchmind_player_v1_player_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,

@@ -33,11 +33,11 @@ func (r *Repository) Create(ctx context.Context, player *domain.Player) error {
 	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO players (
-			id, name, rating, rating_deviation, preferred_roles,
+			id, name, rating, rating_deviation, rating_volatility, preferred_roles,
 			home_region, region_latency, behavior_score, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)
 	`,
-		player.ID(), player.Name(), player.Rating(), player.RatingDeviation(),
+		player.ID(), player.Name(), player.Rating(), player.RatingDeviation(), player.RatingVolatility(),
 		rolesToStrings(player.PreferredRoles()), player.HomeRegion(), latencies,
 		player.BehaviorScore(), player.CreatedAt(),
 	)
@@ -52,7 +52,7 @@ func (r *Repository) Create(ctx context.Context, player *domain.Player) error {
 
 func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Player, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, rating, rating_deviation, preferred_roles,
+		SELECT id, name, rating, rating_deviation, rating_volatility, preferred_roles,
 		       home_region, region_latency, behavior_score, created_at
 		FROM players
 		WHERE id = $1
@@ -118,7 +118,9 @@ func (r *Repository) ApplyRatingChanges(
 		return nil, fmt.Errorf("lock rating match: %w", err)
 	}
 	existing, err := queryChanges(ctx, tx, `
-		SELECT player_id, match_id, rating_before, rating_after, reason, created_at
+		SELECT player_id, match_id, rating_before, rating_after,
+		       deviation_before, deviation_after, volatility_before, volatility_after,
+		       rating_system, reason, created_at
 		FROM rating_changes
 		WHERE match_id = $1
 		ORDER BY sequence
@@ -131,6 +133,7 @@ func (r *Repository) ApplyRatingChanges(
 	}
 
 	seen := make(map[string]struct{}, len(changes))
+	committedChanges := cloneChanges(changes)
 	for sequence, change := range changes {
 		if change == nil || change.MatchID() != matchID {
 			return nil, application.ErrRatingConflict
@@ -139,11 +142,45 @@ func (r *Repository) ApplyRatingChanges(
 			return nil, application.ErrRatingConflict
 		}
 		seen[change.PlayerID()] = struct{}{}
-		tag, err := tx.Exec(ctx, `
-			UPDATE players
-			SET rating = $1, updated_at = $2
-			WHERE id = $3 AND rating = $4
-		`, change.After(), change.CreatedAt(), change.PlayerID(), change.Before())
+		if !change.HasUncertaintyState() {
+			var deviation, volatility float64
+			if err := tx.QueryRow(ctx, `
+				SELECT rating_deviation, rating_volatility
+				FROM players WHERE id = $1 AND rating = $2
+				FOR UPDATE
+			`, change.PlayerID(), change.Before()).Scan(&deviation, &volatility); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return nil, fmt.Errorf("%w: player %s rating changed", application.ErrRatingConflict, change.PlayerID())
+				}
+				return nil, fmt.Errorf("load player uncertainty: %w", err)
+			}
+			before := domain.RatingState{Rating: change.Before(), Deviation: deviation, Volatility: volatility}
+			after := before
+			after.Rating = change.After()
+			change, err = domain.NewRatingChangeWithState(domain.NewRatingChangeParams{
+				PlayerID: change.PlayerID(), MatchID: change.MatchID(), Before: before, After: after,
+				System: change.System(), Reason: change.Reason(), CreatedAt: change.CreatedAt(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			committedChanges[sequence] = change
+		}
+		var tag pgconn.CommandTag
+		if change.HasUncertaintyState() {
+			tag, err = tx.Exec(ctx, `
+				UPDATE players
+				SET rating = $1, rating_deviation = $2, rating_volatility = $3, updated_at = $4
+				WHERE id = $5 AND rating = $6 AND rating_deviation = $7 AND rating_volatility = $8
+			`, change.After(), change.DeviationAfter(), change.VolatilityAfter(), change.CreatedAt(),
+				change.PlayerID(), change.Before(), change.DeviationBefore(), change.VolatilityBefore())
+		} else {
+			tag, err = tx.Exec(ctx, `
+				UPDATE players
+				SET rating = $1, updated_at = $2
+				WHERE id = $3 AND rating = $4
+			`, change.After(), change.CreatedAt(), change.PlayerID(), change.Before())
+		}
 		if err != nil {
 			return nil, fmt.Errorf("update player rating: %w", err)
 		}
@@ -152,16 +189,20 @@ func (r *Repository) ApplyRatingChanges(
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO rating_changes (
-				match_id, player_id, sequence, rating_before, rating_after, reason, created_at
-			) VALUES ($1,$2,$3,$4,$5,$6,$7)
-		`, matchID, change.PlayerID(), sequence, change.Before(), change.After(), change.Reason(), change.CreatedAt()); err != nil {
+				match_id, player_id, sequence, rating_before, rating_after,
+				deviation_before, deviation_after, volatility_before, volatility_after,
+				rating_system, reason, created_at
+			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		`, matchID, change.PlayerID(), sequence, change.Before(), change.After(),
+			change.DeviationBefore(), change.DeviationAfter(), change.VolatilityBefore(), change.VolatilityAfter(),
+			change.System(), change.Reason(), change.CreatedAt()); err != nil {
 			return nil, fmt.Errorf("insert rating change: %w", err)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit rating transaction: %w", err)
 	}
-	return cloneChanges(changes), nil
+	return cloneChanges(committedChanges), nil
 }
 
 func (r *Repository) RatingHistory(ctx context.Context, playerID string) ([]*domain.RatingChange, error) {
@@ -174,7 +215,9 @@ func (r *Repository) RatingHistory(ctx context.Context, playerID string) ([]*dom
 		return nil, application.ErrPlayerNotFound
 	}
 	changes, err := queryChanges(ctx, r.pool, `
-		SELECT player_id, match_id, rating_before, rating_after, reason, created_at
+		SELECT player_id, match_id, rating_before, rating_after,
+		       deviation_before, deviation_after, volatility_before, volatility_after,
+		       rating_system, reason, created_at
 		FROM rating_changes
 		WHERE player_id = $1
 		ORDER BY created_at, match_id
@@ -198,7 +241,7 @@ func scanPlayer(row rowScanner) (*domain.Player, error) {
 	var roles []string
 	var latencyJSON []byte
 	if err := row.Scan(
-		&snapshot.ID, &snapshot.Name, &snapshot.Rating, &snapshot.RatingDeviation,
+		&snapshot.ID, &snapshot.Name, &snapshot.Rating, &snapshot.RatingDeviation, &snapshot.RatingVolatility,
 		&roles, &snapshot.HomeRegion, &latencyJSON, &snapshot.BehaviorScore, &snapshot.CreatedAt,
 	); err != nil {
 		return nil, err
@@ -222,13 +265,22 @@ func queryChanges(ctx context.Context, source queryer, query string, argument an
 	defer rows.Close()
 	var result []*domain.RatingChange
 	for rows.Next() {
-		var playerID, matchID, reason string
-		var before, after float64
+		var playerID, matchID, reason, system string
+		var before, after, deviationBefore, deviationAfter, volatilityBefore, volatilityAfter float64
 		var createdAt time.Time
-		if err := rows.Scan(&playerID, &matchID, &before, &after, &reason, &createdAt); err != nil {
+		if err := rows.Scan(
+			&playerID, &matchID, &before, &after,
+			&deviationBefore, &deviationAfter, &volatilityBefore, &volatilityAfter,
+			&system, &reason, &createdAt,
+		); err != nil {
 			return nil, err
 		}
-		change, err := domain.NewRatingChange(playerID, matchID, before, after, reason, createdAt)
+		change, err := domain.NewRatingChangeWithState(domain.NewRatingChangeParams{
+			PlayerID: playerID, MatchID: matchID,
+			Before: domain.RatingState{Rating: before, Deviation: deviationBefore, Volatility: volatilityBefore},
+			After:  domain.RatingState{Rating: after, Deviation: deviationAfter, Volatility: volatilityAfter},
+			System: domain.RatingSystem(system), Reason: reason, CreatedAt: createdAt,
+		})
 		if err != nil {
 			return nil, err
 		}

@@ -20,6 +20,7 @@ import (
 	playerpostgres "github.com/ccKccK-JF/MatchMind/internal/player/repository/postgres"
 	playergrpc "github.com/ccKccK-JF/MatchMind/internal/player/transport/grpc"
 	"github.com/ccKccK-JF/MatchMind/internal/rating/elo"
+	"github.com/ccKccK-JF/MatchMind/internal/rating/glicko2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
@@ -59,17 +60,38 @@ func main() {
 		os.Exit(1)
 	}
 	service := application.NewService(repository, nil)
-	kFactor, err := config.Float64("PLAYER_ELO_K_FACTOR", 32)
-	if err != nil {
-		slog.Error("invalid player service configuration", "error", err)
+	ratingSystem := strings.ToLower(config.String("PLAYER_RATING_SYSTEM", "elo"))
+	var ratingService *application.RatingService
+	switch ratingSystem {
+	case "elo":
+		kFactor, configErr := config.Float64("PLAYER_ELO_K_FACTOR", 32)
+		if configErr != nil {
+			slog.Error("invalid Elo configuration", "error", configErr)
+			os.Exit(1)
+		}
+		calculator, calculatorErr := elo.NewCalculator(kFactor)
+		if calculatorErr != nil {
+			slog.Error("invalid Elo K factor", "k_factor", kFactor, "error", calculatorErr)
+			os.Exit(1)
+		}
+		ratingService = application.NewRatingService(repository, calculator, nil)
+	case "glicko2":
+		tau, configErr := config.Float64("PLAYER_GLICKO2_TAU", 0.5)
+		if configErr != nil {
+			slog.Error("invalid Glicko-2 configuration", "error", configErr)
+			os.Exit(1)
+		}
+		calculator, calculatorErr := glicko2.NewCalculator(tau)
+		if calculatorErr != nil {
+			slog.Error("invalid Glicko-2 tau", "tau", tau, "error", calculatorErr)
+			os.Exit(1)
+		}
+		ratingService = application.NewGlicko2RatingService(repository, calculator, nil)
+	default:
+		slog.Error("unsupported player rating system", "rating_system", ratingSystem)
 		os.Exit(1)
 	}
-	calculator, err := elo.NewCalculator(kFactor)
-	if err != nil {
-		slog.Error("invalid Elo K factor", "k_factor", kFactor, "error", err)
-		os.Exit(1)
-	}
-	ratingService := application.NewRatingService(repository, calculator, nil)
+	slog.Info("player rating system configured", "rating_system", ratingService.System())
 	transport := playergrpc.NewServer(service, ratingService)
 
 	address := config.String("PLAYER_GRPC_ADDRESS", ":50051")
@@ -84,7 +106,7 @@ func main() {
 		httpAddress := config.String("PLAYER_HTTP_ADDRESS", ":8081")
 		errCh <- httpserver.Run(ctx, "matchmind-player-operations", httpAddress, httpserver.NewHandler(nil, registry, nil))
 	}()
-	err = <-errCh
+	err := <-errCh
 	stop()
 	if err != nil {
 		slog.Error("player service stopped with error", "error", err)

@@ -21,8 +21,9 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
 
 - The service process skeleton, Protobuf contracts, generation workflow,
   health checks, reflection, and graceful shutdown are complete.
-- `player-service` supports player creation/query, configurable Elo updates,
-  regional latency replacement, rating history, result idempotency, a
+- `player-service` supports player creation/query, configurable Elo or
+  Glicko-2 updates, rating deviation and volatility, regional latency
+  replacement, rating history, result idempotency, a
   concurrency-safe memory store, and an optional transactional PostgreSQL
   repository. Player rating views include recent Match IDs and current
   matchmaking status.
@@ -51,9 +52,9 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   replayed read-only through multiple policies to compare counterfactual team
   formation and predicted quality.
 - `simulation-service` runs reproducible seeded matches, records process
-  metrics, updates ranked Elo through `player-service`, and completes matches
+  metrics, updates the configured ranked rating through `player-service`, and completes matches
   through `matchmaking-service`. Its offline batch API evaluates up to 10,000
-  seeded cases with bounded concurrency without changing live Match or Elo
+  seeded cases with bounded concurrency without changing live Match or rating
   state.
 - `agent-service` has a fixed five-tool allowlist and cannot issue Shell or
   arbitrary SQL. It reads queue/policy/quality data, generates a structured
@@ -75,7 +76,7 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   failure, quality, reservation-conflict, and worker-duration metrics on
   `:8082`.
 
-The local process demo defaults to memory. Docker Compose runs Player, Elo,
+The local process demo defaults to memory and Elo. Docker Compose runs Player/rating,
 Ticket, and Match durability on PostgreSQL plus Redis coordination. An external
 message broker, distributed tracing backend, and durable telemetry storage
 remain later milestones.
@@ -159,7 +160,9 @@ Runtime configuration:
 |---|---|
 | `PLAYER_GRPC_ADDRESS` | `:50051` |
 | `PLAYER_HTTP_ADDRESS` | `:8081` |
+| `PLAYER_RATING_SYSTEM` | `elo` (`elo` or `glicko2`) |
 | `PLAYER_ELO_K_FACTOR` | `32` |
+| `PLAYER_GLICKO2_TAU` | `0.5` (valid range `0.3` to `1.2`) |
 | `PLAYER_STORAGE_BACKEND` | `memory` |
 | `POSTGRES_DSN` | `postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable` |
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |

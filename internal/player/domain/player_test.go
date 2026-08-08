@@ -37,6 +37,9 @@ func TestNewPlayer(t *testing.T) {
 	if player.RatingDeviation() != DefaultRatingDeviation {
 		t.Fatalf("RatingDeviation() = %v, want %v", player.RatingDeviation(), DefaultRatingDeviation)
 	}
+	if player.RatingVolatility() != DefaultRatingVolatility {
+		t.Fatalf("RatingVolatility() = %v, want %v", player.RatingVolatility(), DefaultRatingVolatility)
+	}
 	if !player.CreatedAt().Equal(createdAt.UTC()) {
 		t.Fatalf("CreatedAt() = %v, want %v", player.CreatedAt(), createdAt.UTC())
 	}
@@ -125,7 +128,7 @@ func TestPlayerAccessorsReturnCopies(t *testing.T) {
 func TestRestorePlayerPreservesDurableRatingDeviation(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	player, err := RestorePlayer(PlayerSnapshot{
-		ID: "player-1", Name: "Nova", Rating: 1725, RatingDeviation: 82,
+		ID: "player-1", Name: "Nova", Rating: 1725, RatingDeviation: 82, RatingVolatility: 0.045,
 		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
 		RegionLatency: map[string]int{"hongkong": 31}, BehaviorScore: 97,
 		CreatedAt: createdAt,
@@ -133,8 +136,8 @@ func TestRestorePlayerPreservesDurableRatingDeviation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if player.Rating() != 1725 || player.RatingDeviation() != 82 || !player.CreatedAt().Equal(createdAt) {
-		t.Fatalf("restored player = rating %v, deviation %v, created %v", player.Rating(), player.RatingDeviation(), player.CreatedAt())
+	if player.Rating() != 1725 || player.RatingDeviation() != 82 || player.RatingVolatility() != 0.045 || !player.CreatedAt().Equal(createdAt) {
+		t.Fatalf("restored player = rating %v, deviation %v, volatility %v, created %v", player.Rating(), player.RatingDeviation(), player.RatingVolatility(), player.CreatedAt())
 	}
 }
 

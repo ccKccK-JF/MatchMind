@@ -3,16 +3,18 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
 
 const (
-	DefaultRatingDeviation = 350.0
-	minimumLatencyMS       = 0
-	maximumLatencyMS       = 1000
-	minimumBehaviorScore   = 0.0
-	maximumBehaviorScore   = 100.0
+	DefaultRatingDeviation  = 350.0
+	DefaultRatingVolatility = 0.06
+	minimumLatencyMS        = 0
+	maximumLatencyMS        = 1000
+	minimumBehaviorScore    = 0.0
+	maximumBehaviorScore    = 100.0
 )
 
 var ErrInvalidPlayer = errors.New("invalid player")
@@ -32,29 +34,31 @@ type NewPlayerParams struct {
 // player from persistence. RestorePlayer applies the same validation as a new
 // player instead of allowing repositories to mutate private fields.
 type PlayerSnapshot struct {
-	ID              string
-	Name            string
-	Rating          float64
-	RatingDeviation float64
-	PreferredRoles  []Role
-	HomeRegion      string
-	RegionLatency   map[string]int
-	BehaviorScore   float64
-	CreatedAt       time.Time
+	ID               string
+	Name             string
+	Rating           float64
+	RatingDeviation  float64
+	RatingVolatility float64
+	PreferredRoles   []Role
+	HomeRegion       string
+	RegionLatency    map[string]int
+	BehaviorScore    float64
+	CreatedAt        time.Time
 }
 
 // Player is an immutable player snapshot. Slices and maps are copied at the
 // boundary so callers cannot mutate shared repository state accidentally.
 type Player struct {
-	id              string
-	name            string
-	rating          float64
-	ratingDeviation float64
-	preferredRoles  []Role
-	homeRegion      string
-	regionLatency   map[string]int
-	behaviorScore   float64
-	createdAt       time.Time
+	id               string
+	name             string
+	rating           float64
+	ratingDeviation  float64
+	ratingVolatility float64
+	preferredRoles   []Role
+	homeRegion       string
+	regionLatency    map[string]int
+	behaviorScore    float64
+	createdAt        time.Time
 }
 
 func NewPlayer(params NewPlayerParams) (*Player, error) {
@@ -89,21 +93,28 @@ func NewPlayer(params NewPlayerParams) (*Player, error) {
 	}
 
 	return &Player{
-		id:              params.ID,
-		name:            params.Name,
-		rating:          params.InitialRating,
-		ratingDeviation: DefaultRatingDeviation,
-		preferredRoles:  cloneRoles(params.PreferredRoles),
-		homeRegion:      params.HomeRegion,
-		regionLatency:   cloneLatency(params.RegionLatency),
-		behaviorScore:   params.BehaviorScore,
-		createdAt:       params.CreatedAt.UTC(),
+		id:               params.ID,
+		name:             params.Name,
+		rating:           params.InitialRating,
+		ratingDeviation:  DefaultRatingDeviation,
+		ratingVolatility: DefaultRatingVolatility,
+		preferredRoles:   cloneRoles(params.PreferredRoles),
+		homeRegion:       params.HomeRegion,
+		regionLatency:    cloneLatency(params.RegionLatency),
+		behaviorScore:    params.BehaviorScore,
+		createdAt:        params.CreatedAt.UTC(),
 	}, nil
 }
 
 func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 	if snapshot.RatingDeviation <= 0 {
 		return nil, invalidPlayer("rating deviation must be greater than zero")
+	}
+	if snapshot.RatingVolatility == 0 {
+		snapshot.RatingVolatility = DefaultRatingVolatility
+	}
+	if snapshot.RatingVolatility < 0 || math.IsNaN(snapshot.RatingVolatility) || math.IsInf(snapshot.RatingVolatility, 0) {
+		return nil, invalidPlayer("rating volatility must be finite and greater than zero")
 	}
 	player, err := NewPlayer(NewPlayerParams{
 		ID:             snapshot.ID,
@@ -119,6 +130,7 @@ func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 		return nil, err
 	}
 	player.ratingDeviation = snapshot.RatingDeviation
+	player.ratingVolatility = snapshot.RatingVolatility
 	return player, nil
 }
 
@@ -126,6 +138,7 @@ func (p *Player) ID() string                    { return p.id }
 func (p *Player) Name() string                  { return p.name }
 func (p *Player) Rating() float64               { return p.rating }
 func (p *Player) RatingDeviation() float64      { return p.ratingDeviation }
+func (p *Player) RatingVolatility() float64     { return p.ratingVolatility }
 func (p *Player) HomeRegion() string            { return p.homeRegion }
 func (p *Player) BehaviorScore() float64        { return p.behaviorScore }
 func (p *Player) CreatedAt() time.Time          { return p.createdAt }

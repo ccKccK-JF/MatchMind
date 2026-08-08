@@ -99,7 +99,8 @@ func (r *Repository) ApplyRatingChanges(ctx context.Context, matchID string, cha
 	}
 
 	updatedPlayers := make(map[string]*domain.Player, len(changes))
-	for _, change := range changes {
+	committedChanges := cloneChanges(changes)
+	for index, change := range changes {
 		if change == nil || change.MatchID() != matchID {
 			return nil, application.ErrRatingConflict
 		}
@@ -113,7 +114,32 @@ func (r *Repository) ApplyRatingChanges(ctx context.Context, matchID string, cha
 		if player.Rating() != change.Before() {
 			return nil, fmt.Errorf("%w: player %s rating changed", application.ErrRatingConflict, change.PlayerID())
 		}
-		updated, err := player.WithRating(change.After())
+		if !change.HasUncertaintyState() {
+			before := player.RatingState()
+			after := before
+			after.Rating = change.After()
+			fullChange, err := domain.NewRatingChangeWithState(domain.NewRatingChangeParams{
+				PlayerID: change.PlayerID(), MatchID: change.MatchID(), Before: before, After: after,
+				System: change.System(), Reason: change.Reason(), CreatedAt: change.CreatedAt(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			change = fullChange
+			committedChanges[index] = change
+		}
+		var updated *domain.Player
+		var err error
+		if change.HasUncertaintyState() {
+			if player.RatingDeviation() != change.DeviationBefore() || player.RatingVolatility() != change.VolatilityBefore() {
+				return nil, fmt.Errorf("%w: player %s uncertainty changed", application.ErrRatingConflict, change.PlayerID())
+			}
+			updated, err = player.WithRatingState(domain.RatingState{
+				Rating: change.After(), Deviation: change.DeviationAfter(), Volatility: change.VolatilityAfter(),
+			})
+		} else {
+			updated, err = player.WithRating(change.After())
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -123,11 +149,11 @@ func (r *Repository) ApplyRatingChanges(ctx context.Context, matchID string, cha
 	for playerID, player := range updatedPlayers {
 		r.players[playerID] = player
 	}
-	for _, change := range changes {
+	for _, change := range committedChanges {
 		r.ratingHistory[change.PlayerID()] = append(r.ratingHistory[change.PlayerID()], change.Clone())
 	}
-	r.ratedMatchHistory[matchID] = cloneChanges(changes)
-	return cloneChanges(changes), nil
+	r.ratedMatchHistory[matchID] = cloneChanges(committedChanges)
+	return cloneChanges(committedChanges), nil
 }
 
 func (r *Repository) RatingHistory(ctx context.Context, playerID string) ([]*domain.RatingChange, error) {

@@ -40,6 +40,9 @@ func TestServerCreateAndGetPlayer(t *testing.T) {
 	if !created.GetPlayer().GetCreatedAt().AsTime().Equal(createdAt) {
 		t.Fatalf("created time = %v, want %v", created.GetPlayer().GetCreatedAt().AsTime(), createdAt)
 	}
+	if created.GetPlayer().GetRatingVolatility() != 0.06 {
+		t.Fatalf("rating volatility = %v, want 0.06", created.GetPlayer().GetRatingVolatility())
+	}
 
 	got, err := server.GetPlayer(context.Background(), &playerv1.GetPlayerRequest{PlayerId: request.GetId()})
 	if err != nil {
@@ -155,5 +158,9 @@ func TestServerApplyMatchResultAndGetHistory(t *testing.T) {
 	}
 	if len(history.GetChanges()) != 1 || history.GetChanges()[0].GetDelta() <= 0 {
 		t.Fatalf("history = %+v, want one positive change", history.GetChanges())
+	}
+	if history.GetChanges()[0].GetRatingSystem() != playerv1.RatingSystem_RATING_SYSTEM_ELO ||
+		history.GetChanges()[0].GetRatingDeviationAfter() <= 0 {
+		t.Fatalf("history rating metadata = %+v", history.GetChanges()[0])
 	}
 }

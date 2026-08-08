@@ -15,7 +15,7 @@ The script performs the following observable flow:
 5. waits for the workers to produce one READY Match;
 6. queries predicted win rate and the five-part quality score;
 7. simulates the Match with seed `42`;
-8. queries a player's changed Elo and one rating-history entry;
+8. queries a player's changed rating and one rating-history entry;
 9. compares predicted quality with the stored actual quality;
 10. replays the historical Ticket snapshot through Greedy and Beam policies;
 11. asks the Agent for a structured candidate policy using the analyst role;

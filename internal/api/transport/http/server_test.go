@@ -214,10 +214,14 @@ func TestGetTicketRequiresOwningPlayer(t *testing.T) {
 func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 	client := fakePlayerClient{
 		get: func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error) {
-			return &playerv1.GetPlayerResponse{Player: &playerv1.Player{Id: "player-1", Rating: 1516}}, nil
+			return &playerv1.GetPlayerResponse{Player: &playerv1.Player{
+				Id: "player-1", Rating: 1516, RatingDeviation: 120, RatingVolatility: 0.06,
+			}}, nil
 		},
 		history: func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error) {
-			return &playerv1.GetRatingHistoryResponse{Changes: []*playerv1.RatingChange{{MatchId: "match-1", Delta: 16}}}, nil
+			return &playerv1.GetRatingHistoryResponse{Changes: []*playerv1.RatingChange{{
+				MatchId: "match-1", Delta: 16, RatingSystem: playerv1.RatingSystem_RATING_SYSTEM_GLICKO2,
+			}}}, nil
 		},
 	}
 	matchmaking := fakeMatchmakingClient{active: func(context.Context, *matchmakingv1.GetActiveTicketForPlayerRequest) (*matchmakingv1.GetActiveTicketForPlayerResponse, error) {
@@ -229,6 +233,8 @@ func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/players/player-1/rating", nil))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"match_id":"match-1"`) ||
+		!strings.Contains(response.Body.String(), `"rating_volatility":0.06`) ||
+		!strings.Contains(response.Body.String(), `"rating_system":2`) ||
 		!strings.Contains(response.Body.String(), `"matchmaking_status":"QUEUED"`) ||
 		!strings.Contains(response.Body.String(), `"recent_match_ids":["match-1"]`) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())

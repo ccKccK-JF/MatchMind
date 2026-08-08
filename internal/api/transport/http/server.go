@@ -368,6 +368,7 @@ type playerRatingResponse struct {
 	PlayerID          string                     `json:"player_id"`
 	Rating            float64                    `json:"rating"`
 	RatingDeviation   float64                    `json:"rating_deviation"`
+	RatingVolatility  float64                    `json:"rating_volatility"`
 	History           []*playerv1.RatingChange   `json:"history"`
 	RecentMatchIDs    []string                   `json:"recent_match_ids"`
 	MatchmakingStatus string                     `json:"matchmaking_status"`
@@ -422,7 +423,8 @@ func (s *Server) getPlayerRating(response http.ResponseWriter, request *http.Req
 	}
 	writeJSON(response, http.StatusOK, playerRatingResponse{
 		PlayerID: playerResult.Player.Id, Rating: playerResult.Player.Rating,
-		RatingDeviation: playerResult.Player.RatingDeviation, History: historyResult.Changes,
+		RatingDeviation:  playerResult.Player.RatingDeviation,
+		RatingVolatility: playerResult.Player.RatingVolatility, History: historyResult.Changes,
 		RecentMatchIDs: recentMatchIDs(historyResult.Changes, 10), MatchmakingStatus: matchmakingStatus,
 		CurrentTicket: activeTicket.GetTicket(),
 	})

@@ -180,15 +180,16 @@ func playerToProto(player *domain.Player) *playerv1.Player {
 	}
 
 	return &playerv1.Player{
-		Id:              player.ID(),
-		Name:            player.Name(),
-		Rating:          player.Rating(),
-		RatingDeviation: player.RatingDeviation(),
-		PreferredRoles:  protoRoles,
-		HomeRegion:      player.HomeRegion(),
-		RegionLatencyMs: latency,
-		BehaviorScore:   player.BehaviorScore(),
-		CreatedAt:       timestamppb.New(player.CreatedAt()),
+		Id:               player.ID(),
+		Name:             player.Name(),
+		Rating:           player.Rating(),
+		RatingDeviation:  player.RatingDeviation(),
+		RatingVolatility: player.RatingVolatility(),
+		PreferredRoles:   protoRoles,
+		HomeRegion:       player.HomeRegion(),
+		RegionLatencyMs:  latency,
+		BehaviorScore:    player.BehaviorScore(),
+		CreatedAt:        timestamppb.New(player.CreatedAt()),
 	}
 }
 
@@ -204,16 +205,32 @@ func ratingChangesToProto(changes []*domain.RatingChange) []*playerv1.RatingChan
 	result := make([]*playerv1.RatingChange, 0, len(changes))
 	for _, change := range changes {
 		result = append(result, &playerv1.RatingChange{
-			PlayerId:  change.PlayerID(),
-			MatchId:   change.MatchID(),
-			Before:    change.Before(),
-			After:     change.After(),
-			Delta:     change.Delta(),
-			Reason:    change.Reason(),
-			CreatedAt: timestamppb.New(change.CreatedAt()),
+			PlayerId:               change.PlayerID(),
+			MatchId:                change.MatchID(),
+			Before:                 change.Before(),
+			After:                  change.After(),
+			Delta:                  change.Delta(),
+			Reason:                 change.Reason(),
+			CreatedAt:              timestamppb.New(change.CreatedAt()),
+			RatingDeviationBefore:  change.DeviationBefore(),
+			RatingDeviationAfter:   change.DeviationAfter(),
+			RatingVolatilityBefore: change.VolatilityBefore(),
+			RatingVolatilityAfter:  change.VolatilityAfter(),
+			RatingSystem:           ratingSystemToProto(change.System()),
 		})
 	}
 	return result
+}
+
+func ratingSystemToProto(system domain.RatingSystem) playerv1.RatingSystem {
+	switch system {
+	case domain.RatingSystemElo:
+		return playerv1.RatingSystem_RATING_SYSTEM_ELO
+	case domain.RatingSystemGlicko2:
+		return playerv1.RatingSystem_RATING_SYSTEM_GLICKO2
+	default:
+		return playerv1.RatingSystem_RATING_SYSTEM_UNSPECIFIED
+	}
 }
 
 func playerError(err error) error {

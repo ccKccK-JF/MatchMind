@@ -7,10 +7,11 @@ go test -count=1 ./...
 go vet ./...
 ```
 
-The suite covers Elo math, domain validation and state transitions, dynamic
+The suite covers Elo math, the official Glicko-2 worked example, rating-state
+persistence and idempotency, domain validation and state transitions, dynamic
 candidate windows, deterministic team formation, role assignment, quality
 scoring, reservation rollback and recovery, simulation reproducibility,
-idempotent rating updates, HTTP mapping, Prometheus output, Agent audit/state
+idempotent team rating updates, HTTP mapping, Prometheus output, Agent audit/state
 transitions, five-check risk gating, approval separation of duties,
 activation/rollback, and the complete service gRPC flow.
 Player coverage includes normalized regional-latency replacement in memory and

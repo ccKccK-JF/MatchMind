@@ -8,10 +8,12 @@ selects the PostgreSQL-durable/Redis-coordinated Ticket adapter, while
 
 ## PostgreSQL ownership
 
-`players` stores profile and current rating. `rating_changes` is append-only,
+`players` stores profile, current rating, rating deviation, and Glicko-2
+volatility. `rating_changes` is append-only and records the before/after value
+of all three rating-state components plus the selected rating system. It
 preserves response order with a per-Match sequence, and uses a unique
-`(match_id, player_id)` key so result retries cannot update Elo twice. Elo
-updates use a serializable transaction plus a Match-scoped PostgreSQL advisory
+`(match_id, player_id)` key so result retries cannot update a rating twice.
+Elo and Glicko-2 updates use a serializable transaction plus a Match-scoped PostgreSQL advisory
 lock, making duplicate result delivery idempotent.
 
 `tickets` now stores durable Ticket state, create/cancel idempotency keys,
@@ -32,7 +34,7 @@ revision. Updates reject stale revisions. The final READY Match update and all
 reserved-to-assigned Ticket transitions share one database transaction.
 Finished-Match quality analysis uses the existing policy/creation-time index;
 historical replay joins the Match's immutable Ticket IDs back to durable Ticket
-snapshots. Neither operation writes to Match, Ticket, or Elo state.
+snapshots. Neither operation writes to Match, Ticket, or rating state.
 
 `agent_runs` is an append-oriented audit record containing the Agent/model and
 prompt versions, request and structured output, selected policy version,
@@ -65,7 +67,7 @@ or change nothing. PostgreSQL remains the durable source of truth. At startup,
 the service rebuilds missing Redis queue entries from active PostgreSQL
 Tickets and reconciles expired reservations.
 
-PostgreSQL is the durable correctness path for Player, Ticket, Match, Elo, and
+PostgreSQL is the durable correctness path for Player, Ticket, Match, rating, and
 Agent audit state. Redis is disposable coordination state: reservation scripts validate
 all Ticket metadata before the first write, retries with the same reservation
 are idempotent, and PostgreSQL rejection rolls the Redis reservation back. A
