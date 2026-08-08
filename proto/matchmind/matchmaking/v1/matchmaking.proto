@@ -261,6 +261,11 @@ message MatchPolicyDefinition {
   double min_quality_score = 15;
   int64 reservation_ttl_ms = 16;
   int64 ticket_ttl_ms = 17;
+  int32 initial_latency_ms = 18;
+  double latency_expansion_per_second = 19;
+  int64 role_relaxation_after_ms = 20;
+  double role_relaxation_per_second = 21;
+  double max_non_preferred_role_score = 22;
 }
 
 message ReplayTeam {

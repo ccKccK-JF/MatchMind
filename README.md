@@ -28,7 +28,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   matchmaking status.
 - `matchmaking-service` supports idempotent ticket create/cancel/query, strict
   ticket and match state machines, partitioned queues, dynamic rating windows,
-  party-safe candidate selection, deterministic 5v5 team/role assignment,
+  bounded wait-driven latency windows, time-based non-preferred-role
+  relaxation, party-safe candidate selection, deterministic 5v5 team/role assignment,
   five-part quality scoring, atomic reservation, automatic workers, and match
   connection details. Ticket queues and Matches can use memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable

@@ -18,8 +18,8 @@ an automated check exist. Planned items are not counted as complete.
 | FR-TEAM-001..006 Greedy/Beam and role assignment | Verified | Party-safe deterministic 5v5 formation, preference scoring, Beam comparison metrics and tests |
 | FR-QUALITY-001..005 five scores, weights, threshold, reasons | Verified | MatchPolicy validation, quality engine, worker threshold and tests |
 | FR-EXPAND-001 rating expansion | Verified | Time-based bounded rating range and tests |
-| FR-EXPAND-002 latency expansion | Pending | A hard maximum exists, but there is no time-based admissible-latency curve yet |
-| FR-EXPAND-003 role relaxation | Partial | First/second preferences are scored and non-preferred roles are possible, but waiting time does not yet alter the preference penalty |
+| FR-EXPAND-002 latency expansion | Verified | Anchor wait time expands the admissible latency from a strict initial value to an immutable hard maximum; decision-reason and boundary tests exist |
+| FR-EXPAND-003 role relaxation | Verified | Non-preferred-role score remains zero until a policy delay, then increases by wait time to a configured cap; assignment tests cover early, relaxed and capped states |
 | FR-EXPAND-004 immutable hard constraints | Partial | Version, active Ticket and party integrity are hard constraints; explicit banned-player state is not modeled |
 | FR-RESERVE-001..005 atomic reservation/recovery/uniqueness | Verified | Memory, PostgreSQL and Redis all-or-nothing paths, TTL recovery and concurrent worker tests |
 | FR-MATCH-001,003..005 lifecycle, rollback, connection | Verified | Match state machine, allocation rollback, address/token and persistence tests |
@@ -44,10 +44,9 @@ an automated check exist. Planned items are not counted as complete.
 
 ## Next acceptance order
 
-1. Implement bounded latency/role relaxation without weakening hard constraints.
-2. Add capacity-aware multi-region allocation and an Agones-compatible adapter.
-3. Propagate Trace ID through internal gRPC calls and structured logs.
-4. Decide and implement the documented Glicko option without changing ranked
+1. Add capacity-aware multi-region allocation and an Agones-compatible adapter.
+2. Propagate Trace ID through internal gRPC calls and structured logs.
+3. Decide and implement the documented Glicko option without changing ranked
    Elo compatibility.
-5. Run the full local demo and environment-gated PostgreSQL/Redis/load gates,
+4. Run the full local demo and environment-gated PostgreSQL/Redis/load gates,
    preserving raw results before declaring the project complete.

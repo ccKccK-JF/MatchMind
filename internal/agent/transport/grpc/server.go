@@ -202,7 +202,11 @@ func policyToProto(policy matchdomain.MatchPolicy) *matchmakingv1.MatchPolicyDef
 		PartyWeight: policy.PartyWeight, WaitWeight: policy.WaitWeight,
 		InitialRatingRange: policy.InitialRatingRange, MaxRatingRange: policy.MaxRatingRange,
 		RatingExpansionPerSecond: policy.RatingExpansionPerSecond, MaxLatencyMs: int32(policy.MaxLatencyMS),
-		MinQualityScore: policy.MinQualityScore, ReservationTtlMs: policy.ReservationTTL.Milliseconds(),
+		InitialLatencyMs: int32(policy.InitialLatencyMS), LatencyExpansionPerSecond: policy.LatencyExpansionPerSecond,
+		RoleRelaxationAfterMs:    policy.RoleRelaxationAfter.Milliseconds(),
+		RoleRelaxationPerSecond:  policy.RoleRelaxationPerSecond,
+		MaxNonPreferredRoleScore: policy.MaxNonPreferredRoleScore,
+		MinQualityScore:          policy.MinQualityScore, ReservationTtlMs: policy.ReservationTTL.Milliseconds(),
 		TicketTtlMs: policy.TicketTTL.Milliseconds(),
 	}
 }

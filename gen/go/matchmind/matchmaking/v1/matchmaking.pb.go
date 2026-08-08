@@ -2038,26 +2038,31 @@ func (x *ReplayHistoricalMatchRequest) GetCandidatePolicies() []*MatchPolicyDefi
 }
 
 type MatchPolicyDefinition struct {
-	state                    protoimpl.MessageState `protogen:"open.v1"`
-	Version                  string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	TeamSize                 int32                  `protobuf:"varint,2,opt,name=team_size,json=teamSize,proto3" json:"team_size,omitempty"`
-	CandidateLimit           int32                  `protobuf:"varint,3,opt,name=candidate_limit,json=candidateLimit,proto3" json:"candidate_limit,omitempty"`
-	TeamAlgorithm            string                 `protobuf:"bytes,4,opt,name=team_algorithm,json=teamAlgorithm,proto3" json:"team_algorithm,omitempty"`
-	BeamWidth                int32                  `protobuf:"varint,5,opt,name=beam_width,json=beamWidth,proto3" json:"beam_width,omitempty"`
-	SkillWeight              float64                `protobuf:"fixed64,6,opt,name=skill_weight,json=skillWeight,proto3" json:"skill_weight,omitempty"`
-	RoleWeight               float64                `protobuf:"fixed64,7,opt,name=role_weight,json=roleWeight,proto3" json:"role_weight,omitempty"`
-	LatencyWeight            float64                `protobuf:"fixed64,8,opt,name=latency_weight,json=latencyWeight,proto3" json:"latency_weight,omitempty"`
-	PartyWeight              float64                `protobuf:"fixed64,9,opt,name=party_weight,json=partyWeight,proto3" json:"party_weight,omitempty"`
-	WaitWeight               float64                `protobuf:"fixed64,10,opt,name=wait_weight,json=waitWeight,proto3" json:"wait_weight,omitempty"`
-	InitialRatingRange       float64                `protobuf:"fixed64,11,opt,name=initial_rating_range,json=initialRatingRange,proto3" json:"initial_rating_range,omitempty"`
-	MaxRatingRange           float64                `protobuf:"fixed64,12,opt,name=max_rating_range,json=maxRatingRange,proto3" json:"max_rating_range,omitempty"`
-	RatingExpansionPerSecond float64                `protobuf:"fixed64,13,opt,name=rating_expansion_per_second,json=ratingExpansionPerSecond,proto3" json:"rating_expansion_per_second,omitempty"`
-	MaxLatencyMs             int32                  `protobuf:"varint,14,opt,name=max_latency_ms,json=maxLatencyMs,proto3" json:"max_latency_ms,omitempty"`
-	MinQualityScore          float64                `protobuf:"fixed64,15,opt,name=min_quality_score,json=minQualityScore,proto3" json:"min_quality_score,omitempty"`
-	ReservationTtlMs         int64                  `protobuf:"varint,16,opt,name=reservation_ttl_ms,json=reservationTtlMs,proto3" json:"reservation_ttl_ms,omitempty"`
-	TicketTtlMs              int64                  `protobuf:"varint,17,opt,name=ticket_ttl_ms,json=ticketTtlMs,proto3" json:"ticket_ttl_ms,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Version                   string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	TeamSize                  int32                  `protobuf:"varint,2,opt,name=team_size,json=teamSize,proto3" json:"team_size,omitempty"`
+	CandidateLimit            int32                  `protobuf:"varint,3,opt,name=candidate_limit,json=candidateLimit,proto3" json:"candidate_limit,omitempty"`
+	TeamAlgorithm             string                 `protobuf:"bytes,4,opt,name=team_algorithm,json=teamAlgorithm,proto3" json:"team_algorithm,omitempty"`
+	BeamWidth                 int32                  `protobuf:"varint,5,opt,name=beam_width,json=beamWidth,proto3" json:"beam_width,omitempty"`
+	SkillWeight               float64                `protobuf:"fixed64,6,opt,name=skill_weight,json=skillWeight,proto3" json:"skill_weight,omitempty"`
+	RoleWeight                float64                `protobuf:"fixed64,7,opt,name=role_weight,json=roleWeight,proto3" json:"role_weight,omitempty"`
+	LatencyWeight             float64                `protobuf:"fixed64,8,opt,name=latency_weight,json=latencyWeight,proto3" json:"latency_weight,omitempty"`
+	PartyWeight               float64                `protobuf:"fixed64,9,opt,name=party_weight,json=partyWeight,proto3" json:"party_weight,omitempty"`
+	WaitWeight                float64                `protobuf:"fixed64,10,opt,name=wait_weight,json=waitWeight,proto3" json:"wait_weight,omitempty"`
+	InitialRatingRange        float64                `protobuf:"fixed64,11,opt,name=initial_rating_range,json=initialRatingRange,proto3" json:"initial_rating_range,omitempty"`
+	MaxRatingRange            float64                `protobuf:"fixed64,12,opt,name=max_rating_range,json=maxRatingRange,proto3" json:"max_rating_range,omitempty"`
+	RatingExpansionPerSecond  float64                `protobuf:"fixed64,13,opt,name=rating_expansion_per_second,json=ratingExpansionPerSecond,proto3" json:"rating_expansion_per_second,omitempty"`
+	MaxLatencyMs              int32                  `protobuf:"varint,14,opt,name=max_latency_ms,json=maxLatencyMs,proto3" json:"max_latency_ms,omitempty"`
+	MinQualityScore           float64                `protobuf:"fixed64,15,opt,name=min_quality_score,json=minQualityScore,proto3" json:"min_quality_score,omitempty"`
+	ReservationTtlMs          int64                  `protobuf:"varint,16,opt,name=reservation_ttl_ms,json=reservationTtlMs,proto3" json:"reservation_ttl_ms,omitempty"`
+	TicketTtlMs               int64                  `protobuf:"varint,17,opt,name=ticket_ttl_ms,json=ticketTtlMs,proto3" json:"ticket_ttl_ms,omitempty"`
+	InitialLatencyMs          int32                  `protobuf:"varint,18,opt,name=initial_latency_ms,json=initialLatencyMs,proto3" json:"initial_latency_ms,omitempty"`
+	LatencyExpansionPerSecond float64                `protobuf:"fixed64,19,opt,name=latency_expansion_per_second,json=latencyExpansionPerSecond,proto3" json:"latency_expansion_per_second,omitempty"`
+	RoleRelaxationAfterMs     int64                  `protobuf:"varint,20,opt,name=role_relaxation_after_ms,json=roleRelaxationAfterMs,proto3" json:"role_relaxation_after_ms,omitempty"`
+	RoleRelaxationPerSecond   float64                `protobuf:"fixed64,21,opt,name=role_relaxation_per_second,json=roleRelaxationPerSecond,proto3" json:"role_relaxation_per_second,omitempty"`
+	MaxNonPreferredRoleScore  float64                `protobuf:"fixed64,22,opt,name=max_non_preferred_role_score,json=maxNonPreferredRoleScore,proto3" json:"max_non_preferred_role_score,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *MatchPolicyDefinition) Reset() {
@@ -2205,6 +2210,41 @@ func (x *MatchPolicyDefinition) GetReservationTtlMs() int64 {
 func (x *MatchPolicyDefinition) GetTicketTtlMs() int64 {
 	if x != nil {
 		return x.TicketTtlMs
+	}
+	return 0
+}
+
+func (x *MatchPolicyDefinition) GetInitialLatencyMs() int32 {
+	if x != nil {
+		return x.InitialLatencyMs
+	}
+	return 0
+}
+
+func (x *MatchPolicyDefinition) GetLatencyExpansionPerSecond() float64 {
+	if x != nil {
+		return x.LatencyExpansionPerSecond
+	}
+	return 0
+}
+
+func (x *MatchPolicyDefinition) GetRoleRelaxationAfterMs() int64 {
+	if x != nil {
+		return x.RoleRelaxationAfterMs
+	}
+	return 0
+}
+
+func (x *MatchPolicyDefinition) GetRoleRelaxationPerSecond() float64 {
+	if x != nil {
+		return x.RoleRelaxationPerSecond
+	}
+	return 0
+}
+
+func (x *MatchPolicyDefinition) GetMaxNonPreferredRoleScore() float64 {
+	if x != nil {
+		return x.MaxNonPreferredRoleScore
 	}
 	return 0
 }
@@ -3174,7 +3214,7 @@ const file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc = "" +
 	"\x0fpolicy_versions\x18\x02 \x03(\tR\x0epolicyVersions\x12\x1d\n" +
 	"\n" +
 	"ticket_ids\x18\x03 \x03(\tR\tticketIds\x12^\n" +
-	"\x12candidate_policies\x18\x04 \x03(\v2/.matchmind.matchmaking.v1.MatchPolicyDefinitionR\x11candidatePolicies\"\xab\x05\n" +
+	"\x12candidate_policies\x18\x04 \x03(\v2/.matchmind.matchmaking.v1.MatchPolicyDefinitionR\x11candidatePolicies\"\xd0\a\n" +
 	"\x15MatchPolicyDefinition\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x1b\n" +
 	"\tteam_size\x18\x02 \x01(\x05R\bteamSize\x12'\n" +
@@ -3196,7 +3236,12 @@ const file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc = "" +
 	"\x0emax_latency_ms\x18\x0e \x01(\x05R\fmaxLatencyMs\x12*\n" +
 	"\x11min_quality_score\x18\x0f \x01(\x01R\x0fminQualityScore\x12,\n" +
 	"\x12reservation_ttl_ms\x18\x10 \x01(\x03R\x10reservationTtlMs\x12\"\n" +
-	"\rticket_ttl_ms\x18\x11 \x01(\x03R\vticketTtlMs\"\x92\x01\n" +
+	"\rticket_ttl_ms\x18\x11 \x01(\x03R\vticketTtlMs\x12,\n" +
+	"\x12initial_latency_ms\x18\x12 \x01(\x05R\x10initialLatencyMs\x12?\n" +
+	"\x1clatency_expansion_per_second\x18\x13 \x01(\x01R\x19latencyExpansionPerSecond\x127\n" +
+	"\x18role_relaxation_after_ms\x18\x14 \x01(\x03R\x15roleRelaxationAfterMs\x12;\n" +
+	"\x1arole_relaxation_per_second\x18\x15 \x01(\x01R\x17roleRelaxationPerSecond\x12>\n" +
+	"\x1cmax_non_preferred_role_score\x18\x16 \x01(\x01R\x18maxNonPreferredRoleScore\"\x92\x01\n" +
 	"\n" +
 	"ReplayTeam\x12>\n" +
 	"\aplayers\x18\x01 \x03(\v2$.matchmind.matchmaking.v1.TeamPlayerR\aplayers\x12%\n" +

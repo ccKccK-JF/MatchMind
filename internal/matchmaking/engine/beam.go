@@ -48,7 +48,7 @@ func OptimizeTeams(
 		return TeamFormation{}, MatchQuality{}, diagnostics, err
 	}
 	if policy.TeamAlgorithm == domain.TeamAlgorithmGreedy {
-		formation, err := formTeamsGreedy(candidates, policy)
+		formation, err := formTeamsGreedy(candidates, policy, now)
 		if err != nil {
 			return TeamFormation{}, MatchQuality{}, diagnostics, err
 		}
@@ -74,7 +74,7 @@ func OptimizeTeams(
 		if team, exists := teamCache[key]; exists {
 			return cloneTeam(team), nil
 		}
-		team, err := buildAssignedTeam(flattenGroups(groups), policy.TeamSize)
+		team, err := buildAssignedTeam(flattenGroups(groups), policy.TeamSize, now, policy)
 		if err != nil {
 			return Team{}, err
 		}

@@ -306,10 +306,15 @@ func policyFromProto(definition *matchmakingv1.MatchPolicyDefinition) (domain.Ma
 		RoleWeight: definition.GetRoleWeight(), LatencyWeight: definition.GetLatencyWeight(),
 		PartyWeight: definition.GetPartyWeight(), WaitWeight: definition.GetWaitWeight(),
 		InitialRatingRange: definition.GetInitialRatingRange(), MaxRatingRange: definition.GetMaxRatingRange(),
-		RatingExpansionPerSecond: definition.GetRatingExpansionPerSecond(), MaxLatencyMS: int(definition.GetMaxLatencyMs()),
-		MinQualityScore: definition.GetMinQualityScore(),
-		ReservationTTL:  time.Duration(definition.GetReservationTtlMs()) * time.Millisecond,
-		TicketTTL:       time.Duration(definition.GetTicketTtlMs()) * time.Millisecond,
+		RatingExpansionPerSecond: definition.GetRatingExpansionPerSecond(),
+		InitialLatencyMS:         int(definition.GetInitialLatencyMs()), MaxLatencyMS: int(definition.GetMaxLatencyMs()),
+		LatencyExpansionPerSecond: definition.GetLatencyExpansionPerSecond(),
+		RoleRelaxationAfter:       time.Duration(definition.GetRoleRelaxationAfterMs()) * time.Millisecond,
+		RoleRelaxationPerSecond:   definition.GetRoleRelaxationPerSecond(),
+		MaxNonPreferredRoleScore:  definition.GetMaxNonPreferredRoleScore(),
+		MinQualityScore:           definition.GetMinQualityScore(),
+		ReservationTTL:            time.Duration(definition.GetReservationTtlMs()) * time.Millisecond,
+		TicketTTL:                 time.Duration(definition.GetTicketTtlMs()) * time.Millisecond,
 	}
 	if err := policy.Validate(); err != nil {
 		return domain.MatchPolicy{}, err
@@ -325,7 +330,11 @@ func policyToProto(policy domain.MatchPolicy) *matchmakingv1.MatchPolicyDefiniti
 		PartyWeight: policy.PartyWeight, WaitWeight: policy.WaitWeight,
 		InitialRatingRange: policy.InitialRatingRange, MaxRatingRange: policy.MaxRatingRange,
 		RatingExpansionPerSecond: policy.RatingExpansionPerSecond, MaxLatencyMs: int32(policy.MaxLatencyMS),
-		MinQualityScore: policy.MinQualityScore, ReservationTtlMs: policy.ReservationTTL.Milliseconds(),
+		InitialLatencyMs: int32(policy.InitialLatencyMS), LatencyExpansionPerSecond: policy.LatencyExpansionPerSecond,
+		RoleRelaxationAfterMs:    policy.RoleRelaxationAfter.Milliseconds(),
+		RoleRelaxationPerSecond:  policy.RoleRelaxationPerSecond,
+		MaxNonPreferredRoleScore: policy.MaxNonPreferredRoleScore,
+		MinQualityScore:          policy.MinQualityScore, ReservationTtlMs: policy.ReservationTTL.Milliseconds(),
 		TicketTtlMs: policy.TicketTTL.Milliseconds(),
 	}
 }

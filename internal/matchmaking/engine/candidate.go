@@ -22,10 +22,11 @@ type CandidateDecision struct {
 }
 
 type CandidateResult struct {
-	Anchor      *domain.MatchTicket
-	Tickets     []*domain.MatchTicket
-	Decisions   []CandidateDecision
-	RatingRange float64
+	Anchor              *domain.MatchTicket
+	Tickets             []*domain.MatchTicket
+	Decisions           []CandidateDecision
+	RatingRange         float64
+	AdmissibleLatencyMS int
 }
 
 type ticketGroup struct {
@@ -43,10 +44,11 @@ func GenerateCandidates(tickets []*domain.MatchTicket, now time.Time, policy dom
 		return CandidateResult{}, ErrNoQueuedTickets
 	}
 	ratingRange := policy.RatingRange(now.Sub(anchor.CreatedAt()))
+	latencyLimit := policy.LatencyLimit(now.Sub(anchor.CreatedAt()))
 	groups := groupTickets(ordered)
 	moveAnchorGroupFirst(groups, anchor)
 
-	result := CandidateResult{Anchor: anchor.Clone(), RatingRange: ratingRange}
+	result := CandidateResult{Anchor: anchor.Clone(), RatingRange: ratingRange, AdmissibleLatencyMS: latencyLimit}
 	decisions := make(map[string]CandidateDecision, len(ordered))
 	seenPlayers := make(map[string]string, len(ordered))
 	for _, ticket := range ordered {
@@ -63,7 +65,7 @@ func GenerateCandidates(tickets []*domain.MatchTicket, now time.Time, policy dom
 	}
 
 	for _, group := range groups {
-		reason := groupRejectionReason(group, anchor, ratingRange, decisions)
+		reason := groupRejectionReason(group, anchor, ratingRange, latencyLimit, policy.MaxLatencyMS, decisions)
 		if reason == "" && len(result.Tickets)+len(group.tickets) > policy.CandidateLimit {
 			reason = "candidate_limit"
 		}
@@ -95,12 +97,15 @@ func groupRejectionReason(
 	group ticketGroup,
 	anchor *domain.MatchTicket,
 	ratingRange float64,
+	latencyLimit int,
+	maxLatencyMS int,
 	decisions map[string]CandidateDecision,
 ) string {
 	for _, ticket := range group.tickets {
 		if decision, exists := decisions[ticket.ID()]; exists && !decision.Accepted {
 			return decision.Reason
 		}
+		latency, hasLatency := ticket.RegionLatency()[anchor.Region()]
 		switch {
 		case ticket.Mode() != anchor.Mode():
 			return "mode_mismatch"
@@ -108,6 +113,12 @@ func groupRejectionReason(
 			return "client_version_mismatch"
 		case ticket.Region() != anchor.Region():
 			return "region_mismatch"
+		case !hasLatency:
+			return "latency_missing"
+		case latency > maxLatencyMS:
+			return "latency_hard_limit"
+		case latency > latencyLimit:
+			return "latency_outside_window"
 		case math.Abs(ticket.Rating()-anchor.Rating()) > ratingRange:
 			return "rating_outside_window"
 		}

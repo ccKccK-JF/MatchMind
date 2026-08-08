@@ -70,6 +70,45 @@ func TestFormTeamsKeepsPartiesTogether(t *testing.T) {
 	}
 }
 
+func TestBuildAssignedTeamRelaxesNonPreferredRolesAfterWaiting(t *testing.T) {
+	createdAt := time.Date(2026, time.August, 1, 12, 0, 0, 0, time.UTC)
+	policy := domain.DefaultPolicy()
+	policy.RoleRelaxationAfter = time.Minute
+	policy.RoleRelaxationPerSecond = 1
+	policy.MaxNonPreferredRoleScore = 40
+	tickets := make([]*domain.MatchTicket, 0, 5)
+	for index := range 5 {
+		tickets = append(tickets, engineTicketWithRoles(
+			t, fmt.Sprintf("ticket-%02d", index), fmt.Sprintf("player-%02d", index), "", 1500,
+			[]domain.Role{domain.RoleCore}, createdAt,
+		))
+	}
+
+	early, err := buildAssignedTeam(append([]*domain.MatchTicket(nil), tickets...), 5, createdAt.Add(30*time.Second), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if early.RoleScore != 20 {
+		t.Fatalf("early role score = %.2f, want 20", early.RoleScore)
+	}
+
+	late, err := buildAssignedTeam(append([]*domain.MatchTicket(nil), tickets...), 5, createdAt.Add(90*time.Second), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if late.RoleScore != 44 {
+		t.Fatalf("late role score = %.2f, want 44", late.RoleScore)
+	}
+
+	capped, err := buildAssignedTeam(append([]*domain.MatchTicket(nil), tickets...), 5, createdAt.Add(10*time.Minute), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if capped.RoleScore != 52 {
+		t.Fatalf("capped role score = %.2f, want 52", capped.RoleScore)
+	}
+}
+
 func assertEveryRoleOnce(t *testing.T, team Team) {
 	t.Helper()
 	seen := make(map[domain.Role]int)

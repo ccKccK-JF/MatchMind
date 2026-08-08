@@ -59,6 +59,44 @@ func TestGenerateCandidatesDoesNotSplitParty(t *testing.T) {
 	}
 }
 
+func TestGenerateCandidatesExpandsLatencyWindowWithoutExceedingHardLimit(t *testing.T) {
+	createdAt := time.Date(2026, time.August, 1, 12, 0, 0, 0, time.UTC)
+	policy := domain.DefaultPolicy()
+	policy.InitialLatencyMS = 100
+	policy.LatencyExpansionPerSecond = 2
+	policy.MaxLatencyMS = 250
+	tickets := []*domain.MatchTicket{
+		engineTicketWithLatency(t, "anchor", "player-1", 30, createdAt),
+		engineTicketWithLatency(t, "expands", "player-2", 180, createdAt.Add(time.Second)),
+		engineTicketWithLatency(t, "hard-limit", "player-3", 260, createdAt.Add(2*time.Second)),
+	}
+
+	early, err := GenerateCandidates(tickets, createdAt.Add(10*time.Second), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if early.AdmissibleLatencyMS != 120 {
+		t.Fatalf("early latency limit = %d, want 120", early.AdmissibleLatencyMS)
+	}
+	if reasonFor(early.Decisions, "expands") != "latency_outside_window" {
+		t.Fatalf("early expands reason = %q", reasonFor(early.Decisions, "expands"))
+	}
+	if reasonFor(early.Decisions, "hard-limit") != "latency_hard_limit" {
+		t.Fatalf("early hard-limit reason = %q", reasonFor(early.Decisions, "hard-limit"))
+	}
+
+	late, err := GenerateCandidates(tickets, createdAt.Add(40*time.Second), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if late.AdmissibleLatencyMS != 180 || reasonFor(late.Decisions, "expands") != "accepted" {
+		t.Fatalf("late limit/reason = %d/%q, want 180/accepted", late.AdmissibleLatencyMS, reasonFor(late.Decisions, "expands"))
+	}
+	if reasonFor(late.Decisions, "hard-limit") != "latency_hard_limit" {
+		t.Fatalf("late hard-limit reason = %q", reasonFor(late.Decisions, "hard-limit"))
+	}
+}
+
 func reasonFor(decisions []CandidateDecision, ticketID string) string {
 	for _, decision := range decisions {
 		if decision.TicketID == ticketID {
@@ -87,6 +125,22 @@ func engineTicket(t *testing.T, ticketID, playerID, partyID string, rating float
 	}
 	if err := ticket.Queue(createdAt); err != nil {
 		t.Fatalf("Queue(%s) error = %v", ticketID, err)
+	}
+	return ticket
+}
+
+func engineTicketWithLatency(t *testing.T, ticketID, playerID string, latency int, createdAt time.Time) *domain.MatchTicket {
+	t.Helper()
+	ticket, err := domain.NewTicket(domain.NewTicketParams{
+		ID: ticketID, PlayerID: playerID, Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		Region: "hongkong", Rating: 1500, PreferredRoles: []domain.Role{domain.RoleCore},
+		RegionLatency: map[string]int{"hongkong": latency}, CreatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ticket.Queue(createdAt); err != nil {
+		t.Fatal(err)
 	}
 	return ticket
 }

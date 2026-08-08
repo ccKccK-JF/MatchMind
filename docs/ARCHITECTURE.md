@@ -39,11 +39,13 @@ player-service  matchmaking-service  simulation-service  agent-service
 1. The player service validates and stores a player profile.
 2. The matchmaking service creates an idempotent Ticket and places it in a
    pool partitioned by mode, client version, and region.
-3. One or more workers select candidates using dynamic rating windows.
+3. One or more workers select candidates using bounded, wait-driven rating and
+   latency windows. The hard latency cap is never relaxed.
 4. A policy selector chooses greedy or Beam Search formation. A/B mode hashes
    a stable player key, experiment salt, and experiment ID into a deterministic
    control/treatment bucket. Both algorithms keep parties intact, assign five
-   unique players per side, and cover all five roles.
+   unique players per side, and cover all five roles. Non-preferred-role scores
+   begin increasing only after a configured wait and stop at a policy cap.
 5. Quality scoring combines skill, roles, latency, party symmetry, and wait
    time. A low-quality candidate is rejected with reasons.
 6. All ten Tickets are atomically reserved. A Match is created only after the

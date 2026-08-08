@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 )
@@ -34,14 +35,15 @@ type TeamFormation struct {
 }
 
 func FormTeams(candidates CandidateResult, policy domain.MatchPolicy) (TeamFormation, error) {
+	now := candidateReferenceTime(candidates)
 	if policy.TeamAlgorithm == domain.TeamAlgorithmBeam {
-		formation, _, _, err := OptimizeTeams(candidates, candidateRegion(candidates), candidateReferenceTime(candidates), policy)
+		formation, _, _, err := OptimizeTeams(candidates, candidateRegion(candidates), now, policy)
 		return formation, err
 	}
-	return formTeamsGreedy(candidates, policy)
+	return formTeamsGreedy(candidates, policy, now)
 }
 
-func formTeamsGreedy(candidates CandidateResult, policy domain.MatchPolicy) (TeamFormation, error) {
+func formTeamsGreedy(candidates CandidateResult, policy domain.MatchPolicy, now time.Time) (TeamFormation, error) {
 	if err := policy.Validate(); err != nil {
 		return TeamFormation{}, err
 	}
@@ -56,11 +58,11 @@ func formTeamsGreedy(candidates CandidateResult, policy domain.MatchPolicy) (Tea
 	if err != nil {
 		return TeamFormation{}, err
 	}
-	teamA, err := buildAssignedTeam(flattenGroups(teamAGroups), policy.TeamSize)
+	teamA, err := buildAssignedTeam(flattenGroups(teamAGroups), policy.TeamSize, now, policy)
 	if err != nil {
 		return TeamFormation{}, err
 	}
-	teamB, err := buildAssignedTeam(flattenGroups(teamBGroups), policy.TeamSize)
+	teamB, err := buildAssignedTeam(flattenGroups(teamBGroups), policy.TeamSize, now, policy)
 	if err != nil {
 		return TeamFormation{}, err
 	}
@@ -155,7 +157,7 @@ func balancedPartition(groups []ticketGroup, teamSize int) ([]ticketGroup, []tic
 	return bestA, bestB, nil
 }
 
-func buildAssignedTeam(tickets []*domain.MatchTicket, teamSize int) (Team, error) {
+func buildAssignedTeam(tickets []*domain.MatchTicket, teamSize int, now time.Time, policy domain.MatchPolicy) (Team, error) {
 	if len(tickets) != teamSize || teamSize != len(canonicalRoles) {
 		return Team{}, ErrNoValidTeamSplit
 	}
@@ -166,7 +168,7 @@ func buildAssignedTeam(tickets []*domain.MatchTicket, teamSize int) (Team, error
 	permuteRoles(append([]domain.Role(nil), canonicalRoles...), 0, func(roles []domain.Role) {
 		var score float64
 		for index, ticket := range tickets {
-			score += rolePreferenceScore(ticket.PreferredRoles(), roles[index])
+			score += rolePreferenceScore(ticket, roles[index], now, policy)
 		}
 		if score > bestScore {
 			bestScore = score
@@ -177,7 +179,7 @@ func buildAssignedTeam(tickets []*domain.MatchTicket, teamSize int) (Team, error
 	team := Team{Players: make([]AssignedPlayer, 0, teamSize)}
 	for index, ticket := range tickets {
 		team.AverageRating += ticket.Rating()
-		score := rolePreferenceScore(ticket.PreferredRoles(), bestRoles[index])
+		score := rolePreferenceScore(ticket, bestRoles[index], now, policy)
 		team.RoleScore += score
 		team.Players = append(team.Players, AssignedPlayer{
 			Ticket:          ticket.Clone(),
@@ -202,8 +204,8 @@ func permuteRoles(roles []domain.Role, index int, visit func([]domain.Role)) {
 	}
 }
 
-func rolePreferenceScore(preferences []domain.Role, assigned domain.Role) float64 {
-	for index, preferred := range preferences {
+func rolePreferenceScore(ticket *domain.MatchTicket, assigned domain.Role, now time.Time, policy domain.MatchPolicy) float64 {
+	for index, preferred := range ticket.PreferredRoles() {
 		if preferred != assigned {
 			continue
 		}
@@ -216,7 +218,7 @@ func rolePreferenceScore(preferences []domain.Role, assigned domain.Role) float6
 			return 50
 		}
 	}
-	return 0
+	return policy.NonPreferredRoleScore(now.Sub(ticket.CreatedAt()))
 }
 
 func flattenGroups(groups []ticketGroup) []*domain.MatchTicket {
