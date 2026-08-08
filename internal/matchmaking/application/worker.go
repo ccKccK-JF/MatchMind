@@ -27,6 +27,10 @@ type MatchAssignmentCoordinator interface {
 	AssignReservedTickets(ctx context.Context, reservationID string, match *domain.Match, now time.Time) error
 }
 
+type AssignmentFinalizer interface {
+	FinalizeAssignment(ctx context.Context, reservationID, matchID string, now time.Time) error
+}
+
 type Allocation struct {
 	Address string
 	Token   string
@@ -241,6 +245,11 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 			w.failStoredMatch(ctx, match.ID(), now)
 			_ = w.queue.ReleaseAll(ctx, reservationID, now)
 			return nil, err
+		}
+		if finalizer, ok := w.queue.(AssignmentFinalizer); ok {
+			if err := finalizer.FinalizeAssignment(ctx, reservationID, match.ID(), now); err != nil {
+				slog.Warn("durable Match assignment committed but queue finalization failed", "error", err, "match_id", match.ID())
+			}
 		}
 	} else {
 		if _, err := w.queue.AssignAll(ctx, reservationID, match.ID(), now); err != nil {

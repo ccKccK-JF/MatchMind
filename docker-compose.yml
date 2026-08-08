@@ -24,6 +24,19 @@ services:
       retries: 20
       start_period: 5s
 
+  redis:
+    image: redis:8.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    networks:
+      - matchmind
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
   migrate:
     build:
       context: .
@@ -70,12 +83,16 @@ services:
       MATCHMAKING_GRPC_ADDRESS: ":50052"
       MATCHMAKING_HTTP_ADDRESS: ":8082"
       MATCHMAKING_WORKER_COUNT: "10"
-      MATCHMAKING_TICKET_STORAGE_BACKEND: "postgres"
+      MATCHMAKING_TICKET_STORAGE_BACKEND: "redis"
       MATCHMAKING_MATCH_STORAGE_BACKEND: "postgres"
       POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
+      REDIS_ADDRESS: "redis:6379"
+      REDIS_KEY_PREFIX: "matchmind"
       PLAYER_GRPC_TARGET: "player:50051"
     depends_on:
       player:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8082:8082"

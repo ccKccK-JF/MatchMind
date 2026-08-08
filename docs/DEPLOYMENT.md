@@ -33,7 +33,8 @@ Invoke-RestMethod http://localhost:8080/ready
 ```
 
 The Compose stack runs PostgreSQL migrations, a PostgreSQL-backed Player
-service, ten matching workers, and Prometheus. Public endpoints:
+service, Redis-backed active matchmaking queues, ten matching workers, and
+Prometheus. Public endpoints:
 
 - API: `http://localhost:8080`
 - matchmaking metrics: `http://localhost:8082/metrics`

@@ -26,6 +26,17 @@ recovery, optimistic revision conflicts, and transactional Match/Ticket
 assignment. The in-memory and PostgreSQL flows also verify that players cannot
 requeue during an assigned Match but can create a new Ticket after it finishes.
 
+With a real Redis instance, enable the Lua reservation/recovery test:
+
+```powershell
+$env:MATCHMIND_REDIS_TEST_ADDRESS = "localhost:6379"
+go test -count=1 .\tests\integration -run Redis
+```
+
+Fast tests run the same Lua scripts against an isolated in-process Redis
+implementation and inject missing metadata, competing reservations, expired
+reservation sets, durable rejection, and complete Redis data loss.
+
 ## Concurrency and race detection
 
 Concurrency tests explicitly cover:

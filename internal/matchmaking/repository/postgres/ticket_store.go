@@ -365,6 +365,18 @@ func (s *TicketStore) CompleteAssignedTickets(ctx context.Context, matchID strin
 	return nil
 }
 
+func (s *TicketStore) ActiveTickets(ctx context.Context) ([]*domain.MatchTicket, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+ticketColumns+` FROM tickets
+		WHERE active AND state IN ('QUEUED', 'RESERVED')
+		ORDER BY created_at, id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list active tickets: %w", err)
+	}
+	return scanTickets(rows)
+}
+
 func getTicketTx(ctx context.Context, tx pgx.Tx, ticketID string, lock bool) (*domain.MatchTicket, error) {
 	query := `SELECT ` + ticketColumns + ` FROM tickets WHERE id = $1`
 	if lock {

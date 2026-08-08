@@ -308,6 +308,27 @@ func (s *TicketStore) CompleteAssignedTickets(ctx context.Context, matchID strin
 	return nil
 }
 
+func (s *TicketStore) ActiveTickets(ctx context.Context) ([]*domain.MatchTicket, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]*domain.MatchTicket, 0)
+	for _, ticket := range s.tickets {
+		if ticket.State() == domain.TicketStateQueued || ticket.State() == domain.TicketStateReserved {
+			result = append(result, ticket.Clone())
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].CreatedAt().Equal(result[j].CreatedAt()) {
+			return result[i].ID() < result[j].ID()
+		}
+		return result[i].CreatedAt().Before(result[j].CreatedAt())
+	})
+	return result, nil
+}
+
 func (s *TicketStore) RecoverExpiredReservations(ctx context.Context, now time.Time) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err

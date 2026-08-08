@@ -2,10 +2,9 @@
 
 The local process demo uses concurrency-safe memory repositories by default.
 Player/rating history can run on PostgreSQL through
-`PLAYER_STORAGE_BACKEND=postgres`. Ticket and Match persistence are selected
-with `MATCHMAKING_TICKET_STORAGE_BACKEND=postgres` and
-`MATCHMAKING_MATCH_STORAGE_BACKEND=postgres`. Redis remains the next
-persistence increment.
+`PLAYER_STORAGE_BACKEND=postgres`. `MATCHMAKING_TICKET_STORAGE_BACKEND=redis`
+selects the PostgreSQL-durable/Redis-coordinated Ticket adapter, while
+`MATCHMAKING_MATCH_STORAGE_BACKEND=postgres` stores Matches durably.
 
 ## PostgreSQL ownership
 
@@ -51,6 +50,9 @@ or change nothing. PostgreSQL remains the durable source of truth. At startup,
 the service rebuilds missing Redis queue entries from active PostgreSQL
 Tickets and reconciles expired reservations.
 
-PostgreSQL is now the durable correctness path for Player, Ticket, Match, and
-Elo state. Redis acceleration and startup reconciliation are still being
-implemented, so complete distributed recovery is not claimed yet.
+PostgreSQL is the durable correctness path for Player, Ticket, Match, and Elo
+state. Redis is disposable coordination state: reservation scripts validate
+all Ticket metadata before the first write, retries with the same reservation
+are idempotent, and PostgreSQL rejection rolls the Redis reservation back. A
+startup pass recovers expired PostgreSQL reservations and recreates missing
+queued/reserved Redis entries.

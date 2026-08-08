@@ -56,6 +56,7 @@ or none. The active-player index prevents a player from owning two active
 Tickets. Multiple workers may share the same stores; only one can reserve a
 given batch.
 
-The production persistence milestone keeps these application interfaces while
-replacing memory repositories with PostgreSQL transactions and Redis Lua
-scripts.
+The production persistence adapter keeps these application interfaces while
+combining PostgreSQL transactions with Redis Lua scripts. PostgreSQL owns
+durable state; Redis owns rebuildable queue order, snapshots, reservations,
+and expiry indexes.

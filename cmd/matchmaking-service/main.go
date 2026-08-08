@@ -18,12 +18,14 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/observability"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/memory"
 	matchpostgres "github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/postgres"
+	matchredis "github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/redis"
 	matchmakinggrpc "github.com/ccKccK-JF/MatchMind/internal/matchmaking/transport/grpc"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/grpcserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
+	redisclient "github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -48,9 +50,13 @@ func main() {
 	defer playerConnection.Close()
 
 	ticketBackend := strings.ToLower(config.String("MATCHMAKING_TICKET_STORAGE_BACKEND", "memory"))
-	matchBackend := strings.ToLower(config.String("MATCHMAKING_MATCH_STORAGE_BACKEND", ticketBackend))
+	defaultMatchBackend := ticketBackend
+	if ticketBackend == "redis" {
+		defaultMatchBackend = "postgres"
+	}
+	matchBackend := strings.ToLower(config.String("MATCHMAKING_MATCH_STORAGE_BACKEND", defaultMatchBackend))
 	var postgresPool *pgxpool.Pool
-	if ticketBackend == "postgres" || matchBackend == "postgres" {
+	if ticketBackend == "postgres" || ticketBackend == "redis" || matchBackend == "postgres" {
 		connectContext, cancel := context.WithTimeout(ctx, 5*time.Second)
 		postgresPool, err = pgxpool.New(connectContext, config.String(
 			"POSTGRES_DSN",
@@ -73,6 +79,32 @@ func main() {
 		store = memory.NewTicketStore()
 	case "postgres":
 		store = matchpostgres.NewTicketStore(postgresPool)
+	case "redis":
+		redisDB, redisConfigErr := config.Int("REDIS_DB", 0)
+		if redisConfigErr != nil || redisDB < 0 {
+			slog.Error("invalid Redis database", "error", redisConfigErr, "database", redisDB)
+			os.Exit(1)
+		}
+		client := redisclient.NewClient(&redisclient.Options{
+			Addr:     config.String("REDIS_ADDRESS", "localhost:6379"),
+			Password: config.String("REDIS_PASSWORD", ""),
+			DB:       redisDB,
+		})
+		defer client.Close()
+		queue := matchredis.NewQueue(client, config.String("REDIS_KEY_PREFIX", "matchmind"))
+		redisStore := matchredis.NewStore(matchpostgres.NewTicketStore(postgresPool), queue)
+		rebuildContext, rebuildCancel := context.WithTimeout(ctx, 15*time.Second)
+		rebuild, rebuildErr := redisStore.Rebuild(rebuildContext, time.Now())
+		rebuildCancel()
+		if rebuildErr != nil {
+			slog.Error("rebuild Redis matchmaking queue", "error", rebuildErr)
+			os.Exit(1)
+		}
+		slog.Info("Redis matchmaking queue rebuilt",
+			"restored_tickets", rebuild.RestoredTickets,
+			"recovered_reservations", rebuild.RecoveredReservations,
+		)
+		store = redisStore
 	default:
 		slog.Error("unsupported matchmaking Ticket storage backend", "backend", ticketBackend)
 		os.Exit(1)
