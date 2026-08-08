@@ -13,6 +13,7 @@ import (
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -102,8 +103,10 @@ func (f fakePlayerClient) UpdateRegionLatency(ctx context.Context, request *play
 func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 	registry := platformmetrics.NewRegistry()
 	var captured *matchmakingv1.CreateTicketRequest
-	client := fakeMatchmakingClient{create: func(_ context.Context, request *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error) {
+	var capturedTraceID string
+	client := fakeMatchmakingClient{create: func(ctx context.Context, request *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error) {
 		captured = request
+		capturedTraceID = tracing.FromContext(ctx)
 		return &matchmakingv1.CreateTicketResponse{Ticket: &matchmakingv1.MatchTicket{Id: "ticket-1", State: matchmakingv1.TicketState_TICKET_STATE_QUEUED}}, nil
 	}}
 	server := NewServer(nil, client, nil, NewAPIMetrics(registry))
@@ -113,6 +116,7 @@ func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 	}`))
 	request.Header.Set("Idempotency-Key", "create-1")
 	request.Header.Set("X-Player-ID", "player-1")
+	request.Header.Set(tracing.HeaderName, "client-trace-1")
 	response := httptest.NewRecorder()
 
 	server.ServeHTTP(response, request)
@@ -123,8 +127,8 @@ func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 	if captured == nil || captured.IdempotencyKey != "create-1" || captured.PreferredRoles[0] != playerv1.Role_ROLE_CORE {
 		t.Fatalf("unexpected gRPC request: %+v", captured)
 	}
-	if response.Header().Get("X-Trace-ID") == "" {
-		t.Fatal("missing trace id")
+	if response.Header().Get(tracing.HeaderName) != "client-trace-1" || capturedTraceID != "client-trace-1" {
+		t.Fatalf("response/downstream trace = %q/%q", response.Header().Get(tracing.HeaderName), capturedTraceID)
 	}
 	if !strings.Contains(response.Body.String(), `"id":"ticket-1"`) {
 		t.Fatalf("unexpected body: %s", response.Body.String())

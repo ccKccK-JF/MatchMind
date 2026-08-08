@@ -15,6 +15,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"github.com/ccKccK-JF/MatchMind/internal/simulation/application"
 	simulationdomain "github.com/ccKccK-JF/MatchMind/internal/simulation/domain"
 	matchmakinggateway "github.com/ccKccK-JF/MatchMind/internal/simulation/gateway/matchmakinggrpc"
@@ -33,6 +34,7 @@ func main() {
 	matchmakingConnection, err := grpc.NewClient(
 		config.String("MATCHMAKING_GRPC_TARGET", "localhost:50052"),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		slog.Error("create matchmaking service client", "error", err)
@@ -42,6 +44,7 @@ func main() {
 	playerConnection, err := grpc.NewClient(
 		config.String("PLAYER_GRPC_TARGET", "localhost:50051"),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()),
 	)
 	if err != nil {
 		slog.Error("create player service client", "error", err)

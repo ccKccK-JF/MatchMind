@@ -16,6 +16,9 @@ activation/rollback, and the complete service gRPC flow.
 Player coverage includes normalized regional-latency replacement in memory and
 PostgreSQL, active-Ticket status lookup, and owner enforcement for Ticket
 create/query/cancel operations.
+Trace tests cover untrusted ID replacement, context/metadata preservation,
+multi-hop client/server propagation, gRPC response metadata, correlated JSON
+logs, and a real HTTP-to-Player-gRPC integration path.
 
 Algorithm tests use a crafted candidate pool where Beam Search must improve
 role coverage and total quality over greedy selection. They also verify stable

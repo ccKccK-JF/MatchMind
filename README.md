@@ -66,9 +66,11 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   players entering the queue through match completion, rating history,
   predicted-versus-actual quality analysis, Greedy/Beam historical replay, and
   an audited Agent proposal.
-- `api-service` exposes the required REST routes, trace IDs, JSON error
-  mapping, Ticket owner checks, role-gated Agent operations, health/readiness
-  checks, and Prometheus-format API metrics.
+- `api-service` exposes the required REST routes, end-to-end trace IDs, JSON
+  error mapping, Ticket owner checks, role-gated Agent operations,
+  health/readiness checks, and Prometheus-format API metrics. Shared gRPC
+  interceptors carry each trace through Player, Matchmaking, Simulation, and
+  Agent calls and add correlated method/status/duration records to JSON logs.
 - `matchmaking-service` exposes the required queue, wait, attempt, success,
   failure, quality, reservation-conflict, and worker-duration metrics on
   `:8082`.

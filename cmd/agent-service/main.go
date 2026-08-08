@@ -23,6 +23,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,7 +36,11 @@ func main() {
 	defer stop()
 
 	matchmakingTarget := config.String("MATCHMAKING_GRPC_TARGET", "localhost:50052")
-	matchmakingConnection, err := grpc.NewClient(matchmakingTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	matchmakingConnection, err := grpc.NewClient(
+		matchmakingTarget,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()),
+	)
 	if err != nil {
 		slog.Error("create matchmaking client for Agent", "error", err)
 		os.Exit(1)

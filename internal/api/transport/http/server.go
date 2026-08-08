@@ -15,8 +15,8 @@ import (
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
-	platformid "github.com/ccKccK-JF/MatchMind/internal/platform/id"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -98,12 +98,9 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 	}
 	ctx, cancel := context.WithTimeout(request.Context(), timeout)
 	defer cancel()
+	ctx, traceID := tracing.WithTraceID(ctx, request.Header.Get(tracing.HeaderName))
 	request = request.WithContext(ctx)
-	traceID := strings.TrimSpace(request.Header.Get("X-Trace-ID"))
-	if traceID == "" {
-		traceID, _ = platformid.UUID()
-	}
-	response.Header().Set("X-Trace-ID", traceID)
+	response.Header().Set(tracing.HeaderName, traceID)
 	tracked := &statusWriter{ResponseWriter: response, statusCode: http.StatusOK}
 	if s.metrics != nil {
 		s.metrics.requests.Inc()
@@ -114,7 +111,7 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 			}
 		}()
 	}
-	slog.Info("HTTP API request", "method", request.Method, "path", request.URL.Path, "trace_id", traceID)
+	slog.InfoContext(ctx, "HTTP API request", "method", request.Method, "path", request.URL.Path, "trace_id", traceID)
 	s.handler.ServeHTTP(tracked, request)
 }
 

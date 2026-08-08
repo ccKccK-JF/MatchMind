@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 )
 
 const gracefulStopTimeout = 10 * time.Second
@@ -26,7 +28,7 @@ func Run(ctx context.Context, serviceName, address string, register RegisterFunc
 		return err
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.ChainUnaryInterceptor(tracing.UnaryServerInterceptor()))
 	register(server)
 
 	healthServer := health.NewServer()

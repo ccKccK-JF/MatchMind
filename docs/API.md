@@ -4,7 +4,10 @@ The public API listens on `http://localhost:8080` by default. JSON field names
 use `snake_case`. Internal service-to-service communication remains gRPC.
 
 Every response includes an `X-Trace-ID` header. A caller may supply its own
-value in the request header. Error responses use this shape:
+value in the request header using up to 128 ASCII letters, digits, `-`, `_`,
+`.`, `:`, or `/`; invalid values are replaced. The same value is propagated
+through downstream gRPC metadata and correlated structured logs. Error
+responses use this shape:
 
 ```json
 {

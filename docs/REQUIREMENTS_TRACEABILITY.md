@@ -33,7 +33,7 @@ an automated check exist. Planned items are not counted as complete.
 |---|---|---|
 | Context cancellation, timeouts and graceful shutdown | Verified | Process signal contexts, gRPC/HTTP shutdown and bounded downstream calls |
 | Structured logs and required Prometheus metrics | Verified | Shared JSON logging and metric registry tests |
-| End-to-end Trace ID | Partial | Public API emits/logs `X-Trace-ID`; gRPC propagation and downstream log correlation remain |
+| End-to-end Trace ID | Verified | Validated `X-Trace-ID` is stored in context, propagated by shared gRPC client/server interceptors, returned as metadata and recorded with method/status/duration in JSON logs; unit and HTTP-to-gRPC integration tests exist |
 | Race safety | Verified | `scripts/race.ps1` runs `go test -race -count=1 ./...` and passes on Windows |
 | Real PostgreSQL/Redis integration | Implemented, environment-gated | Isolated-schema PostgreSQL and isolated Redis tests exist; live external services are required to execute the gated variants |
 | 500 requests/s, 100k queue, P95/P99 targets | Pending verification | Load generator exists, but no current machine/run artifact proves the targets |
@@ -44,9 +44,8 @@ an automated check exist. Planned items are not counted as complete.
 
 ## Next acceptance order
 
-1. Propagate Trace ID through internal gRPC calls and structured logs.
-2. Decide and implement the documented Glicko option without changing ranked
+1. Decide and implement the documented Glicko option without changing ranked
    Elo compatibility.
-3. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
+2. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
    gates,
    preserving raw results before declaring the project complete.

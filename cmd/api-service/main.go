@@ -17,6 +17,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -76,7 +77,11 @@ func main() {
 }
 
 func mustConnect(target string) *grpc.ClientConn {
-	connection, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.NewClient(
+		target,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()),
+	)
 	if err != nil {
 		slog.Error("create downstream gRPC client", "target", target, "error", err)
 		os.Exit(1)

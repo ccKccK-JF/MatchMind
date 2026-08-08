@@ -88,6 +88,16 @@ combining PostgreSQL transactions with Redis Lua scripts. PostgreSQL owns
 durable state; Redis owns rebuildable queue order, snapshots, reservations,
 and expiry indexes.
 
+## Trace propagation
+
+The public API validates or generates `X-Trace-ID`, stores it in the request
+context, and returns it to the caller. A shared unary client interceptor writes
+the value to `x-trace-id` gRPC metadata. Every internal gRPC server restores it
+into context, returns it as response metadata, and writes a structured request
+log containing the trace ID, full method, status code, and duration. Nested
+Player, Matchmaking, Simulation, and Agent calls reuse the same context, so a
+single public request remains correlated across service boundaries.
+
 The Agent is outside the real-time matchmaking path. Its gateway exposes a
 compile-time allowlist instead of a generic RPC, Shell, or SQL interface.
 Mutation calls require both an approved proposal and an internal control token

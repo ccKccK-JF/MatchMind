@@ -25,6 +25,7 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/platform/httpserver"
 	"github.com/ccKccK-JF/MatchMind/internal/platform/logging"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/tracing"
 	"github.com/jackc/pgx/v5/pgxpool"
 	redisclient "github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -49,7 +50,11 @@ func main() {
 	defer stop()
 
 	playerTarget := config.String("PLAYER_GRPC_TARGET", "localhost:50051")
-	playerConnection, err := grpc.NewClient(playerTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	playerConnection, err := grpc.NewClient(
+		playerTarget,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(tracing.UnaryClientInterceptor()),
+	)
 	if err != nil {
 		slog.Error("create player service client", "error", err)
 		os.Exit(1)
