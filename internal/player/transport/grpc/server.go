@@ -76,6 +76,49 @@ func (s *Server) UpdateRegionLatency(
 	return &playerv1.UpdateRegionLatencyResponse{Player: playerToProto(player)}, nil
 }
 
+func (s *Server) SetPlayerBan(
+	ctx context.Context,
+	request *playerv1.SetPlayerBanRequest,
+) (*playerv1.SetPlayerBanResponse, error) {
+	if request == nil || request.GetPlayerId() == "" || request.GetOperatorId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "player_id and operator_id are required")
+	}
+	player, err := s.service.SetPlayerBan(ctx, application.SetPlayerBanCommand{
+		PlayerID: request.GetPlayerId(), Banned: request.GetBanned(),
+		Reason: request.GetReason(), OperatorID: request.GetOperatorId(),
+	})
+	if err != nil {
+		return nil, playerError(err)
+	}
+	return &playerv1.SetPlayerBanResponse{Player: playerToProto(player)}, nil
+}
+
+func (s *Server) CheckPlayersEligibility(
+	ctx context.Context,
+	request *playerv1.CheckPlayersEligibilityRequest,
+) (*playerv1.CheckPlayersEligibilityResponse, error) {
+	if request == nil || len(request.GetPlayerIds()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "player_ids are required")
+	}
+	states, err := s.service.GetPlayerBanStates(ctx, request.GetPlayerIds())
+	if err != nil {
+		return nil, playerError(err)
+	}
+	response := &playerv1.CheckPlayersEligibilityResponse{}
+	seen := make(map[string]struct{}, len(request.GetPlayerIds()))
+	for _, playerID := range request.GetPlayerIds() {
+		if _, duplicate := seen[playerID]; duplicate {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		banned, exists := states[playerID]
+		response.Players = append(response.Players, &playerv1.PlayerEligibility{
+			PlayerId: playerID, Exists: exists, Banned: banned,
+		})
+	}
+	return response, nil
+}
+
 func (s *Server) ApplyMatchResult(ctx context.Context, request *playerv1.ApplyMatchResultRequest) (*playerv1.ApplyMatchResultResponse, error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is required")
@@ -179,7 +222,7 @@ func playerToProto(player *domain.Player) *playerv1.Player {
 		latency[region] = int32(milliseconds)
 	}
 
-	return &playerv1.Player{
+	result := &playerv1.Player{
 		Id:               player.ID(),
 		Name:             player.Name(),
 		Rating:           player.Rating(),
@@ -190,7 +233,14 @@ func playerToProto(player *domain.Player) *playerv1.Player {
 		RegionLatencyMs:  latency,
 		BehaviorScore:    player.BehaviorScore(),
 		CreatedAt:        timestamppb.New(player.CreatedAt()),
+		Banned:           player.Banned(),
+		BanReason:        player.BanReason(),
+		BannedBy:         player.BannedBy(),
 	}
+	if !player.BannedAt().IsZero() {
+		result.BannedAt = timestamppb.New(player.BannedAt())
+	}
+	return result
 }
 
 func latencyFromProto(latency map[string]int32) map[string]int {

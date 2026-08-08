@@ -193,6 +193,10 @@ type Player struct {
 	BehaviorScore    float64                `protobuf:"fixed64,8,opt,name=behavior_score,json=behaviorScore,proto3" json:"behavior_score,omitempty"`
 	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	RatingVolatility float64                `protobuf:"fixed64,10,opt,name=rating_volatility,json=ratingVolatility,proto3" json:"rating_volatility,omitempty"`
+	Banned           bool                   `protobuf:"varint,11,opt,name=banned,proto3" json:"banned,omitempty"`
+	BanReason        string                 `protobuf:"bytes,12,opt,name=ban_reason,json=banReason,proto3" json:"ban_reason,omitempty"`
+	BannedAt         *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=banned_at,json=bannedAt,proto3" json:"banned_at,omitempty"`
+	BannedBy         string                 `protobuf:"bytes,14,opt,name=banned_by,json=bannedBy,proto3" json:"banned_by,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -295,6 +299,34 @@ func (x *Player) GetRatingVolatility() float64 {
 		return x.RatingVolatility
 	}
 	return 0
+}
+
+func (x *Player) GetBanned() bool {
+	if x != nil {
+		return x.Banned
+	}
+	return false
+}
+
+func (x *Player) GetBanReason() string {
+	if x != nil {
+		return x.BanReason
+	}
+	return ""
+}
+
+func (x *Player) GetBannedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BannedAt
+	}
+	return nil
+}
+
+func (x *Player) GetBannedBy() string {
+	if x != nil {
+		return x.BannedBy
+	}
+	return ""
 }
 
 type CreatePlayerRequest struct {
@@ -617,6 +649,266 @@ func (x *UpdateRegionLatencyResponse) GetPlayer() *Player {
 	return nil
 }
 
+type SetPlayerBanRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	Banned        bool                   `protobuf:"varint,2,opt,name=banned,proto3" json:"banned,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	OperatorId    string                 `protobuf:"bytes,4,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPlayerBanRequest) Reset() {
+	*x = SetPlayerBanRequest{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPlayerBanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPlayerBanRequest) ProtoMessage() {}
+
+func (x *SetPlayerBanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPlayerBanRequest.ProtoReflect.Descriptor instead.
+func (*SetPlayerBanRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SetPlayerBanRequest) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *SetPlayerBanRequest) GetBanned() bool {
+	if x != nil {
+		return x.Banned
+	}
+	return false
+}
+
+func (x *SetPlayerBanRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *SetPlayerBanRequest) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+type SetPlayerBanResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        *Player                `protobuf:"bytes,1,opt,name=player,proto3" json:"player,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPlayerBanResponse) Reset() {
+	*x = SetPlayerBanResponse{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPlayerBanResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPlayerBanResponse) ProtoMessage() {}
+
+func (x *SetPlayerBanResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPlayerBanResponse.ProtoReflect.Descriptor instead.
+func (*SetPlayerBanResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SetPlayerBanResponse) GetPlayer() *Player {
+	if x != nil {
+		return x.Player
+	}
+	return nil
+}
+
+type CheckPlayersEligibilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerIds     []string               `protobuf:"bytes,1,rep,name=player_ids,json=playerIds,proto3" json:"player_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckPlayersEligibilityRequest) Reset() {
+	*x = CheckPlayersEligibilityRequest{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckPlayersEligibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckPlayersEligibilityRequest) ProtoMessage() {}
+
+func (x *CheckPlayersEligibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckPlayersEligibilityRequest.ProtoReflect.Descriptor instead.
+func (*CheckPlayersEligibilityRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CheckPlayersEligibilityRequest) GetPlayerIds() []string {
+	if x != nil {
+		return x.PlayerIds
+	}
+	return nil
+}
+
+type PlayerEligibility struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	Exists        bool                   `protobuf:"varint,2,opt,name=exists,proto3" json:"exists,omitempty"`
+	Banned        bool                   `protobuf:"varint,3,opt,name=banned,proto3" json:"banned,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayerEligibility) Reset() {
+	*x = PlayerEligibility{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerEligibility) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerEligibility) ProtoMessage() {}
+
+func (x *PlayerEligibility) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerEligibility.ProtoReflect.Descriptor instead.
+func (*PlayerEligibility) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *PlayerEligibility) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *PlayerEligibility) GetExists() bool {
+	if x != nil {
+		return x.Exists
+	}
+	return false
+}
+
+func (x *PlayerEligibility) GetBanned() bool {
+	if x != nil {
+		return x.Banned
+	}
+	return false
+}
+
+type CheckPlayersEligibilityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Players       []*PlayerEligibility   `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckPlayersEligibilityResponse) Reset() {
+	*x = CheckPlayersEligibilityResponse{}
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckPlayersEligibilityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckPlayersEligibilityResponse) ProtoMessage() {}
+
+func (x *CheckPlayersEligibilityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckPlayersEligibilityResponse.ProtoReflect.Descriptor instead.
+func (*CheckPlayersEligibilityResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CheckPlayersEligibilityResponse) GetPlayers() []*PlayerEligibility {
+	if x != nil {
+		return x.Players
+	}
+	return nil
+}
+
 type RatingChange struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	PlayerId               string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
@@ -637,7 +929,7 @@ type RatingChange struct {
 
 func (x *RatingChange) Reset() {
 	*x = RatingChange{}
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -649,7 +941,7 @@ func (x *RatingChange) String() string {
 func (*RatingChange) ProtoMessage() {}
 
 func (x *RatingChange) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[7]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -662,7 +954,7 @@ func (x *RatingChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RatingChange.ProtoReflect.Descriptor instead.
 func (*RatingChange) Descriptor() ([]byte, []int) {
-	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{7}
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RatingChange) GetPlayerId() string {
@@ -762,7 +1054,7 @@ type ApplyMatchResultRequest struct {
 
 func (x *ApplyMatchResultRequest) Reset() {
 	*x = ApplyMatchResultRequest{}
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -774,7 +1066,7 @@ func (x *ApplyMatchResultRequest) String() string {
 func (*ApplyMatchResultRequest) ProtoMessage() {}
 
 func (x *ApplyMatchResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[8]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -787,7 +1079,7 @@ func (x *ApplyMatchResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyMatchResultRequest.ProtoReflect.Descriptor instead.
 func (*ApplyMatchResultRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{8}
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ApplyMatchResultRequest) GetMatchId() string {
@@ -834,7 +1126,7 @@ type ApplyMatchResultResponse struct {
 
 func (x *ApplyMatchResultResponse) Reset() {
 	*x = ApplyMatchResultResponse{}
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -846,7 +1138,7 @@ func (x *ApplyMatchResultResponse) String() string {
 func (*ApplyMatchResultResponse) ProtoMessage() {}
 
 func (x *ApplyMatchResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[9]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -859,7 +1151,7 @@ func (x *ApplyMatchResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyMatchResultResponse.ProtoReflect.Descriptor instead.
 func (*ApplyMatchResultResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{9}
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ApplyMatchResultResponse) GetChanges() []*RatingChange {
@@ -878,7 +1170,7 @@ type GetRatingHistoryRequest struct {
 
 func (x *GetRatingHistoryRequest) Reset() {
 	*x = GetRatingHistoryRequest{}
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[10]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -890,7 +1182,7 @@ func (x *GetRatingHistoryRequest) String() string {
 func (*GetRatingHistoryRequest) ProtoMessage() {}
 
 func (x *GetRatingHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[10]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -903,7 +1195,7 @@ func (x *GetRatingHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRatingHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetRatingHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{10}
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetRatingHistoryRequest) GetPlayerId() string {
@@ -922,7 +1214,7 @@ type GetRatingHistoryResponse struct {
 
 func (x *GetRatingHistoryResponse) Reset() {
 	*x = GetRatingHistoryResponse{}
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[11]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -934,7 +1226,7 @@ func (x *GetRatingHistoryResponse) String() string {
 func (*GetRatingHistoryResponse) ProtoMessage() {}
 
 func (x *GetRatingHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_player_v1_player_proto_msgTypes[11]
+	mi := &file_matchmind_player_v1_player_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -947,7 +1239,7 @@ func (x *GetRatingHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRatingHistoryResponse.ProtoReflect.Descriptor instead.
 func (*GetRatingHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{11}
+	return file_matchmind_player_v1_player_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetRatingHistoryResponse) GetChanges() []*RatingChange {
@@ -961,7 +1253,7 @@ var File_matchmind_player_v1_player_proto protoreflect.FileDescriptor
 
 const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\n" +
-	" matchmind/player/v1/player.proto\x12\x13matchmind.player.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x04\n" +
+	" matchmind/player/v1/player.proto\x12\x13matchmind.player.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x05\n" +
 	"\x06Player\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -975,7 +1267,12 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12+\n" +
 	"\x11rating_volatility\x18\n" +
-	" \x01(\x01R\x10ratingVolatility\x1aB\n" +
+	" \x01(\x01R\x10ratingVolatility\x12\x16\n" +
+	"\x06banned\x18\v \x01(\bR\x06banned\x12\x1d\n" +
+	"\n" +
+	"ban_reason\x18\f \x01(\tR\tbanReason\x127\n" +
+	"\tbanned_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\bbannedAt\x12\x1b\n" +
+	"\tbanned_by\x18\x0e \x01(\tR\bbannedBy\x1aB\n" +
 	"\x14RegionLatencyMsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x9b\x03\n" +
@@ -1004,7 +1301,24 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"R\n" +
 	"\x1bUpdateRegionLatencyResponse\x123\n" +
-	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"\x85\x04\n" +
+	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"\x83\x01\n" +
+	"\x13SetPlayerBanRequest\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x16\n" +
+	"\x06banned\x18\x02 \x01(\bR\x06banned\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1f\n" +
+	"\voperator_id\x18\x04 \x01(\tR\n" +
+	"operatorId\"K\n" +
+	"\x14SetPlayerBanResponse\x123\n" +
+	"\x06player\x18\x01 \x01(\v2\x1b.matchmind.player.v1.PlayerR\x06player\"?\n" +
+	"\x1eCheckPlayersEligibilityRequest\x12\x1d\n" +
+	"\n" +
+	"player_ids\x18\x01 \x03(\tR\tplayerIds\"`\n" +
+	"\x11PlayerEligibility\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x16\n" +
+	"\x06exists\x18\x02 \x01(\bR\x06exists\x12\x16\n" +
+	"\x06banned\x18\x03 \x01(\bR\x06banned\"c\n" +
+	"\x1fCheckPlayersEligibilityResponse\x12@\n" +
+	"\aplayers\x18\x01 \x03(\v2&.matchmind.player.v1.PlayerEligibilityR\aplayers\"\x85\x04\n" +
 	"\fRatingChange\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x19\n" +
 	"\bmatch_id\x18\x02 \x01(\tR\amatchId\x12\x16\n" +
@@ -1047,11 +1361,13 @@ const file_matchmind_player_v1_player_proto_rawDesc = "" +
 	"\fRatingSystem\x12\x1d\n" +
 	"\x19RATING_SYSTEM_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RATING_SYSTEM_ELO\x10\x01\x12\x19\n" +
-	"\x15RATING_SYSTEM_GLICKO2\x10\x022\xac\x04\n" +
+	"\x15RATING_SYSTEM_GLICKO2\x10\x022\x98\x06\n" +
 	"\rPlayerService\x12c\n" +
 	"\fCreatePlayer\x12(.matchmind.player.v1.CreatePlayerRequest\x1a).matchmind.player.v1.CreatePlayerResponse\x12Z\n" +
 	"\tGetPlayer\x12%.matchmind.player.v1.GetPlayerRequest\x1a&.matchmind.player.v1.GetPlayerResponse\x12x\n" +
-	"\x13UpdateRegionLatency\x12/.matchmind.player.v1.UpdateRegionLatencyRequest\x1a0.matchmind.player.v1.UpdateRegionLatencyResponse\x12o\n" +
+	"\x13UpdateRegionLatency\x12/.matchmind.player.v1.UpdateRegionLatencyRequest\x1a0.matchmind.player.v1.UpdateRegionLatencyResponse\x12c\n" +
+	"\fSetPlayerBan\x12(.matchmind.player.v1.SetPlayerBanRequest\x1a).matchmind.player.v1.SetPlayerBanResponse\x12\x84\x01\n" +
+	"\x17CheckPlayersEligibility\x123.matchmind.player.v1.CheckPlayersEligibilityRequest\x1a4.matchmind.player.v1.CheckPlayersEligibilityResponse\x12o\n" +
 	"\x10ApplyMatchResult\x12,.matchmind.player.v1.ApplyMatchResultRequest\x1a-.matchmind.player.v1.ApplyMatchResultResponse\x12o\n" +
 	"\x10GetRatingHistory\x12,.matchmind.player.v1.GetRatingHistoryRequest\x1a-.matchmind.player.v1.GetRatingHistoryResponseBDZBgithub.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1;playerv1b\x06proto3"
 
@@ -1068,58 +1384,70 @@ func file_matchmind_player_v1_player_proto_rawDescGZIP() []byte {
 }
 
 var file_matchmind_player_v1_player_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_matchmind_player_v1_player_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_matchmind_player_v1_player_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_matchmind_player_v1_player_proto_goTypes = []any{
-	(Role)(0),                           // 0: matchmind.player.v1.Role
-	(MatchOutcome)(0),                   // 1: matchmind.player.v1.MatchOutcome
-	(RatingSystem)(0),                   // 2: matchmind.player.v1.RatingSystem
-	(*Player)(nil),                      // 3: matchmind.player.v1.Player
-	(*CreatePlayerRequest)(nil),         // 4: matchmind.player.v1.CreatePlayerRequest
-	(*CreatePlayerResponse)(nil),        // 5: matchmind.player.v1.CreatePlayerResponse
-	(*GetPlayerRequest)(nil),            // 6: matchmind.player.v1.GetPlayerRequest
-	(*GetPlayerResponse)(nil),           // 7: matchmind.player.v1.GetPlayerResponse
-	(*UpdateRegionLatencyRequest)(nil),  // 8: matchmind.player.v1.UpdateRegionLatencyRequest
-	(*UpdateRegionLatencyResponse)(nil), // 9: matchmind.player.v1.UpdateRegionLatencyResponse
-	(*RatingChange)(nil),                // 10: matchmind.player.v1.RatingChange
-	(*ApplyMatchResultRequest)(nil),     // 11: matchmind.player.v1.ApplyMatchResultRequest
-	(*ApplyMatchResultResponse)(nil),    // 12: matchmind.player.v1.ApplyMatchResultResponse
-	(*GetRatingHistoryRequest)(nil),     // 13: matchmind.player.v1.GetRatingHistoryRequest
-	(*GetRatingHistoryResponse)(nil),    // 14: matchmind.player.v1.GetRatingHistoryResponse
-	nil,                                 // 15: matchmind.player.v1.Player.RegionLatencyMsEntry
-	nil,                                 // 16: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	nil,                                 // 17: matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
-	(*timestamppb.Timestamp)(nil),       // 18: google.protobuf.Timestamp
+	(Role)(0),                               // 0: matchmind.player.v1.Role
+	(MatchOutcome)(0),                       // 1: matchmind.player.v1.MatchOutcome
+	(RatingSystem)(0),                       // 2: matchmind.player.v1.RatingSystem
+	(*Player)(nil),                          // 3: matchmind.player.v1.Player
+	(*CreatePlayerRequest)(nil),             // 4: matchmind.player.v1.CreatePlayerRequest
+	(*CreatePlayerResponse)(nil),            // 5: matchmind.player.v1.CreatePlayerResponse
+	(*GetPlayerRequest)(nil),                // 6: matchmind.player.v1.GetPlayerRequest
+	(*GetPlayerResponse)(nil),               // 7: matchmind.player.v1.GetPlayerResponse
+	(*UpdateRegionLatencyRequest)(nil),      // 8: matchmind.player.v1.UpdateRegionLatencyRequest
+	(*UpdateRegionLatencyResponse)(nil),     // 9: matchmind.player.v1.UpdateRegionLatencyResponse
+	(*SetPlayerBanRequest)(nil),             // 10: matchmind.player.v1.SetPlayerBanRequest
+	(*SetPlayerBanResponse)(nil),            // 11: matchmind.player.v1.SetPlayerBanResponse
+	(*CheckPlayersEligibilityRequest)(nil),  // 12: matchmind.player.v1.CheckPlayersEligibilityRequest
+	(*PlayerEligibility)(nil),               // 13: matchmind.player.v1.PlayerEligibility
+	(*CheckPlayersEligibilityResponse)(nil), // 14: matchmind.player.v1.CheckPlayersEligibilityResponse
+	(*RatingChange)(nil),                    // 15: matchmind.player.v1.RatingChange
+	(*ApplyMatchResultRequest)(nil),         // 16: matchmind.player.v1.ApplyMatchResultRequest
+	(*ApplyMatchResultResponse)(nil),        // 17: matchmind.player.v1.ApplyMatchResultResponse
+	(*GetRatingHistoryRequest)(nil),         // 18: matchmind.player.v1.GetRatingHistoryRequest
+	(*GetRatingHistoryResponse)(nil),        // 19: matchmind.player.v1.GetRatingHistoryResponse
+	nil,                                     // 20: matchmind.player.v1.Player.RegionLatencyMsEntry
+	nil,                                     // 21: matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	nil,                                     // 22: matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
+	(*timestamppb.Timestamp)(nil),           // 23: google.protobuf.Timestamp
 }
 var file_matchmind_player_v1_player_proto_depIdxs = []int32{
 	0,  // 0: matchmind.player.v1.Player.preferred_roles:type_name -> matchmind.player.v1.Role
-	15, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
-	18, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 3: matchmind.player.v1.CreatePlayerRequest.preferred_roles:type_name -> matchmind.player.v1.Role
-	16, // 4: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
-	3,  // 5: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
-	3,  // 6: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
-	17, // 7: matchmind.player.v1.UpdateRegionLatencyRequest.region_latency_ms:type_name -> matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
-	3,  // 8: matchmind.player.v1.UpdateRegionLatencyResponse.player:type_name -> matchmind.player.v1.Player
-	18, // 9: matchmind.player.v1.RatingChange.created_at:type_name -> google.protobuf.Timestamp
-	2,  // 10: matchmind.player.v1.RatingChange.rating_system:type_name -> matchmind.player.v1.RatingSystem
-	1,  // 11: matchmind.player.v1.ApplyMatchResultRequest.outcome:type_name -> matchmind.player.v1.MatchOutcome
-	10, // 12: matchmind.player.v1.ApplyMatchResultResponse.changes:type_name -> matchmind.player.v1.RatingChange
-	10, // 13: matchmind.player.v1.GetRatingHistoryResponse.changes:type_name -> matchmind.player.v1.RatingChange
-	4,  // 14: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
-	6,  // 15: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
-	8,  // 16: matchmind.player.v1.PlayerService.UpdateRegionLatency:input_type -> matchmind.player.v1.UpdateRegionLatencyRequest
-	11, // 17: matchmind.player.v1.PlayerService.ApplyMatchResult:input_type -> matchmind.player.v1.ApplyMatchResultRequest
-	13, // 18: matchmind.player.v1.PlayerService.GetRatingHistory:input_type -> matchmind.player.v1.GetRatingHistoryRequest
-	5,  // 19: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
-	7,  // 20: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
-	9,  // 21: matchmind.player.v1.PlayerService.UpdateRegionLatency:output_type -> matchmind.player.v1.UpdateRegionLatencyResponse
-	12, // 22: matchmind.player.v1.PlayerService.ApplyMatchResult:output_type -> matchmind.player.v1.ApplyMatchResultResponse
-	14, // 23: matchmind.player.v1.PlayerService.GetRatingHistory:output_type -> matchmind.player.v1.GetRatingHistoryResponse
-	19, // [19:24] is the sub-list for method output_type
-	14, // [14:19] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	20, // 1: matchmind.player.v1.Player.region_latency_ms:type_name -> matchmind.player.v1.Player.RegionLatencyMsEntry
+	23, // 2: matchmind.player.v1.Player.created_at:type_name -> google.protobuf.Timestamp
+	23, // 3: matchmind.player.v1.Player.banned_at:type_name -> google.protobuf.Timestamp
+	0,  // 4: matchmind.player.v1.CreatePlayerRequest.preferred_roles:type_name -> matchmind.player.v1.Role
+	21, // 5: matchmind.player.v1.CreatePlayerRequest.region_latency_ms:type_name -> matchmind.player.v1.CreatePlayerRequest.RegionLatencyMsEntry
+	3,  // 6: matchmind.player.v1.CreatePlayerResponse.player:type_name -> matchmind.player.v1.Player
+	3,  // 7: matchmind.player.v1.GetPlayerResponse.player:type_name -> matchmind.player.v1.Player
+	22, // 8: matchmind.player.v1.UpdateRegionLatencyRequest.region_latency_ms:type_name -> matchmind.player.v1.UpdateRegionLatencyRequest.RegionLatencyMsEntry
+	3,  // 9: matchmind.player.v1.UpdateRegionLatencyResponse.player:type_name -> matchmind.player.v1.Player
+	3,  // 10: matchmind.player.v1.SetPlayerBanResponse.player:type_name -> matchmind.player.v1.Player
+	13, // 11: matchmind.player.v1.CheckPlayersEligibilityResponse.players:type_name -> matchmind.player.v1.PlayerEligibility
+	23, // 12: matchmind.player.v1.RatingChange.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 13: matchmind.player.v1.RatingChange.rating_system:type_name -> matchmind.player.v1.RatingSystem
+	1,  // 14: matchmind.player.v1.ApplyMatchResultRequest.outcome:type_name -> matchmind.player.v1.MatchOutcome
+	15, // 15: matchmind.player.v1.ApplyMatchResultResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	15, // 16: matchmind.player.v1.GetRatingHistoryResponse.changes:type_name -> matchmind.player.v1.RatingChange
+	4,  // 17: matchmind.player.v1.PlayerService.CreatePlayer:input_type -> matchmind.player.v1.CreatePlayerRequest
+	6,  // 18: matchmind.player.v1.PlayerService.GetPlayer:input_type -> matchmind.player.v1.GetPlayerRequest
+	8,  // 19: matchmind.player.v1.PlayerService.UpdateRegionLatency:input_type -> matchmind.player.v1.UpdateRegionLatencyRequest
+	10, // 20: matchmind.player.v1.PlayerService.SetPlayerBan:input_type -> matchmind.player.v1.SetPlayerBanRequest
+	12, // 21: matchmind.player.v1.PlayerService.CheckPlayersEligibility:input_type -> matchmind.player.v1.CheckPlayersEligibilityRequest
+	16, // 22: matchmind.player.v1.PlayerService.ApplyMatchResult:input_type -> matchmind.player.v1.ApplyMatchResultRequest
+	18, // 23: matchmind.player.v1.PlayerService.GetRatingHistory:input_type -> matchmind.player.v1.GetRatingHistoryRequest
+	5,  // 24: matchmind.player.v1.PlayerService.CreatePlayer:output_type -> matchmind.player.v1.CreatePlayerResponse
+	7,  // 25: matchmind.player.v1.PlayerService.GetPlayer:output_type -> matchmind.player.v1.GetPlayerResponse
+	9,  // 26: matchmind.player.v1.PlayerService.UpdateRegionLatency:output_type -> matchmind.player.v1.UpdateRegionLatencyResponse
+	11, // 27: matchmind.player.v1.PlayerService.SetPlayerBan:output_type -> matchmind.player.v1.SetPlayerBanResponse
+	14, // 28: matchmind.player.v1.PlayerService.CheckPlayersEligibility:output_type -> matchmind.player.v1.CheckPlayersEligibilityResponse
+	17, // 29: matchmind.player.v1.PlayerService.ApplyMatchResult:output_type -> matchmind.player.v1.ApplyMatchResultResponse
+	19, // 30: matchmind.player.v1.PlayerService.GetRatingHistory:output_type -> matchmind.player.v1.GetRatingHistoryResponse
+	24, // [24:31] is the sub-list for method output_type
+	17, // [17:24] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_matchmind_player_v1_player_proto_init() }
@@ -1133,7 +1461,7 @@ func file_matchmind_player_v1_player_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matchmind_player_v1_player_proto_rawDesc), len(file_matchmind_player_v1_player_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   15,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

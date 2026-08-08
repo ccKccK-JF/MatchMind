@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,6 +13,20 @@ import (
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/memory"
 )
+
+type eligibilityFunc func([]string) (map[string]bool, error)
+
+func (f eligibilityFunc) CheckPlayersEligibility(_ context.Context, playerIDs []string) (map[string]bool, error) {
+	return f(playerIDs)
+}
+
+var allPlayersEligible = eligibilityFunc(func(playerIDs []string) (map[string]bool, error) {
+	result := make(map[string]bool, len(playerIDs))
+	for _, playerID := range playerIDs {
+		result[playerID] = true
+	}
+	return result, nil
+})
 
 func TestWorkerCreatesReadyMatchAndAssignsAllTickets(t *testing.T) {
 	now := time.Date(2026, time.August, 1, 12, 0, 0, 0, time.UTC)
@@ -24,6 +39,7 @@ func TestWorkerCreatesReadyMatchAndAssignsAllTickets(t *testing.T) {
 		ticketStore,
 		matchStore,
 		application.NewLocalAllocator(func() (string, error) { return "connection-token", nil }),
+		allPlayersEligible,
 		domain.DefaultPolicy(),
 		func() (string, error) {
 			id := ids[index]
@@ -97,7 +113,7 @@ func TestConcurrentWorkersCannotDuplicatePlayers(t *testing.T) {
 			defer waitGroup.Done()
 			worker, err := application.NewWorker(
 				ticketStore, matchStore, application.NewLocalAllocator(idGenerator),
-				domain.DefaultPolicy(), idGenerator, func() time.Time { return now },
+				allPlayersEligible, domain.DefaultPolicy(), idGenerator, func() time.Time { return now },
 			)
 			if err != nil {
 				t.Errorf("NewWorker() error = %v", err)
@@ -128,7 +144,7 @@ func TestWorkerSelectsAnotherRegionWhenPoolRegionHasNoCapacity(t *testing.T) {
 	}
 	ids := []string{"reservation-1", "match-1"}
 	worker, err := application.NewWorker(
-		ticketStore, matchStore, allocator, domain.DefaultPolicy(),
+		ticketStore, matchStore, allocator, allPlayersEligible, domain.DefaultPolicy(),
 		func() (string, error) {
 			id := ids[0]
 			ids = ids[1:]
@@ -145,6 +161,53 @@ func TestWorkerSelectsAnotherRegionWhenPoolRegionHasNoCapacity(t *testing.T) {
 	}
 	if match.ServerRegion() != "tokyo" || match.ServerAddress() != "tokyo.game.matchmind.local:7000" {
 		t.Fatalf("server region/address = %s/%s", match.ServerRegion(), match.ServerAddress())
+	}
+}
+
+func TestWorkerRechecksEligibilityBeforeReservationAndCancelsNewlyBannedTicket(t *testing.T) {
+	now := time.Date(2026, time.August, 8, 16, 0, 0, 0, time.UTC)
+	ticketStore := memory.NewTicketStore()
+	populateMatchableTickets(t, ticketStore, now)
+	var checks atomic.Int32
+	eligibility := eligibilityFunc(func(playerIDs []string) (map[string]bool, error) {
+		result := make(map[string]bool, len(playerIDs))
+		call := checks.Add(1)
+		for _, playerID := range playerIDs {
+			result[playerID] = call == 1 || playerID != "player-00"
+		}
+		return result, nil
+	})
+	ids := []string{"reservation-1", "match-1"}
+	worker, err := application.NewWorker(
+		ticketStore, memory.NewMatchStore(),
+		application.NewLocalAllocator(func() (string, error) { return "token", nil }),
+		eligibility, domain.DefaultPolicy(), func() (string, error) {
+			id := ids[0]
+			ids = ids[1:]
+			return id, nil
+		}, func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := worker.RunOnce(context.Background()); !errors.Is(err, application.ErrNoMatchAvailable) {
+		t.Fatalf("RunOnce() error = %v, want ErrNoMatchAvailable", err)
+	}
+	if checks.Load() != 2 {
+		t.Fatalf("eligibility checks = %d, want initial and pre-reservation checks", checks.Load())
+	}
+	bannedTicket, err := ticketStore.Get(context.Background(), "ticket-00")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bannedTicket.State() != domain.TicketStateCancelled {
+		t.Fatalf("banned ticket state = %s, want CANCELLED", bannedTicket.State())
+	}
+	for index := 1; index < 10; index++ {
+		ticket, err := ticketStore.Get(context.Background(), fmt.Sprintf("ticket-%02d", index))
+		if err != nil || ticket.State() != domain.TicketStateQueued {
+			t.Fatalf("eligible ticket %02d = %v, %v", index, ticket, err)
+		}
 	}
 }
 

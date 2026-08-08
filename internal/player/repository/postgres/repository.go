@@ -52,7 +52,8 @@ func (r *Repository) Create(ctx context.Context, player *domain.Player) error {
 
 func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Player, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, rating, rating_deviation, rating_volatility, preferred_roles,
+		SELECT id, name, rating, rating_deviation, rating_volatility,
+		       banned, COALESCE(ban_reason, ''), banned_at, COALESCE(banned_by, ''), preferred_roles,
 		       home_region, region_latency, behavior_score, created_at
 		FROM players
 		WHERE id = $1
@@ -65,6 +66,27 @@ func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Play
 		return nil, fmt.Errorf("select player: %w", err)
 	}
 	return player, nil
+}
+
+func (r *Repository) GetBanStates(ctx context.Context, playerIDs []string) (map[string]bool, error) {
+	rows, err := r.pool.Query(ctx, `SELECT id, banned FROM players WHERE id = ANY($1)`, playerIDs)
+	if err != nil {
+		return nil, fmt.Errorf("select player ban states: %w", err)
+	}
+	defer rows.Close()
+	result := make(map[string]bool, len(playerIDs))
+	for rows.Next() {
+		var playerID string
+		var banned bool
+		if err := rows.Scan(&playerID, &banned); err != nil {
+			return nil, fmt.Errorf("scan player ban state: %w", err)
+		}
+		result[playerID] = banned
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate player ban states: %w", err)
+	}
+	return result, nil
 }
 
 func (r *Repository) UpdateRegionLatency(
@@ -91,6 +113,43 @@ func (r *Repository) UpdateRegionLatency(
 	`, encoded, updatedAt.UTC(), playerID)
 	if err != nil {
 		return nil, fmt.Errorf("update player latency: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, application.ErrPlayerNotFound
+	}
+	return r.GetByID(ctx, playerID)
+}
+
+func (r *Repository) SetBanState(
+	ctx context.Context,
+	playerID string,
+	banned bool,
+	reason, operatorID string,
+	changedAt time.Time,
+) (*domain.Player, error) {
+	playerID = strings.TrimSpace(playerID)
+	current, err := r.GetByID(ctx, playerID)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := current.WithBanState(banned, reason, operatorID, changedAt)
+	if err != nil {
+		return nil, err
+	}
+	var banReason, bannedBy any
+	var bannedAt any
+	if updated.Banned() {
+		banReason = updated.BanReason()
+		bannedAt = updated.BannedAt()
+		bannedBy = updated.BannedBy()
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE players
+		SET banned = $1, ban_reason = $2, banned_at = $3, banned_by = $4, updated_at = $5
+		WHERE id = $6
+	`, updated.Banned(), banReason, bannedAt, bannedBy, changedAt.UTC(), playerID)
+	if err != nil {
+		return nil, fmt.Errorf("update player ban state: %w", err)
 	}
 	if tag.RowsAffected() != 1 {
 		return nil, application.ErrPlayerNotFound
@@ -240,11 +299,16 @@ func scanPlayer(row rowScanner) (*domain.Player, error) {
 	var snapshot domain.PlayerSnapshot
 	var roles []string
 	var latencyJSON []byte
+	var bannedAt *time.Time
 	if err := row.Scan(
 		&snapshot.ID, &snapshot.Name, &snapshot.Rating, &snapshot.RatingDeviation, &snapshot.RatingVolatility,
+		&snapshot.Banned, &snapshot.BanReason, &bannedAt, &snapshot.BannedBy,
 		&roles, &snapshot.HomeRegion, &latencyJSON, &snapshot.BehaviorScore, &snapshot.CreatedAt,
 	); err != nil {
 		return nil, err
+	}
+	if bannedAt != nil {
+		snapshot.BannedAt = *bannedAt
 	}
 	parsedRoles, err := stringsToRoles(roles)
 	if err != nil {

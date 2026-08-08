@@ -39,8 +39,11 @@ player-service  matchmaking-service  simulation-service  agent-service
 1. The player service validates and stores a player profile.
 2. The matchmaking service creates an idempotent Ticket and places it in a
    pool partitioned by mode, client version, and region.
-3. One or more workers select candidates using bounded, wait-driven rating and
-   latency windows. The hard latency cap is never relaxed.
+3. One or more workers batch-check current Player eligibility, cancel queued
+   Tickets whose players became banned, then select candidates using bounded,
+   wait-driven rating and latency windows. Player eligibility is checked again
+   immediately before reservation and fails closed when Player service is
+   unavailable. The ban and hard latency constraints are never relaxed.
 4. A policy selector chooses greedy or Beam Search formation. A/B mode hashes
    a stable player key, experiment salt, and experiment ID into a deterministic
    control/treatment bucket. Both algorithms keep parties intact, assign five

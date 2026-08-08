@@ -20,7 +20,7 @@ an automated check exist. Planned items are not counted as complete.
 | FR-EXPAND-001 rating expansion | Verified | Time-based bounded rating range and tests |
 | FR-EXPAND-002 latency expansion | Verified | Anchor wait time expands the admissible latency from a strict initial value to an immutable hard maximum; decision-reason and boundary tests exist |
 | FR-EXPAND-003 role relaxation | Verified | Non-preferred-role score remains zero until a policy delay, then increases by wait time to a configured cap; assignment tests cover early, relaxed and capped states |
-| FR-EXPAND-004 immutable hard constraints | Partial | Version, active Ticket and party integrity are hard constraints; explicit banned-player state is not modeled |
+| FR-EXPAND-004 immutable hard constraints | Verified | Version, active Ticket, party integrity and hard latency remain immutable; persisted player bans block Ticket creation, are batch-checked twice by Workers, fail closed on Player-service errors and cancel newly ineligible queued Tickets; unit and complete gRPC-flow tests exist |
 | FR-RESERVE-001..005 atomic reservation/recovery/uniqueness | Verified | Memory, PostgreSQL and Redis all-or-nothing paths, TTL recovery and concurrent worker tests |
 | FR-MATCH-001,003..005 lifecycle, rollback, connection | Verified | Match state machine, allocation rollback, address/token and persistence tests |
 | FR-MATCH-002 latency/capacity server selection | Verified | Every live-capacity region is evaluated using average/max latency, team difference and variance; local capacity lifecycle, cross-region Worker flow and Agones API adapter have automated tests |
@@ -44,7 +44,6 @@ an automated check exist. Planned items are not counted as complete.
 
 ## Next acceptance order
 
-1. Model and enforce the remaining explicit banned-player hard constraint.
-2. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
+1. Run the full local demo and environment-gated PostgreSQL/Redis/Agones/load
    gates,
    preserving raw results before declaring the project complete.

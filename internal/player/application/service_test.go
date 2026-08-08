@@ -81,3 +81,42 @@ func TestUpdateRegionLatencyPersistsValidatedMeasurements(t *testing.T) {
 		t.Fatalf("updated/stored latency = %#v/%#v", updated.RegionLatency(), stored.RegionLatency())
 	}
 }
+
+func TestSetPlayerBanPersistsAndEligibilityFailsClosedForMissingPlayers(t *testing.T) {
+	repository := memory.NewRepository()
+	changedAt := time.Date(2026, 8, 8, 16, 0, 0, 0, time.UTC)
+	service := application.NewService(repository, func() time.Time { return changedAt })
+	_, err := service.CreatePlayer(context.Background(), application.CreatePlayerCommand{
+		ID: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []domain.Role{domain.RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 95,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	banned, err := service.SetPlayerBan(context.Background(), application.SetPlayerBanCommand{
+		PlayerID: " player-1 ", Banned: true, Reason: "cheating", OperatorID: "admin-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !banned.Banned() || banned.BanReason() != "cheating" || banned.BannedBy() != "admin-1" || !banned.BannedAt().Equal(changedAt) {
+		t.Fatalf("banned player = %+v", banned)
+	}
+	states, err := service.GetPlayerBanStates(context.Background(), []string{"player-1", "missing", "player-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !states["player-1"] {
+		t.Fatalf("states = %#v, want player-1 banned", states)
+	}
+	if _, exists := states["missing"]; exists {
+		t.Fatalf("states = %#v, missing player must be omitted", states)
+	}
+	unbanned, err := service.SetPlayerBan(context.Background(), application.SetPlayerBanCommand{
+		PlayerID: "player-1", Banned: false, OperatorID: "admin-2",
+	})
+	if err != nil || unbanned.Banned() {
+		t.Fatalf("unban = %+v, %v", unbanned, err)
+	}
+}

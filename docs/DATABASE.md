@@ -8,8 +8,10 @@ selects the PostgreSQL-durable/Redis-coordinated Ticket adapter, while
 
 ## PostgreSQL ownership
 
-`players` stores profile, current rating, rating deviation, and Glicko-2
-volatility. `rating_changes` is append-only and records the before/after value
+`players` stores profile, current rating, rating deviation, Glicko-2
+volatility, and the current ban flag/reason/operator/timestamp. A database
+constraint requires complete ban metadata for banned players and no stale ban
+metadata for active players. `rating_changes` is append-only and records the before/after value
 of all three rating-state components plus the selected rating system. It
 preserves response order with a per-Match sequence, and uses a unique
 `(match_id, player_id)` key so result retries cannot update a rating twice.

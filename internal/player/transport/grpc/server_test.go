@@ -102,6 +102,46 @@ func TestServerUpdatesRegionLatency(t *testing.T) {
 	}
 }
 
+func TestServerSetsBanStateAndChecksBatchEligibility(t *testing.T) {
+	changedAt := time.Date(2026, 8, 8, 16, 0, 0, 0, time.UTC)
+	service := application.NewService(memory.NewRepository(), func() time.Time { return changedAt })
+	server := NewServer(service, nil)
+	_, err := server.CreatePlayer(context.Background(), &playerv1.CreatePlayerRequest{
+		Id: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []playerv1.Role{playerv1.Role_ROLE_CORE}, HomeRegion: "hongkong",
+		RegionLatencyMs: map[string]int32{"hongkong": 30}, BehaviorScore: 95,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	banned, err := server.SetPlayerBan(context.Background(), &playerv1.SetPlayerBanRequest{
+		PlayerId: "player-1", Banned: true, Reason: "cheating", OperatorId: "admin-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !banned.GetPlayer().GetBanned() || banned.GetPlayer().GetBanReason() != "cheating" ||
+		banned.GetPlayer().GetBannedBy() != "admin-1" || !banned.GetPlayer().GetBannedAt().AsTime().Equal(changedAt) {
+		t.Fatalf("banned response = %+v", banned.GetPlayer())
+	}
+	eligibility, err := server.CheckPlayersEligibility(context.Background(), &playerv1.CheckPlayersEligibilityRequest{
+		PlayerIds: []string{"player-1", "missing"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(eligibility.GetPlayers()) != 2 || !eligibility.GetPlayers()[0].GetExists() ||
+		!eligibility.GetPlayers()[0].GetBanned() || eligibility.GetPlayers()[1].GetExists() {
+		t.Fatalf("eligibility response = %+v", eligibility.GetPlayers())
+	}
+	_, err = server.SetPlayerBan(context.Background(), &playerv1.SetPlayerBanRequest{
+		PlayerId: "player-1", Banned: true, OperatorId: "admin-1",
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("missing ban reason code = %v, want InvalidArgument", status.Code(err))
+	}
+}
+
 func TestServerApplyMatchResultAndGetHistory(t *testing.T) {
 	ctx := context.Background()
 	repository := memory.NewRepository()

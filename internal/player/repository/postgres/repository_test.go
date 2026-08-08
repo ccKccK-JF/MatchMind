@@ -18,6 +18,7 @@ func (function scanFunc) Scan(dest ...any) error {
 
 func TestScanPlayerRestoresSnapshot(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
+	bannedAt := createdAt.Add(-time.Hour)
 	latencies, _ := json.Marshal(map[string]int{"hongkong": 32})
 	player, err := scanPlayer(scanFunc(func(dest ...any) error {
 		*dest[0].(*string) = "player-1"
@@ -25,11 +26,15 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 		*dest[2].(*float64) = 1650
 		*dest[3].(*float64) = 90
 		*dest[4].(*float64) = 0.05
-		*dest[5].(*[]string) = []string{"core", "support"}
-		*dest[6].(*string) = "hongkong"
-		*dest[7].(*[]byte) = latencies
-		*dest[8].(*float64) = 98
-		*dest[9].(*time.Time) = createdAt
+		*dest[5].(*bool) = true
+		*dest[6].(*string) = "abusive behavior"
+		*dest[7].(**time.Time) = &bannedAt
+		*dest[8].(*string) = "admin-1"
+		*dest[9].(*[]string) = []string{"core", "support"}
+		*dest[10].(*string) = "hongkong"
+		*dest[11].(*[]byte) = latencies
+		*dest[12].(*float64) = 98
+		*dest[13].(*time.Time) = createdAt
 		return nil
 	}))
 	if err != nil {
@@ -37,6 +42,9 @@ func TestScanPlayerRestoresSnapshot(t *testing.T) {
 	}
 	if player.ID() != "player-1" || player.Rating() != 1650 || player.RatingDeviation() != 90 || player.RatingVolatility() != 0.05 {
 		t.Fatalf("player = %+v", player)
+	}
+	if !player.Banned() || player.BanReason() != "abusive behavior" || player.BannedBy() != "admin-1" || !player.BannedAt().Equal(bannedAt) {
+		t.Fatalf("player ban state = %v/%q/%q/%v", player.Banned(), player.BanReason(), player.BannedBy(), player.BannedAt())
 	}
 	if player.PreferredRoles()[1] != domain.RoleSupport || player.RegionLatency()["hongkong"] != 32 {
 		t.Fatalf("player roles/latency = %v/%v", player.PreferredRoles(), player.RegionLatency())
@@ -50,11 +58,14 @@ func TestScanPlayerRejectsCorruptPersistentData(t *testing.T) {
 		*dest[2].(*float64) = 1650
 		*dest[3].(*float64) = 90
 		*dest[4].(*float64) = 0.06
-		*dest[5].(*[]string) = []string{"unknown"}
-		*dest[6].(*string) = "hongkong"
-		*dest[7].(*[]byte) = []byte(`{"hongkong":32}`)
-		*dest[8].(*float64) = 98
-		*dest[9].(*time.Time) = time.Now()
+		*dest[5].(*bool) = false
+		*dest[6].(*string) = ""
+		*dest[8].(*string) = ""
+		*dest[9].(*[]string) = []string{"unknown"}
+		*dest[10].(*string) = "hongkong"
+		*dest[11].(*[]byte) = []byte(`{"hongkong":32}`)
+		*dest[12].(*float64) = 98
+		*dest[13].(*time.Time) = time.Now()
 		return nil
 	}))
 	if err == nil {

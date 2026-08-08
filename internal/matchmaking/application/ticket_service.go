@@ -18,6 +18,7 @@ var (
 	ErrTicketForbidden          = errors.New("ticket does not belong to player")
 	ErrIdempotencyKeyRequired   = errors.New("idempotency key is required")
 	ErrPlayerNotFound           = errors.New("player not found")
+	ErrPlayerBanned             = errors.New("player is banned")
 	ErrPlayerServiceUnavailable = errors.New("player service unavailable")
 	ErrReservationConflict      = errors.New("ticket reservation conflict")
 	ErrMatchNotFound            = errors.New("match not found")
@@ -28,6 +29,7 @@ var (
 type PlayerSnapshot struct {
 	ID             string
 	Rating         float64
+	Banned         bool
 	PreferredRoles []domain.Role
 	RegionLatency  map[string]int
 }
@@ -82,6 +84,9 @@ func (s *TicketService) CreateTicket(ctx context.Context, command CreateTicketCo
 	player, err := s.players.GetPlayer(ctx, command.PlayerID)
 	if err != nil {
 		return nil, err
+	}
+	if player.Banned {
+		return nil, ErrPlayerBanned
 	}
 	if len(command.PreferredRoles) == 0 {
 		command.PreferredRoles = player.PreferredRoles

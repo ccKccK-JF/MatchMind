@@ -70,6 +70,26 @@ Content-Type: application/json
 }
 ```
 
+Administrators can ban or unban a player. A ban requires a non-empty reason;
+the service records the administrator and UTC timestamp. Banned players cannot
+create Tickets, and queued Tickets are cancelled if the ban occurs while they
+wait:
+
+```http
+PATCH /api/v1/players/player-1001/ban
+X-Operator-ID: admin-1
+X-Operator-Role: admin
+Content-Type: application/json
+
+{
+  "banned": true,
+  "reason": "confirmed cheating"
+}
+```
+
+To unban the player, send `{"banned":false}` with the same administrator
+headers. Analyst and reviewer roles are rejected.
+
 ## Match tickets
 
 Create an idempotent ticket:

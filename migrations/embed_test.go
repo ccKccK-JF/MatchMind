@@ -76,3 +76,15 @@ func TestGlickoMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestPlayerBanMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("007_player_bans.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"banned", "ban_reason", "banned_at", "banned_by", "players_ban_state_check"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

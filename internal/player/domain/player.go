@@ -39,6 +39,10 @@ type PlayerSnapshot struct {
 	Rating           float64
 	RatingDeviation  float64
 	RatingVolatility float64
+	Banned           bool
+	BanReason        string
+	BannedAt         time.Time
+	BannedBy         string
 	PreferredRoles   []Role
 	HomeRegion       string
 	RegionLatency    map[string]int
@@ -54,6 +58,10 @@ type Player struct {
 	rating           float64
 	ratingDeviation  float64
 	ratingVolatility float64
+	banned           bool
+	banReason        string
+	bannedAt         time.Time
+	bannedBy         string
 	preferredRoles   []Role
 	homeRegion       string
 	regionLatency    map[string]int
@@ -116,6 +124,15 @@ func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 	if snapshot.RatingVolatility < 0 || math.IsNaN(snapshot.RatingVolatility) || math.IsInf(snapshot.RatingVolatility, 0) {
 		return nil, invalidPlayer("rating volatility must be finite and greater than zero")
 	}
+	snapshot.BanReason = strings.TrimSpace(snapshot.BanReason)
+	snapshot.BannedBy = strings.TrimSpace(snapshot.BannedBy)
+	if snapshot.Banned {
+		if snapshot.BanReason == "" || snapshot.BannedBy == "" || snapshot.BannedAt.IsZero() {
+			return nil, invalidPlayer("banned player must include reason, operator, and timestamp")
+		}
+	} else if snapshot.BanReason != "" || snapshot.BannedBy != "" || !snapshot.BannedAt.IsZero() {
+		return nil, invalidPlayer("active player cannot contain ban metadata")
+	}
 	player, err := NewPlayer(NewPlayerParams{
 		ID:             snapshot.ID,
 		Name:           snapshot.Name,
@@ -131,6 +148,10 @@ func RestorePlayer(snapshot PlayerSnapshot) (*Player, error) {
 	}
 	player.ratingDeviation = snapshot.RatingDeviation
 	player.ratingVolatility = snapshot.RatingVolatility
+	player.banned = snapshot.Banned
+	player.banReason = snapshot.BanReason
+	player.bannedAt = snapshot.BannedAt.UTC()
+	player.bannedBy = snapshot.BannedBy
 	return player, nil
 }
 
@@ -139,11 +160,38 @@ func (p *Player) Name() string                  { return p.name }
 func (p *Player) Rating() float64               { return p.rating }
 func (p *Player) RatingDeviation() float64      { return p.ratingDeviation }
 func (p *Player) RatingVolatility() float64     { return p.ratingVolatility }
+func (p *Player) Banned() bool                  { return p.banned }
+func (p *Player) BanReason() string             { return p.banReason }
+func (p *Player) BannedAt() time.Time           { return p.bannedAt }
+func (p *Player) BannedBy() string              { return p.bannedBy }
 func (p *Player) HomeRegion() string            { return p.homeRegion }
 func (p *Player) BehaviorScore() float64        { return p.behaviorScore }
 func (p *Player) CreatedAt() time.Time          { return p.createdAt }
 func (p *Player) PreferredRoles() []Role        { return cloneRoles(p.preferredRoles) }
 func (p *Player) RegionLatency() map[string]int { return cloneLatency(p.regionLatency) }
+
+func (p *Player) WithBanState(banned bool, reason, operatorID string, changedAt time.Time) (*Player, error) {
+	reason = strings.TrimSpace(reason)
+	operatorID = strings.TrimSpace(operatorID)
+	if operatorID == "" || changedAt.IsZero() {
+		return nil, invalidPlayer("ban state change requires operator and timestamp")
+	}
+	if banned && reason == "" {
+		return nil, invalidPlayer("ban reason is required")
+	}
+	clone := p.Clone()
+	clone.banned = banned
+	if banned {
+		clone.banReason = reason
+		clone.bannedAt = changedAt.UTC()
+		clone.bannedBy = operatorID
+	} else {
+		clone.banReason = ""
+		clone.bannedAt = time.Time{}
+		clone.bannedBy = ""
+	}
+	return clone, nil
+}
 
 func (p *Player) Clone() *Player {
 	if p == nil {

@@ -13,6 +13,16 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
+type allowAllPlayers struct{}
+
+func (allowAllPlayers) CheckPlayersEligibility(_ context.Context, playerIDs []string) (map[string]bool, error) {
+	result := make(map[string]bool, len(playerIDs))
+	for _, playerID := range playerIDs {
+		result[playerID] = true
+	}
+	return result, nil
+}
+
 func TestStoreRunsCompleteWorkerReservationFlow(t *testing.T) {
 	server := miniredis.RunT(t)
 	client := redisclient.NewClient(&redisclient.Options{Addr: server.Addr()})
@@ -50,7 +60,7 @@ func TestStoreRunsCompleteWorkerReservationFlow(t *testing.T) {
 	matchStore := memory.NewMatchStore()
 	worker, err := application.NewWorker(
 		store, matchStore, application.NewLocalAllocator(func() (string, error) { return "token", nil }),
-		domain.DefaultPolicy(), func() (string, error) {
+		allowAllPlayers{}, domain.DefaultPolicy(), func() (string, error) {
 			id := ids[idIndex]
 			idIndex++
 			return id, nil

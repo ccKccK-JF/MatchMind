@@ -623,6 +623,8 @@ func ticketError(err error) error {
 		return status.Error(codes.AlreadyExists, err.Error())
 	case errors.Is(err, application.ErrTicketForbidden):
 		return status.Error(codes.PermissionDenied, err.Error())
+	case errors.Is(err, application.ErrPlayerBanned):
+		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, application.ErrOperationsUnauthorized):
 		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, application.ErrApprovalRequired):

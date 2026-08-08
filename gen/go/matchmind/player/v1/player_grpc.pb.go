@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PlayerService_CreatePlayer_FullMethodName        = "/matchmind.player.v1.PlayerService/CreatePlayer"
-	PlayerService_GetPlayer_FullMethodName           = "/matchmind.player.v1.PlayerService/GetPlayer"
-	PlayerService_UpdateRegionLatency_FullMethodName = "/matchmind.player.v1.PlayerService/UpdateRegionLatency"
-	PlayerService_ApplyMatchResult_FullMethodName    = "/matchmind.player.v1.PlayerService/ApplyMatchResult"
-	PlayerService_GetRatingHistory_FullMethodName    = "/matchmind.player.v1.PlayerService/GetRatingHistory"
+	PlayerService_CreatePlayer_FullMethodName            = "/matchmind.player.v1.PlayerService/CreatePlayer"
+	PlayerService_GetPlayer_FullMethodName               = "/matchmind.player.v1.PlayerService/GetPlayer"
+	PlayerService_UpdateRegionLatency_FullMethodName     = "/matchmind.player.v1.PlayerService/UpdateRegionLatency"
+	PlayerService_SetPlayerBan_FullMethodName            = "/matchmind.player.v1.PlayerService/SetPlayerBan"
+	PlayerService_CheckPlayersEligibility_FullMethodName = "/matchmind.player.v1.PlayerService/CheckPlayersEligibility"
+	PlayerService_ApplyMatchResult_FullMethodName        = "/matchmind.player.v1.PlayerService/ApplyMatchResult"
+	PlayerService_GetRatingHistory_FullMethodName        = "/matchmind.player.v1.PlayerService/GetRatingHistory"
 )
 
 // PlayerServiceClient is the client API for PlayerService service.
@@ -33,6 +35,8 @@ type PlayerServiceClient interface {
 	CreatePlayer(ctx context.Context, in *CreatePlayerRequest, opts ...grpc.CallOption) (*CreatePlayerResponse, error)
 	GetPlayer(ctx context.Context, in *GetPlayerRequest, opts ...grpc.CallOption) (*GetPlayerResponse, error)
 	UpdateRegionLatency(ctx context.Context, in *UpdateRegionLatencyRequest, opts ...grpc.CallOption) (*UpdateRegionLatencyResponse, error)
+	SetPlayerBan(ctx context.Context, in *SetPlayerBanRequest, opts ...grpc.CallOption) (*SetPlayerBanResponse, error)
+	CheckPlayersEligibility(ctx context.Context, in *CheckPlayersEligibilityRequest, opts ...grpc.CallOption) (*CheckPlayersEligibilityResponse, error)
 	ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error)
 	GetRatingHistory(ctx context.Context, in *GetRatingHistoryRequest, opts ...grpc.CallOption) (*GetRatingHistoryResponse, error)
 }
@@ -75,6 +79,26 @@ func (c *playerServiceClient) UpdateRegionLatency(ctx context.Context, in *Updat
 	return out, nil
 }
 
+func (c *playerServiceClient) SetPlayerBan(ctx context.Context, in *SetPlayerBanRequest, opts ...grpc.CallOption) (*SetPlayerBanResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPlayerBanResponse)
+	err := c.cc.Invoke(ctx, PlayerService_SetPlayerBan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *playerServiceClient) CheckPlayersEligibility(ctx context.Context, in *CheckPlayersEligibilityRequest, opts ...grpc.CallOption) (*CheckPlayersEligibilityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckPlayersEligibilityResponse)
+	err := c.cc.Invoke(ctx, PlayerService_CheckPlayersEligibility_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *playerServiceClient) ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ApplyMatchResultResponse)
@@ -102,6 +126,8 @@ type PlayerServiceServer interface {
 	CreatePlayer(context.Context, *CreatePlayerRequest) (*CreatePlayerResponse, error)
 	GetPlayer(context.Context, *GetPlayerRequest) (*GetPlayerResponse, error)
 	UpdateRegionLatency(context.Context, *UpdateRegionLatencyRequest) (*UpdateRegionLatencyResponse, error)
+	SetPlayerBan(context.Context, *SetPlayerBanRequest) (*SetPlayerBanResponse, error)
+	CheckPlayersEligibility(context.Context, *CheckPlayersEligibilityRequest) (*CheckPlayersEligibilityResponse, error)
 	ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error)
 	GetRatingHistory(context.Context, *GetRatingHistoryRequest) (*GetRatingHistoryResponse, error)
 	mustEmbedUnimplementedPlayerServiceServer()
@@ -122,6 +148,12 @@ func (UnimplementedPlayerServiceServer) GetPlayer(context.Context, *GetPlayerReq
 }
 func (UnimplementedPlayerServiceServer) UpdateRegionLatency(context.Context, *UpdateRegionLatencyRequest) (*UpdateRegionLatencyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateRegionLatency not implemented")
+}
+func (UnimplementedPlayerServiceServer) SetPlayerBan(context.Context, *SetPlayerBanRequest) (*SetPlayerBanResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPlayerBan not implemented")
+}
+func (UnimplementedPlayerServiceServer) CheckPlayersEligibility(context.Context, *CheckPlayersEligibilityRequest) (*CheckPlayersEligibilityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckPlayersEligibility not implemented")
 }
 func (UnimplementedPlayerServiceServer) ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ApplyMatchResult not implemented")
@@ -204,6 +236,42 @@ func _PlayerService_UpdateRegionLatency_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlayerService_SetPlayerBan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPlayerBanRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlayerServiceServer).SetPlayerBan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlayerService_SetPlayerBan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlayerServiceServer).SetPlayerBan(ctx, req.(*SetPlayerBanRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlayerService_CheckPlayersEligibility_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckPlayersEligibilityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlayerServiceServer).CheckPlayersEligibility(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlayerService_CheckPlayersEligibility_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlayerServiceServer).CheckPlayersEligibility(ctx, req.(*CheckPlayersEligibilityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlayerService_ApplyMatchResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ApplyMatchResultRequest)
 	if err := dec(in); err != nil {
@@ -258,6 +326,14 @@ var PlayerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateRegionLatency",
 			Handler:    _PlayerService_UpdateRegionLatency_Handler,
+		},
+		{
+			MethodName: "SetPlayerBan",
+			Handler:    _PlayerService_SetPlayerBan_Handler,
+		},
+		{
+			MethodName: "CheckPlayersEligibility",
+			Handler:    _PlayerService_CheckPlayersEligibility_Handler,
 		},
 		{
 			MethodName: "ApplyMatchResult",

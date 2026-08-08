@@ -56,6 +56,21 @@ func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Play
 	return player.Clone(), nil
 }
 
+func (r *Repository) GetBanStates(ctx context.Context, playerIDs []string) (map[string]bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	result := make(map[string]bool, len(playerIDs))
+	for _, playerID := range playerIDs {
+		if player, exists := r.players[playerID]; exists {
+			result[playerID] = player.Banned()
+		}
+	}
+	return result, nil
+}
+
 func (r *Repository) UpdateRegionLatency(
 	ctx context.Context,
 	playerID string,
@@ -73,6 +88,31 @@ func (r *Repository) UpdateRegionLatency(
 		return nil, application.ErrPlayerNotFound
 	}
 	updated, err := player.WithRegionLatency(latencies)
+	if err != nil {
+		return nil, err
+	}
+	r.players[playerID] = updated
+	return updated.Clone(), nil
+}
+
+func (r *Repository) SetBanState(
+	ctx context.Context,
+	playerID string,
+	banned bool,
+	reason, operatorID string,
+	changedAt time.Time,
+) (*domain.Player, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	playerID = strings.TrimSpace(playerID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	player, exists := r.players[playerID]
+	if !exists {
+		return nil, application.ErrPlayerNotFound
+	}
+	updated, err := player.WithBanState(banned, reason, operatorID, changedAt)
 	if err != nil {
 		return nil, err
 	}

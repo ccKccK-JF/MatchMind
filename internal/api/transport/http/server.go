@@ -67,6 +67,7 @@ func NewServer(
 	mux.HandleFunc("POST /api/v1/players", server.createPlayer)
 	mux.HandleFunc("GET /api/v1/players/{player_id}/rating", server.getPlayerRating)
 	mux.HandleFunc("PATCH /api/v1/players/{player_id}/latency", server.updatePlayerLatency)
+	mux.HandleFunc("PATCH /api/v1/players/{player_id}/ban", server.setPlayerBan)
 	mux.HandleFunc("POST /api/v1/tickets", server.createTicket)
 	mux.HandleFunc("GET /api/v1/tickets/{ticket_id}", server.getTicket)
 	mux.HandleFunc("DELETE /api/v1/tickets/{ticket_id}", server.cancelTicket)
@@ -369,6 +370,7 @@ type playerRatingResponse struct {
 	Rating            float64                    `json:"rating"`
 	RatingDeviation   float64                    `json:"rating_deviation"`
 	RatingVolatility  float64                    `json:"rating_volatility"`
+	Banned            bool                       `json:"banned"`
 	History           []*playerv1.RatingChange   `json:"history"`
 	RecentMatchIDs    []string                   `json:"recent_match_ids"`
 	MatchmakingStatus string                     `json:"matchmaking_status"`
@@ -377,6 +379,33 @@ type playerRatingResponse struct {
 
 type updatePlayerLatencyRequest struct {
 	RegionLatency map[string]int32 `json:"region_latency"`
+}
+
+type setPlayerBanRequest struct {
+	Banned bool   `json:"banned"`
+	Reason string `json:"reason"`
+}
+
+func (s *Server) setPlayerBan(response http.ResponseWriter, request *http.Request) {
+	operatorID, err := requireOperator(request, "admin")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	var body setPlayerBanRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.players.SetPlayerBan(request.Context(), &playerv1.SetPlayerBanRequest{
+		PlayerId: request.PathValue("player_id"), Banned: body.Banned,
+		Reason: body.Reason, OperatorId: operatorID,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
 }
 
 func (s *Server) updatePlayerLatency(response http.ResponseWriter, request *http.Request) {
@@ -424,7 +453,8 @@ func (s *Server) getPlayerRating(response http.ResponseWriter, request *http.Req
 	writeJSON(response, http.StatusOK, playerRatingResponse{
 		PlayerID: playerResult.Player.Id, Rating: playerResult.Player.Rating,
 		RatingDeviation:  playerResult.Player.RatingDeviation,
-		RatingVolatility: playerResult.Player.RatingVolatility, History: historyResult.Changes,
+		RatingVolatility: playerResult.Player.RatingVolatility, Banned: playerResult.Player.Banned,
+		History:        historyResult.Changes,
 		RecentMatchIDs: recentMatchIDs(historyResult.Changes, 10), MatchmakingStatus: matchmakingStatus,
 		CurrentTicket: activeTicket.GetTicket(),
 	})

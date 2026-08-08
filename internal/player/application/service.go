@@ -17,7 +17,9 @@ var (
 type Repository interface {
 	Create(ctx context.Context, player *domain.Player) error
 	GetByID(ctx context.Context, playerID string) (*domain.Player, error)
+	GetBanStates(ctx context.Context, playerIDs []string) (map[string]bool, error)
 	UpdateRegionLatency(ctx context.Context, playerID string, latencies map[string]int, updatedAt time.Time) (*domain.Player, error)
+	SetBanState(ctx context.Context, playerID string, banned bool, reason, operatorID string, changedAt time.Time) (*domain.Player, error)
 }
 
 type Clock func() time.Time
@@ -42,6 +44,13 @@ type CreatePlayerCommand struct {
 type UpdateRegionLatencyCommand struct {
 	PlayerID string
 	Latency  map[string]int
+}
+
+type SetPlayerBanCommand struct {
+	PlayerID   string
+	Banned     bool
+	Reason     string
+	OperatorID string
 }
 
 func NewService(repository Repository, clock Clock) *Service {
@@ -82,4 +91,37 @@ func (s *Service) UpdateRegionLatency(ctx context.Context, command UpdateRegionL
 		return nil, domain.ErrInvalidPlayer
 	}
 	return s.repository.UpdateRegionLatency(ctx, command.PlayerID, command.Latency, s.clock())
+}
+
+func (s *Service) SetPlayerBan(ctx context.Context, command SetPlayerBanCommand) (*domain.Player, error) {
+	command.PlayerID = strings.TrimSpace(command.PlayerID)
+	command.OperatorID = strings.TrimSpace(command.OperatorID)
+	if command.PlayerID == "" || command.OperatorID == "" {
+		return nil, domain.ErrInvalidPlayer
+	}
+	return s.repository.SetBanState(
+		ctx, command.PlayerID, command.Banned, command.Reason, command.OperatorID, s.clock(),
+	)
+}
+
+// GetPlayerBanStates returns one entry for every existing requested player.
+// Missing IDs are deliberately omitted so callers can fail closed.
+func (s *Service) GetPlayerBanStates(ctx context.Context, playerIDs []string) (map[string]bool, error) {
+	if len(playerIDs) == 0 || len(playerIDs) > 1000 {
+		return nil, domain.ErrInvalidPlayer
+	}
+	normalized := make([]string, 0, len(playerIDs))
+	seen := make(map[string]struct{}, len(playerIDs))
+	for _, playerID := range playerIDs {
+		playerID = strings.TrimSpace(playerID)
+		if playerID == "" {
+			return nil, domain.ErrInvalidPlayer
+		}
+		if _, duplicate := seen[playerID]; duplicate {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		normalized = append(normalized, playerID)
+	}
+	return s.repository.GetBanStates(ctx, normalized)
 }

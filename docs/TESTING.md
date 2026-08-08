@@ -16,7 +16,10 @@ transitions, five-check risk gating, approval separation of duties,
 activation/rollback, and the complete service gRPC flow.
 Player coverage includes normalized regional-latency replacement in memory and
 PostgreSQL, active-Ticket status lookup, and owner enforcement for Ticket
-create/query/cancel operations.
+create/query/cancel operations. Ban tests cover domain invariants, memory and
+PostgreSQL restoration, admin-only REST mapping, gRPC batch eligibility,
+pre-Ticket rejection, fail-closed gateway errors, and a complete flow where a
+queued player is banned, removed before reservation, unbanned, and requeued.
 Trace tests cover untrusted ID replacement, context/metadata preservation,
 multi-hop client/server propagation, gRPC response metadata, correlated JSON
 logs, and a real HTTP-to-Player-gRPC integration path.

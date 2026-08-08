@@ -51,9 +51,27 @@ func (c *Client) GetPlayer(ctx context.Context, playerID string) (application.Pl
 	return application.PlayerSnapshot{
 		ID:             player.GetId(),
 		Rating:         player.GetRating(),
+		Banned:         player.GetBanned(),
 		PreferredRoles: roles,
 		RegionLatency:  latency,
 	}, nil
+}
+
+func (c *Client) CheckPlayersEligibility(ctx context.Context, playerIDs []string) (map[string]bool, error) {
+	response, err := c.client.CheckPlayersEligibility(ctx, &playerv1.CheckPlayersEligibilityRequest{PlayerIds: playerIDs})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.Canceled, codes.DeadlineExceeded:
+			return nil, err
+		default:
+			return nil, fmt.Errorf("%w: %v", application.ErrPlayerServiceUnavailable, err)
+		}
+	}
+	result := make(map[string]bool, len(playerIDs))
+	for _, player := range response.GetPlayers() {
+		result[player.GetPlayerId()] = player.GetExists() && !player.GetBanned()
+	}
+	return result, nil
 }
 
 func roleFromProto(role playerv1.Role) (domain.Role, error) {

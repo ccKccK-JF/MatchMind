@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -31,6 +32,8 @@ import (
 	simulationmemory "github.com/ccKccK-JF/MatchMind/internal/simulation/repository/memory"
 	simulationgrpc "github.com/ccKccK-JF/MatchMind/internal/simulation/transport/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
@@ -52,9 +55,10 @@ func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 
 	ticketStore := matchmakingmemory.NewTicketStore()
 	matchStore := matchmakingmemory.NewMatchStore()
+	playerGateway := matchmakingplayergateway.NewClient(playerClient)
 	ticketService := matchmakingapp.NewTicketService(
 		ticketStore,
-		matchmakingplayergateway.NewClient(playerClient),
+		playerGateway,
 		nil,
 		func() time.Time { return now },
 	)
@@ -130,6 +134,7 @@ func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 		ticketStore,
 		matchStore,
 		matchmakingapp.NewLocalAllocator(func() (string, error) { return "connection-token", nil }),
+		playerGateway,
 		domain.DefaultPolicy(),
 		func() (string, error) {
 			id := workerIDs[workerIDIndex]
@@ -140,6 +145,39 @@ func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatal(err)
+	}
+	_, err = playerClient.SetPlayerBan(ctx, &playerv1.SetPlayerBanRequest{
+		PlayerId: "player-00", Banned: true, Reason: "integration moderation", OperatorId: "admin-1",
+	})
+	if err != nil {
+		t.Fatalf("SetPlayerBan() error = %v", err)
+	}
+	_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
+		PlayerId: "player-00", Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		PreferredRoles: []playerv1.Role{playerv1.Role_ROLE_VANGUARD}, IdempotencyKey: "banned-retry-00",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("banned CreateTicket() code = %v, want PermissionDenied", status.Code(err))
+	}
+	if _, err := worker.RunOnce(ctx); !errors.Is(err, matchmakingapp.ErrNoMatchAvailable) {
+		t.Fatalf("worker matched a newly banned queued player: %v", err)
+	}
+	cancelled, err := matchmakingClient.GetTicket(ctx, &matchmakingv1.GetTicketRequest{TicketId: activeBeforeMatch.GetTicket().GetId()})
+	if err != nil || cancelled.GetTicket().GetState() != matchmakingv1.TicketState_TICKET_STATE_CANCELLED {
+		t.Fatalf("banned player's Ticket = %+v, %v", cancelled.GetTicket(), err)
+	}
+	_, err = playerClient.SetPlayerBan(ctx, &playerv1.SetPlayerBanRequest{
+		PlayerId: "player-00", Banned: false, OperatorId: "admin-1",
+	})
+	if err != nil {
+		t.Fatalf("unban player error = %v", err)
+	}
+	_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
+		PlayerId: "player-00", Mode: "ranked_5v5", ClientVersion: "1.0.0",
+		PreferredRoles: []playerv1.Role{playerv1.Role_ROLE_VANGUARD}, IdempotencyKey: "requeue-00",
+	})
+	if err != nil {
+		t.Fatalf("requeue unbanned player error = %v", err)
 	}
 	match, err := worker.RunOnce(ctx)
 	if err != nil {

@@ -27,6 +27,14 @@ type MatchQueue interface {
 	RecoverExpiredReservations(ctx context.Context, now time.Time) (int, error)
 }
 
+type IneligibleTicketCanceller interface {
+	Cancel(ctx context.Context, ticketID, playerID, idempotencyKey string, now time.Time) (*domain.MatchTicket, error)
+}
+
+type PlayerEligibilityReader interface {
+	CheckPlayersEligibility(ctx context.Context, playerIDs []string) (map[string]bool, error)
+}
+
 type MatchAssignmentCoordinator interface {
 	AssignReservedTickets(ctx context.Context, reservationID string, match *domain.Match, now time.Time) error
 }
@@ -83,6 +91,8 @@ type Worker struct {
 	queue       MatchQueue
 	matches     MatchRepository
 	allocator   ServerAllocator
+	eligibility PlayerEligibilityReader
+	canceller   IneligibleTicketCanceller
 	policy      domain.MatchPolicy
 	policies    PolicySelector
 	idGenerator platformid.Generator
@@ -94,12 +104,20 @@ func NewWorker(
 	queue MatchQueue,
 	matches MatchRepository,
 	allocator ServerAllocator,
+	eligibility PlayerEligibilityReader,
 	policy domain.MatchPolicy,
 	idGenerator platformid.Generator,
 	clock func() time.Time,
 ) (*Worker, error) {
 	if err := policy.Validate(); err != nil {
 		return nil, err
+	}
+	if eligibility == nil {
+		return nil, ErrPlayerServiceUnavailable
+	}
+	canceller, ok := queue.(IneligibleTicketCanceller)
+	if !ok {
+		return nil, errors.New("match queue cannot cancel ineligible tickets")
 	}
 	if idGenerator == nil {
 		idGenerator = platformid.UUID
@@ -108,7 +126,7 @@ func NewWorker(
 		clock = time.Now
 	}
 	return &Worker{
-		queue: queue, matches: matches, allocator: allocator, policy: policy,
+		queue: queue, matches: matches, allocator: allocator, eligibility: eligibility, canceller: canceller, policy: policy,
 		idGenerator: idGenerator, clock: clock, metrics: noopWorkerMetrics{},
 	}, nil
 }
@@ -190,6 +208,13 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	if len(tickets) == 0 {
 		return nil, ErrNoMatchAvailable
 	}
+	tickets, err = w.filterEligibleTickets(ctx, tickets, now)
+	if err != nil {
+		return nil, err
+	}
+	if len(tickets) == 0 {
+		return nil, ErrNoMatchAvailable
+	}
 	selection := PolicySelection{Policy: w.policy, Variant: "default", Bucket: -1}
 	if w.policies != nil {
 		selection = w.policies.SelectPolicy(tickets[0].PlayerID())
@@ -233,6 +258,14 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 		return nil, fmt.Errorf("generate match id: %w", err)
 	}
 	ticketIDs := formationTicketIDs(formation)
+	selectedTickets := formationTickets(formation)
+	selectedTickets, err = w.filterEligibleTickets(ctx, selectedTickets, now)
+	if err != nil {
+		return nil, err
+	}
+	if len(selectedTickets) != policy.TeamSize*2 {
+		return nil, ErrNoMatchAvailable
+	}
 	if _, err := w.queue.ReserveAll(ctx, ticketIDs, reservationID, now.Add(policy.ReservationTTL), now); err != nil {
 		if errors.Is(err, ErrReservationConflict) {
 			w.metrics.IncReservationConflict()
@@ -325,6 +358,36 @@ func (w *Worker) tryPool(ctx context.Context, poolKey domain.PoolKey, now time.T
 	return match.Clone(), nil
 }
 
+func (w *Worker) filterEligibleTickets(
+	ctx context.Context,
+	tickets []*domain.MatchTicket,
+	now time.Time,
+) ([]*domain.MatchTicket, error) {
+	playerIDs := make([]string, 0, len(tickets))
+	for _, ticket := range tickets {
+		playerIDs = append(playerIDs, ticket.PlayerID())
+	}
+	eligible, err := w.eligibility.CheckPlayersEligibility(ctx, playerIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*domain.MatchTicket, 0, len(tickets))
+	for _, ticket := range tickets {
+		if eligible[ticket.PlayerID()] {
+			result = append(result, ticket)
+			continue
+		}
+		_, cancelErr := w.canceller.Cancel(
+			ctx, ticket.ID(), ticket.PlayerID(), "system-ineligible-"+ticket.ID(), now,
+		)
+		if cancelErr != nil && !errors.Is(cancelErr, ErrTicketNotFound) &&
+			!errors.Is(cancelErr, domain.ErrIllegalStateTransition) && !errors.Is(cancelErr, ErrReservationConflict) {
+			return nil, cancelErr
+		}
+	}
+	return result, nil
+}
+
 func (w *Worker) releaseAllocation(ctx context.Context, matchID, region string) {
 	if releaser, ok := w.allocator.(ServerReleaser); ok {
 		if err := releaser.Release(ctx, matchID, region); err != nil {
@@ -359,6 +422,16 @@ func formationTicketIDs(formation engine.TeamFormation) []string {
 	for _, team := range []engine.Team{formation.TeamA, formation.TeamB} {
 		for _, player := range team.Players {
 			result = append(result, player.Ticket.ID())
+		}
+	}
+	return result
+}
+
+func formationTickets(formation engine.TeamFormation) []*domain.MatchTicket {
+	result := make([]*domain.MatchTicket, 0, 10)
+	for _, team := range []engine.Team{formation.TeamA, formation.TeamB} {
+		for _, player := range team.Players {
+			result = append(result, player.Ticket)
 		}
 	}
 	return result

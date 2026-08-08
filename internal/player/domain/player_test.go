@@ -177,3 +177,34 @@ func TestWithRegionLatencyValidatesNormalizesAndDoesNotMutatePlayer(t *testing.T
 		t.Fatalf("invalid latency error = %v", err)
 	}
 }
+
+func TestPlayerBanStateIsValidatedAndImmutable(t *testing.T) {
+	player, err := NewPlayer(NewPlayerParams{
+		ID: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 95,
+		CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bannedAt := time.Date(2026, 8, 8, 16, 0, 0, 0, time.FixedZone("CST", 8*60*60))
+	banned, err := player.WithBanState(true, " abusive behavior ", " admin-1 ", bannedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if player.Banned() || !banned.Banned() || banned.BanReason() != "abusive behavior" ||
+		banned.BannedBy() != "admin-1" || !banned.BannedAt().Equal(bannedAt.UTC()) {
+		t.Fatalf("source/updated ban state = %v/%v/%q/%q/%v", player.Banned(), banned.Banned(), banned.BanReason(), banned.BannedBy(), banned.BannedAt())
+	}
+	unbanned, err := banned.WithBanState(false, "appeal accepted", "admin-2", bannedAt.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unbanned.Banned() || unbanned.BanReason() != "" || unbanned.BannedBy() != "" || !unbanned.BannedAt().IsZero() {
+		t.Fatalf("unbanned state = %v/%q/%q/%v", unbanned.Banned(), unbanned.BanReason(), unbanned.BannedBy(), unbanned.BannedAt())
+	}
+	if _, err := player.WithBanState(true, "", "admin-1", bannedAt); !errors.Is(err, ErrInvalidPlayer) {
+		t.Fatalf("missing reason error = %v", err)
+	}
+}

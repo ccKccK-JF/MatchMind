@@ -128,6 +128,18 @@ func TestTicketServiceRequiresIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestTicketServiceRejectsBannedPlayer(t *testing.T) {
+	player := testPlayerSnapshot()
+	player.Banned = true
+	service := application.NewTicketService(memory.NewTicketStore(), fakePlayerReader{player: player}, nil, nil)
+	_, err := service.CreateTicket(context.Background(), application.CreateTicketCommand{
+		PlayerID: "player-1", Mode: "ranked_5v5", ClientVersion: "1.0.0", IdempotencyKey: "create-banned",
+	})
+	if !errors.Is(err, application.ErrPlayerBanned) {
+		t.Fatalf("CreateTicket() error = %v, want ErrPlayerBanned", err)
+	}
+}
+
 func testPlayerSnapshot() application.PlayerSnapshot {
 	return application.PlayerSnapshot{
 		ID:             "player-1",

@@ -58,6 +58,7 @@ type fakePlayerClient struct {
 	get           func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error)
 	history       func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error)
 	updateLatency func(context.Context, *playerv1.UpdateRegionLatencyRequest) (*playerv1.UpdateRegionLatencyResponse, error)
+	setBan        func(context.Context, *playerv1.SetPlayerBanRequest) (*playerv1.SetPlayerBanResponse, error)
 }
 
 type fakeSimulationClient struct {
@@ -98,6 +99,10 @@ func (f fakePlayerClient) GetRatingHistory(ctx context.Context, request *playerv
 
 func (f fakePlayerClient) UpdateRegionLatency(ctx context.Context, request *playerv1.UpdateRegionLatencyRequest, _ ...grpc.CallOption) (*playerv1.UpdateRegionLatencyResponse, error) {
 	return f.updateLatency(ctx, request)
+}
+
+func (f fakePlayerClient) SetPlayerBan(ctx context.Context, request *playerv1.SetPlayerBanRequest, _ ...grpc.CallOption) (*playerv1.SetPlayerBanResponse, error) {
+	return f.setBan(ctx, request)
 }
 
 func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
@@ -215,7 +220,7 @@ func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 	client := fakePlayerClient{
 		get: func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error) {
 			return &playerv1.GetPlayerResponse{Player: &playerv1.Player{
-				Id: "player-1", Rating: 1516, RatingDeviation: 120, RatingVolatility: 0.06,
+				Id: "player-1", Rating: 1516, RatingDeviation: 120, RatingVolatility: 0.06, Banned: true,
 			}}, nil
 		},
 		history: func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error) {
@@ -234,10 +239,39 @@ func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/players/player-1/rating", nil))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"match_id":"match-1"`) ||
 		!strings.Contains(response.Body.String(), `"rating_volatility":0.06`) ||
+		!strings.Contains(response.Body.String(), `"banned":true`) ||
 		!strings.Contains(response.Body.String(), `"rating_system":2`) ||
 		!strings.Contains(response.Body.String(), `"matchmaking_status":"QUEUED"`) ||
 		!strings.Contains(response.Body.String(), `"recent_match_ids":["match-1"]`) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestSetPlayerBanRequiresAdminAndMapsOperator(t *testing.T) {
+	var captured *playerv1.SetPlayerBanRequest
+	client := fakePlayerClient{setBan: func(_ context.Context, request *playerv1.SetPlayerBanRequest) (*playerv1.SetPlayerBanResponse, error) {
+		captured = request
+		return &playerv1.SetPlayerBanResponse{Player: &playerv1.Player{
+			Id: request.PlayerId, Banned: request.Banned, BanReason: request.Reason, BannedBy: request.OperatorId,
+		}}, nil
+	}}
+	server := NewServer(client, nil, nil, nil)
+	forbiddenRequest := httptest.NewRequest(http.MethodPatch, "/api/v1/players/player-1/ban", strings.NewReader(`{"banned":true,"reason":"cheating"}`))
+	forbiddenRequest.Header.Set("X-Operator-ID", "analyst-1")
+	forbiddenRequest.Header.Set("X-Operator-Role", "analyst")
+	forbidden := httptest.NewRecorder()
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden || captured != nil {
+		t.Fatalf("forbidden status/request = %d/%#v", forbidden.Code, captured)
+	}
+	request := httptest.NewRequest(http.MethodPatch, "/api/v1/players/player-1/ban", strings.NewReader(`{"banned":true,"reason":"cheating"}`))
+	request.Header.Set("X-Operator-ID", "admin-1")
+	request.Header.Set("X-Operator-Role", "admin")
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || captured == nil || captured.GetPlayerId() != "player-1" ||
+		!captured.GetBanned() || captured.GetReason() != "cheating" || captured.GetOperatorId() != "admin-1" {
+		t.Fatalf("status/request/body = %d/%#v/%s", response.Code, captured, response.Body.String())
 	}
 }
 

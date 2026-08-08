@@ -255,7 +255,7 @@ func main() {
 	workerMetrics := observability.NewMatchmakingMetrics(registry)
 	for workerIndex := range workerCount {
 		worker, workerErr := application.NewWorker(
-			store, matchStore, allocator, policy, nil, nil,
+			store, matchStore, allocator, players, policy, nil, nil,
 		)
 		if workerErr != nil {
 			slog.Error("create matchmaking worker", "worker_index", workerIndex, "error", workerErr)

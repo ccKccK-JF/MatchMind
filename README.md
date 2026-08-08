@@ -23,7 +23,7 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   health checks, reflection, and graceful shutdown are complete.
 - `player-service` supports player creation/query, configurable Elo or
   Glicko-2 updates, rating deviation and volatility, regional latency
-  replacement, rating history, result idempotency, a
+  replacement, administrator-controlled player bans, rating history, result idempotency, a
   concurrency-safe memory store, and an optional transactional PostgreSQL
   repository. Player rating views include recent Match IDs and current
   matchmaking status.
@@ -31,7 +31,7 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   ticket and match state machines, partitioned queues, dynamic rating windows,
   bounded wait-driven latency windows, time-based non-preferred-role
   relaxation, party-safe candidate selection, deterministic 5v5 team/role
-  assignment, five-part quality scoring, atomic reservation, automatic
+  assignment, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
   workers, and match connection details. Ticket queues and Matches can use
   memory or PostgreSQL;
   the PostgreSQL path includes batch reservation, expiry recovery, durable
