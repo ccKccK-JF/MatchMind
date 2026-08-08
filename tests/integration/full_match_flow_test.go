@@ -99,15 +99,29 @@ func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreatePlayer(%s) error = %v", playerID, err)
 		}
+		latency := map[string]int32{"hongkong": 30}
+		if index == 0 {
+			updated, updateErr := playerClient.UpdateRegionLatency(ctx, &playerv1.UpdateRegionLatencyRequest{
+				PlayerId: playerID, RegionLatencyMs: map[string]int32{"hongkong": 25, "tokyo": 70},
+			})
+			if updateErr != nil || updated.GetPlayer().GetRegionLatencyMs()["hongkong"] != 25 {
+				t.Fatalf("UpdateRegionLatency(%s) = %+v, %v", playerID, updated, updateErr)
+			}
+			latency = nil
+		}
 		_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
 			PlayerId: playerID, Mode: "ranked_5v5", ClientVersion: "1.0.0",
 			PreferredRoles:  []playerv1.Role{roles[index%5]},
-			RegionLatencyMs: map[string]int32{"hongkong": 30},
+			RegionLatencyMs: latency,
 			IdempotencyKey:  fmt.Sprintf("create-%02d", index),
 		})
 		if err != nil {
 			t.Fatalf("CreateTicket(%s) error = %v", playerID, err)
 		}
+	}
+	activeBeforeMatch, err := matchmakingClient.GetActiveTicketForPlayer(ctx, &matchmakingv1.GetActiveTicketForPlayerRequest{PlayerId: "player-00"})
+	if err != nil || !activeBeforeMatch.GetFound() || activeBeforeMatch.GetTicket().GetRegionLatencyMs()["hongkong"] != 25 {
+		t.Fatalf("active Ticket before Match = %+v, %v", activeBeforeMatch, err)
 	}
 
 	workerIDs := []string{"reservation-1", "match-1"}
@@ -175,6 +189,10 @@ func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 	}
 	if len(history.GetChanges()) != 1 || history.GetChanges()[0].GetMatchId() != match.ID() {
 		t.Fatalf("rating history = %+v", history.GetChanges())
+	}
+	activeAfterMatch, err := matchmakingClient.GetActiveTicketForPlayer(ctx, &matchmakingv1.GetActiveTicketForPlayerRequest{PlayerId: firstPlayerID})
+	if err != nil || activeAfterMatch.GetFound() {
+		t.Fatalf("active Ticket after finished Match = %+v, %v", activeAfterMatch, err)
 	}
 	qualityAnalysis, err := matchmakingClient.AnalyzeMatchQuality(ctx, &matchmakingv1.AnalyzeMatchQualityRequest{
 		Mode: "ranked_5v5", ServerRegion: "hongkong", Limit: 10,

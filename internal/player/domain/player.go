@@ -61,6 +61,7 @@ func NewPlayer(params NewPlayerParams) (*Player, error) {
 	params.ID = strings.TrimSpace(params.ID)
 	params.Name = strings.TrimSpace(params.Name)
 	params.HomeRegion = strings.ToLower(strings.TrimSpace(params.HomeRegion))
+	params.RegionLatency = normalizeRegionLatency(params.RegionLatency)
 
 	if params.ID == "" {
 		return nil, invalidPlayer("id is required")
@@ -141,6 +142,18 @@ func (p *Player) Clone() *Player {
 	return &clone
 }
 
+// WithRegionLatency returns a validated copy so repositories can update
+// network measurements without exposing mutable Player internals.
+func (p *Player) WithRegionLatency(latencies map[string]int) (*Player, error) {
+	latencies = normalizeRegionLatency(latencies)
+	if err := validateRegionLatency(latencies); err != nil {
+		return nil, err
+	}
+	updated := p.Clone()
+	updated.regionLatency = cloneLatency(latencies)
+	return updated, nil
+}
+
 func validateRoles(roles []Role) error {
 	if len(roles) == 0 {
 		return invalidPlayer("at least one preferred role is required")
@@ -191,4 +204,20 @@ func cloneLatency(latencies map[string]int) map[string]int {
 		clone[region] = latency
 	}
 	return clone
+}
+
+func normalizeRegionLatency(latencies map[string]int) map[string]int {
+	normalized := make(map[string]int, len(latencies))
+	for region, latency := range latencies {
+		region = strings.ToLower(strings.TrimSpace(region))
+		if region == "" {
+			normalized[region] = latency
+			continue
+		}
+		if existing, duplicate := normalized[region]; duplicate && latency > existing {
+			continue
+		}
+		normalized[region] = latency
+	}
+	return normalized
 }

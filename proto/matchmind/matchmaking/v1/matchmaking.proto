@@ -10,6 +10,7 @@ option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking
 service MatchmakingService {
   rpc CreateTicket(CreateTicketRequest) returns (CreateTicketResponse);
   rpc GetTicket(GetTicketRequest) returns (GetTicketResponse);
+  rpc GetActiveTicketForPlayer(GetActiveTicketForPlayerRequest) returns (GetActiveTicketForPlayerResponse);
   rpc CancelTicket(CancelTicketRequest) returns (CancelTicketResponse);
   rpc GetMatch(GetMatchRequest) returns (GetMatchResponse);
   rpc StartMatch(StartMatchRequest) returns (StartMatchResponse);
@@ -135,6 +136,15 @@ message GetTicketRequest {
 
 message GetTicketResponse {
   MatchTicket ticket = 1;
+}
+
+message GetActiveTicketForPlayerRequest {
+  string player_id = 1;
+}
+
+message GetActiveTicketForPlayerResponse {
+  bool found = 1;
+  MatchTicket ticket = 2;
 }
 
 message CancelTicketRequest {

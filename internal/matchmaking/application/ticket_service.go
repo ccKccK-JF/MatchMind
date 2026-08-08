@@ -42,6 +42,10 @@ type TicketStore interface {
 	Cancel(ctx context.Context, ticketID, playerID, idempotencyKey string, now time.Time) (*domain.MatchTicket, error)
 }
 
+type ActiveTicketReader interface {
+	GetActiveByPlayer(ctx context.Context, playerID string) (*domain.MatchTicket, error)
+}
+
 type TicketService struct {
 	store       TicketStore
 	players     PlayerReader
@@ -118,6 +122,18 @@ func (s *TicketService) CreateTicket(ctx context.Context, command CreateTicketCo
 
 func (s *TicketService) GetTicket(ctx context.Context, ticketID string) (*domain.MatchTicket, error) {
 	return s.store.Get(ctx, strings.TrimSpace(ticketID))
+}
+
+func (s *TicketService) GetActiveTicketForPlayer(ctx context.Context, playerID string) (*domain.MatchTicket, error) {
+	playerID = strings.TrimSpace(playerID)
+	if playerID == "" {
+		return nil, domain.ErrInvalidTicket
+	}
+	reader, ok := s.store.(ActiveTicketReader)
+	if !ok {
+		return nil, ErrTicketNotFound
+	}
+	return reader.GetActiveByPlayer(ctx, playerID)
 }
 
 func (s *TicketService) CancelTicket(ctx context.Context, ticketID, playerID, idempotencyKey string) (*domain.MatchTicket, error) {

@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	MatchmakingService_CreateTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/CreateTicket"
 	MatchmakingService_GetTicket_FullMethodName                = "/matchmind.matchmaking.v1.MatchmakingService/GetTicket"
+	MatchmakingService_GetActiveTicketForPlayer_FullMethodName = "/matchmind.matchmaking.v1.MatchmakingService/GetActiveTicketForPlayer"
 	MatchmakingService_CancelTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/CancelTicket"
 	MatchmakingService_GetMatch_FullMethodName                 = "/matchmind.matchmaking.v1.MatchmakingService/GetMatch"
 	MatchmakingService_StartMatch_FullMethodName               = "/matchmind.matchmaking.v1.MatchmakingService/StartMatch"
@@ -38,6 +39,7 @@ const (
 type MatchmakingServiceClient interface {
 	CreateTicket(ctx context.Context, in *CreateTicketRequest, opts ...grpc.CallOption) (*CreateTicketResponse, error)
 	GetTicket(ctx context.Context, in *GetTicketRequest, opts ...grpc.CallOption) (*GetTicketResponse, error)
+	GetActiveTicketForPlayer(ctx context.Context, in *GetActiveTicketForPlayerRequest, opts ...grpc.CallOption) (*GetActiveTicketForPlayerResponse, error)
 	CancelTicket(ctx context.Context, in *CancelTicketRequest, opts ...grpc.CallOption) (*CancelTicketResponse, error)
 	GetMatch(ctx context.Context, in *GetMatchRequest, opts ...grpc.CallOption) (*GetMatchResponse, error)
 	StartMatch(ctx context.Context, in *StartMatchRequest, opts ...grpc.CallOption) (*StartMatchResponse, error)
@@ -71,6 +73,16 @@ func (c *matchmakingServiceClient) GetTicket(ctx context.Context, in *GetTicketR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetTicketResponse)
 	err := c.cc.Invoke(ctx, MatchmakingService_GetTicket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *matchmakingServiceClient) GetActiveTicketForPlayer(ctx context.Context, in *GetActiveTicketForPlayerRequest, opts ...grpc.CallOption) (*GetActiveTicketForPlayerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetActiveTicketForPlayerResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_GetActiveTicketForPlayer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +185,7 @@ func (c *matchmakingServiceClient) RollbackPolicyExperiment(ctx context.Context,
 type MatchmakingServiceServer interface {
 	CreateTicket(context.Context, *CreateTicketRequest) (*CreateTicketResponse, error)
 	GetTicket(context.Context, *GetTicketRequest) (*GetTicketResponse, error)
+	GetActiveTicketForPlayer(context.Context, *GetActiveTicketForPlayerRequest) (*GetActiveTicketForPlayerResponse, error)
 	CancelTicket(context.Context, *CancelTicketRequest) (*CancelTicketResponse, error)
 	GetMatch(context.Context, *GetMatchRequest) (*GetMatchResponse, error)
 	StartMatch(context.Context, *StartMatchRequest) (*StartMatchResponse, error)
@@ -197,6 +210,9 @@ func (UnimplementedMatchmakingServiceServer) CreateTicket(context.Context, *Crea
 }
 func (UnimplementedMatchmakingServiceServer) GetTicket(context.Context, *GetTicketRequest) (*GetTicketResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTicket not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) GetActiveTicketForPlayer(context.Context, *GetActiveTicketForPlayerRequest) (*GetActiveTicketForPlayerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetActiveTicketForPlayer not implemented")
 }
 func (UnimplementedMatchmakingServiceServer) CancelTicket(context.Context, *CancelTicketRequest) (*CancelTicketResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelTicket not implemented")
@@ -278,6 +294,24 @@ func _MatchmakingService_GetTicket_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MatchmakingServiceServer).GetTicket(ctx, req.(*GetTicketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MatchmakingService_GetActiveTicketForPlayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetActiveTicketForPlayerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).GetActiveTicketForPlayer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_GetActiveTicketForPlayer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).GetActiveTicketForPlayer(ctx, req.(*GetActiveTicketForPlayerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -458,6 +492,10 @@ var MatchmakingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTicket",
 			Handler:    _MatchmakingService_GetTicket_Handler,
+		},
+		{
+			MethodName: "GetActiveTicketForPlayer",
+			Handler:    _MatchmakingService_GetActiveTicketForPlayer_Handler,
 		},
 		{
 			MethodName: "CancelTicket",

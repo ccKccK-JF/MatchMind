@@ -149,3 +149,28 @@ func TestRestorePlayerRejectsInvalidSnapshot(t *testing.T) {
 		t.Fatalf("RestorePlayer() error = %v, want ErrInvalidPlayer", err)
 	}
 }
+
+func TestWithRegionLatencyValidatesNormalizesAndDoesNotMutatePlayer(t *testing.T) {
+	player, err := NewPlayer(NewPlayerParams{
+		ID: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []Role{RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 95,
+		CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := player.WithRegionLatency(map[string]int{" HongKong ": 24, "TOKYO": 70})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.RegionLatency()["hongkong"] != 24 || updated.RegionLatency()["tokyo"] != 70 {
+		t.Fatalf("updated latency = %#v", updated.RegionLatency())
+	}
+	if player.RegionLatency()["hongkong"] != 30 || len(player.RegionLatency()) != 1 {
+		t.Fatalf("source player was mutated: %#v", player.RegionLatency())
+	}
+	if _, err := player.WithRegionLatency(map[string]int{"hongkong": 1001}); !errors.Is(err, ErrInvalidPlayer) {
+		t.Fatalf("invalid latency error = %v", err)
+	}
+}

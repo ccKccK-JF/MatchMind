@@ -129,6 +129,7 @@ func createPair(ctx context.Context, client *http.Client, baseURL string, index 
 	startedAt := time.Now()
 	err := postJSON(ctx, client, baseURL+"/api/v1/tickets", ticket, map[string]string{
 		"Idempotency-Key": fmt.Sprintf("load-create-%08d", index),
+		"X-Player-ID":     playerID,
 	})
 	results.record(time.Since(startedAt), err)
 }

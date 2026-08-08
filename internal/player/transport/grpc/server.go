@@ -60,6 +60,22 @@ func (s *Server) GetPlayer(ctx context.Context, request *playerv1.GetPlayerReque
 	return &playerv1.GetPlayerResponse{Player: playerToProto(player)}, nil
 }
 
+func (s *Server) UpdateRegionLatency(
+	ctx context.Context,
+	request *playerv1.UpdateRegionLatencyRequest,
+) (*playerv1.UpdateRegionLatencyResponse, error) {
+	if request == nil || request.GetPlayerId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "player_id is required")
+	}
+	player, err := s.service.UpdateRegionLatency(ctx, application.UpdateRegionLatencyCommand{
+		PlayerID: request.GetPlayerId(), Latency: latencyFromProto(request.GetRegionLatencyMs()),
+	})
+	if err != nil {
+		return nil, playerError(err)
+	}
+	return &playerv1.UpdateRegionLatencyResponse{Player: playerToProto(player)}, nil
+}
+
 func (s *Server) ApplyMatchResult(ctx context.Context, request *playerv1.ApplyMatchResultRequest) (*playerv1.ApplyMatchResultResponse, error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is required")

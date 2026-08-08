@@ -86,6 +86,21 @@ func (s *TicketStore) Get(ctx context.Context, ticketID string) (*domain.MatchTi
 	return ticket.Clone(), nil
 }
 
+func (s *TicketStore) GetActiveByPlayer(ctx context.Context, playerID string) (*domain.MatchTicket, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	playerID = strings.TrimSpace(playerID)
+	s.mu.RLock()
+	ticketID, exists := s.activeByPlayer[playerID]
+	ticket := s.tickets[ticketID]
+	s.mu.RUnlock()
+	if !exists || ticket == nil || !ticket.IsActive() {
+		return nil, application.ErrTicketNotFound
+	}
+	return ticket.Clone(), nil
+}
+
 func (s *TicketStore) Cancel(ctx context.Context, ticketID, playerID, idempotencyKey string, now time.Time) (*domain.MatchTicket, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

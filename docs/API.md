@@ -43,6 +43,27 @@ Query the player's current rating and complete rating history:
 GET /api/v1/players/player-1001/rating
 ```
 
+The rating response also includes up to ten recent Match IDs, the current
+matchmaking status (`IDLE`, `QUEUED`, `RESERVED`, or `ASSIGNED`), and the active
+Ticket when one exists.
+
+Replace the player's measured regional latency map. The authenticated player
+identity must match the path:
+
+```http
+PATCH /api/v1/players/player-1001/latency
+X-Player-ID: player-1001
+Content-Type: application/json
+
+{
+  "region_latency": {
+    "hongkong": 28,
+    "singapore": 46,
+    "tokyo": 72
+  }
+}
+```
+
 ## Match tickets
 
 Create an idempotent ticket:
@@ -51,6 +72,7 @@ Create an idempotent ticket:
 POST /api/v1/tickets
 Content-Type: application/json
 Idempotency-Key: create-player-1001-001
+X-Player-ID: player-1001
 
 {
   "player_id": "player-1001",
@@ -68,7 +90,10 @@ The key may alternatively be supplied as `idempotency_key` in the body.
 
 ```http
 GET /api/v1/tickets/{ticket_id}
+X-Player-ID: player-1001
 ```
+
+Ticket details are returned only when `X-Player-ID` matches the Ticket owner.
 
 Cancellation requires the owning player and another idempotency key:
 
@@ -78,8 +103,9 @@ X-Player-ID: player-1001
 Idempotency-Key: cancel-player-1001-001
 ```
 
-The same values may be passed as the `player_id` and `idempotency_key` query
-parameters.
+The idempotency key may also be passed as the `idempotency_key` query
+parameter. Player identity must come from `X-Player-ID`; create, query, and
+cancel reject a missing or mismatched identity.
 
 ## Matches and simulation
 

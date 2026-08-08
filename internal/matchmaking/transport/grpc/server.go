@@ -74,6 +74,23 @@ func (s *Server) GetTicket(ctx context.Context, request *matchmakingv1.GetTicket
 	return &matchmakingv1.GetTicketResponse{Ticket: ticketToProto(ticket)}, nil
 }
 
+func (s *Server) GetActiveTicketForPlayer(
+	ctx context.Context,
+	request *matchmakingv1.GetActiveTicketForPlayerRequest,
+) (*matchmakingv1.GetActiveTicketForPlayerResponse, error) {
+	if request == nil || strings.TrimSpace(request.GetPlayerId()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "player_id is required")
+	}
+	ticket, err := s.service.GetActiveTicketForPlayer(ctx, request.GetPlayerId())
+	if errors.Is(err, application.ErrTicketNotFound) {
+		return &matchmakingv1.GetActiveTicketForPlayerResponse{Found: false}, nil
+	}
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	return &matchmakingv1.GetActiveTicketForPlayerResponse{Found: true, Ticket: ticketToProto(ticket)}, nil
+}
+
 func (s *Server) CancelTicket(ctx context.Context, request *matchmakingv1.CancelTicketRequest) (*matchmakingv1.CancelTicketResponse, error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is required")

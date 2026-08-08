@@ -82,6 +82,22 @@ func (s *TicketStore) Get(ctx context.Context, ticketID string) (*domain.MatchTi
 	return ticket, nil
 }
 
+func (s *TicketStore) GetActiveByPlayer(ctx context.Context, playerID string) (*domain.MatchTicket, error) {
+	ticket, err := scanTicket(s.pool.QueryRow(ctx, `
+		SELECT `+ticketColumns+` FROM tickets
+		WHERE player_id = $1 AND active
+		ORDER BY created_at DESC, id DESC
+		LIMIT 1
+	`, strings.TrimSpace(playerID)))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, application.ErrTicketNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("select active player ticket: %w", err)
+	}
+	return ticket, nil
+}
+
 func (s *TicketStore) Cancel(
 	ctx context.Context,
 	ticketID, playerID, idempotencyKey string,

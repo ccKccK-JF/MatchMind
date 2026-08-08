@@ -87,6 +87,14 @@ func TestPostgreSQLTicketPersistenceAndAtomicReservation(t *testing.T) {
 		}
 		ticketIDs = append(ticketIDs, created.ID())
 	}
+	updatedPlayer, err := players.UpdateRegionLatency(ctx, "player-00", map[string]int{"hongkong": 19, "tokyo": 61}, now.Add(time.Second))
+	if err != nil || updatedPlayer.RegionLatency()["hongkong"] != 19 || updatedPlayer.RegionLatency()["tokyo"] != 61 {
+		t.Fatalf("updated PostgreSQL player latency = %#v, %v", updatedPlayer, err)
+	}
+	activeTicket, err := tickets.GetActiveByPlayer(ctx, "player-00")
+	if err != nil || activeTicket.ID() != "ticket-00" {
+		t.Fatalf("active PostgreSQL ticket = %#v, %v", activeTicket, err)
+	}
 
 	duplicate := newPersistentTicket(t, "different-id", "player-00", roles[0], now)
 	idempotent, err := tickets.CreateQueued(ctx, duplicate, "create-00")

@@ -86,14 +86,15 @@ try {
             preferred_roles = @($role)
             region_latency = @{ hongkong = 30; singapore = 55 }
         } | ConvertTo-Json -Depth 5
-        $headers = @{ "Idempotency-Key" = "demo-create-$index" }
+        $headers = @{ "Idempotency-Key" = "demo-create-$index"; "X-Player-ID" = $playerId }
         $created = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/tickets" -Headers $headers -ContentType "application/json" -Body $ticketBody
         $tickets += $created.ticket
     }
 
     $matchId = ""
     for ($attempt = 0; $attempt -lt 120; $attempt++) {
-        $ticket = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/tickets/$($tickets[0].id)"
+        $ticketHeaders = @{ "X-Player-ID" = "demo-player-00" }
+        $ticket = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/tickets/$($tickets[0].id)" -Headers $ticketHeaders
         if ($ticket.ticket.state -eq "TICKET_STATE_ASSIGNED") {
             $matchId = $ticket.ticket.match_id
             break

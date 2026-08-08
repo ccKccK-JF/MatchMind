@@ -79,6 +79,10 @@ func TestTicketServiceCreateGetCancelFlow(t *testing.T) {
 	if err != nil || got.ID() != created.ID() {
 		t.Fatalf("GetTicket() = %v, %v", got, err)
 	}
+	active, err := service.GetActiveTicketForPlayer(context.Background(), command.PlayerID)
+	if err != nil || active.ID() != created.ID() {
+		t.Fatalf("GetActiveTicketForPlayer() = %v, %v", active, err)
+	}
 	cancelled, err := service.CancelTicket(context.Background(), created.ID(), command.PlayerID, "cancel-1")
 	if err != nil {
 		t.Fatalf("CancelTicket() error = %v", err)
@@ -89,6 +93,9 @@ func TestTicketServiceCreateGetCancelFlow(t *testing.T) {
 	idempotentCancel, err := service.CancelTicket(context.Background(), created.ID(), command.PlayerID, "cancel-1")
 	if err != nil || idempotentCancel.State() != domain.TicketStateCancelled {
 		t.Fatalf("idempotent CancelTicket() = %v, %v", idempotentCancel, err)
+	}
+	if _, err := service.GetActiveTicketForPlayer(context.Background(), command.PlayerID); !errors.Is(err, application.ErrTicketNotFound) {
+		t.Fatalf("active ticket after cancellation error = %v", err)
 	}
 }
 

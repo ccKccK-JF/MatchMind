@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ccKccK-JF/MatchMind/internal/player/application"
 	"github.com/ccKccK-JF/MatchMind/internal/player/domain"
@@ -53,6 +54,30 @@ func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Play
 		return nil, application.ErrPlayerNotFound
 	}
 	return player.Clone(), nil
+}
+
+func (r *Repository) UpdateRegionLatency(
+	ctx context.Context,
+	playerID string,
+	latencies map[string]int,
+	_ time.Time,
+) (*domain.Player, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	playerID = strings.TrimSpace(playerID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	player, exists := r.players[playerID]
+	if !exists {
+		return nil, application.ErrPlayerNotFound
+	}
+	updated, err := player.WithRegionLatency(latencies)
+	if err != nil {
+		return nil, err
+	}
+	r.players[playerID] = updated
+	return updated.Clone(), nil
 }
 
 // ApplyRatingChanges validates and commits all player changes under one lock.

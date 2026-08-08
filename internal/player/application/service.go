@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/ccKccK-JF/MatchMind/internal/player/domain"
@@ -16,6 +17,7 @@ var (
 type Repository interface {
 	Create(ctx context.Context, player *domain.Player) error
 	GetByID(ctx context.Context, playerID string) (*domain.Player, error)
+	UpdateRegionLatency(ctx context.Context, playerID string, latencies map[string]int, updatedAt time.Time) (*domain.Player, error)
 }
 
 type Clock func() time.Time
@@ -35,6 +37,11 @@ type CreatePlayerCommand struct {
 	HomeRegion     string
 	RegionLatency  map[string]int
 	BehaviorScore  float64
+}
+
+type UpdateRegionLatencyCommand struct {
+	PlayerID string
+	Latency  map[string]int
 }
 
 func NewService(repository Repository, clock Clock) *Service {
@@ -67,4 +74,12 @@ func (s *Service) CreatePlayer(ctx context.Context, command CreatePlayerCommand)
 
 func (s *Service) GetPlayer(ctx context.Context, playerID string) (*domain.Player, error) {
 	return s.repository.GetByID(ctx, playerID)
+}
+
+func (s *Service) UpdateRegionLatency(ctx context.Context, command UpdateRegionLatencyCommand) (*domain.Player, error) {
+	command.PlayerID = strings.TrimSpace(command.PlayerID)
+	if command.PlayerID == "" {
+		return nil, domain.ErrInvalidPlayer
+	}
+	return s.repository.UpdateRegionLatency(ctx, command.PlayerID, command.Latency, s.clock())
 }

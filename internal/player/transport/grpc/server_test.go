@@ -77,6 +77,28 @@ func TestServerValidationAndNotFoundCodes(t *testing.T) {
 	}
 }
 
+func TestServerUpdatesRegionLatency(t *testing.T) {
+	service := application.NewService(memory.NewRepository(), nil)
+	server := NewServer(service, nil)
+	_, err := server.CreatePlayer(context.Background(), &playerv1.CreatePlayerRequest{
+		Id: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []playerv1.Role{playerv1.Role_ROLE_CORE}, HomeRegion: "hongkong",
+		RegionLatencyMs: map[string]int32{"hongkong": 30}, BehaviorScore: 95,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := server.UpdateRegionLatency(context.Background(), &playerv1.UpdateRegionLatencyRequest{
+		PlayerId: "player-1", RegionLatencyMs: map[string]int32{"HongKong": 21, "tokyo": 68},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.GetPlayer().GetRegionLatencyMs()["hongkong"] != 21 || updated.GetPlayer().GetRegionLatencyMs()["tokyo"] != 68 {
+		t.Fatalf("updated latency = %#v", updated.GetPlayer().GetRegionLatencyMs())
+	}
+}
+
 func TestServerApplyMatchResultAndGetHistory(t *testing.T) {
 	ctx := context.Background()
 	repository := memory.NewRepository()

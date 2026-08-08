@@ -67,6 +67,37 @@ func (r *Repository) GetByID(ctx context.Context, playerID string) (*domain.Play
 	return player, nil
 }
 
+func (r *Repository) UpdateRegionLatency(
+	ctx context.Context,
+	playerID string,
+	latencies map[string]int,
+	updatedAt time.Time,
+) (*domain.Player, error) {
+	playerID = strings.TrimSpace(playerID)
+	current, err := r.GetByID(ctx, playerID)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := current.WithRegionLatency(latencies)
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := json.Marshal(updated.RegionLatency())
+	if err != nil {
+		return nil, fmt.Errorf("marshal player latency update: %w", err)
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE players SET region_latency = $1, updated_at = $2 WHERE id = $3
+	`, encoded, updatedAt.UTC(), playerID)
+	if err != nil {
+		return nil, fmt.Errorf("update player latency: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return nil, application.ErrPlayerNotFound
+	}
+	return r.GetByID(ctx, playerID)
+}
+
 func (r *Repository) ApplyRatingChanges(
 	ctx context.Context,
 	matchID string,

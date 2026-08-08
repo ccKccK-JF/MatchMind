@@ -14,6 +14,7 @@ type DurableStore interface {
 	application.TicketStore
 	application.MatchQueue
 	application.AssignedTicketCompleter
+	application.ActiveTicketReader
 	ActiveTickets(ctx context.Context) ([]*domain.MatchTicket, error)
 }
 
@@ -78,6 +79,10 @@ func (s *Store) CreateQueued(ctx context.Context, ticket *domain.MatchTicket, id
 
 func (s *Store) Get(ctx context.Context, ticketID string) (*domain.MatchTicket, error) {
 	return s.durable.Get(ctx, ticketID)
+}
+
+func (s *Store) GetActiveByPlayer(ctx context.Context, playerID string) (*domain.MatchTicket, error) {
+	return s.durable.GetActiveByPlayer(ctx, playerID)
 }
 
 func (s *Store) Cancel(

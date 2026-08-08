@@ -1,4 +1,4 @@
-.PHONY: generate test race vet build migrate demo load compose-up compose-down
+.PHONY: generate test race vet build migrate demo load compose-up compose-down verify
 
 generate:
 	powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/generate.ps1
@@ -16,6 +16,7 @@ build:
 	go build -o bin/player-service ./cmd/player-service
 	go build -o bin/matchmaking-service ./cmd/matchmaking-service
 	go build -o bin/simulation-service ./cmd/simulation-service
+	go build -o bin/agent-service ./cmd/agent-service
 	go build -o bin/api-service ./cmd/api-service
 	go build -o bin/migrate ./cmd/migrate
 
@@ -33,3 +34,5 @@ compose-up:
 
 compose-down:
 	docker compose down
+
+verify: generate test vet race

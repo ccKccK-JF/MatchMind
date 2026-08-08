@@ -13,6 +13,9 @@ scoring, reservation rollback and recovery, simulation reproducibility,
 idempotent rating updates, HTTP mapping, Prometheus output, Agent audit/state
 transitions, five-check risk gating, approval separation of duties,
 activation/rollback, and the complete service gRPC flow.
+Player coverage includes normalized regional-latency replacement in memory and
+PostgreSQL, active-Ticket status lookup, and owner enforcement for Ticket
+create/query/cancel operations.
 
 Algorithm tests use a crafted candidate pool where Beam Search must improve
 role coverage and total quality over greedy selection. They also verify stable

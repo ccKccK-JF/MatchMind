@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PlayerService_CreatePlayer_FullMethodName     = "/matchmind.player.v1.PlayerService/CreatePlayer"
-	PlayerService_GetPlayer_FullMethodName        = "/matchmind.player.v1.PlayerService/GetPlayer"
-	PlayerService_ApplyMatchResult_FullMethodName = "/matchmind.player.v1.PlayerService/ApplyMatchResult"
-	PlayerService_GetRatingHistory_FullMethodName = "/matchmind.player.v1.PlayerService/GetRatingHistory"
+	PlayerService_CreatePlayer_FullMethodName        = "/matchmind.player.v1.PlayerService/CreatePlayer"
+	PlayerService_GetPlayer_FullMethodName           = "/matchmind.player.v1.PlayerService/GetPlayer"
+	PlayerService_UpdateRegionLatency_FullMethodName = "/matchmind.player.v1.PlayerService/UpdateRegionLatency"
+	PlayerService_ApplyMatchResult_FullMethodName    = "/matchmind.player.v1.PlayerService/ApplyMatchResult"
+	PlayerService_GetRatingHistory_FullMethodName    = "/matchmind.player.v1.PlayerService/GetRatingHistory"
 )
 
 // PlayerServiceClient is the client API for PlayerService service.
@@ -31,6 +32,7 @@ const (
 type PlayerServiceClient interface {
 	CreatePlayer(ctx context.Context, in *CreatePlayerRequest, opts ...grpc.CallOption) (*CreatePlayerResponse, error)
 	GetPlayer(ctx context.Context, in *GetPlayerRequest, opts ...grpc.CallOption) (*GetPlayerResponse, error)
+	UpdateRegionLatency(ctx context.Context, in *UpdateRegionLatencyRequest, opts ...grpc.CallOption) (*UpdateRegionLatencyResponse, error)
 	ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error)
 	GetRatingHistory(ctx context.Context, in *GetRatingHistoryRequest, opts ...grpc.CallOption) (*GetRatingHistoryResponse, error)
 }
@@ -63,6 +65,16 @@ func (c *playerServiceClient) GetPlayer(ctx context.Context, in *GetPlayerReques
 	return out, nil
 }
 
+func (c *playerServiceClient) UpdateRegionLatency(ctx context.Context, in *UpdateRegionLatencyRequest, opts ...grpc.CallOption) (*UpdateRegionLatencyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateRegionLatencyResponse)
+	err := c.cc.Invoke(ctx, PlayerService_UpdateRegionLatency_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *playerServiceClient) ApplyMatchResult(ctx context.Context, in *ApplyMatchResultRequest, opts ...grpc.CallOption) (*ApplyMatchResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ApplyMatchResultResponse)
@@ -89,6 +101,7 @@ func (c *playerServiceClient) GetRatingHistory(ctx context.Context, in *GetRatin
 type PlayerServiceServer interface {
 	CreatePlayer(context.Context, *CreatePlayerRequest) (*CreatePlayerResponse, error)
 	GetPlayer(context.Context, *GetPlayerRequest) (*GetPlayerResponse, error)
+	UpdateRegionLatency(context.Context, *UpdateRegionLatencyRequest) (*UpdateRegionLatencyResponse, error)
 	ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error)
 	GetRatingHistory(context.Context, *GetRatingHistoryRequest) (*GetRatingHistoryResponse, error)
 	mustEmbedUnimplementedPlayerServiceServer()
@@ -106,6 +119,9 @@ func (UnimplementedPlayerServiceServer) CreatePlayer(context.Context, *CreatePla
 }
 func (UnimplementedPlayerServiceServer) GetPlayer(context.Context, *GetPlayerRequest) (*GetPlayerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPlayer not implemented")
+}
+func (UnimplementedPlayerServiceServer) UpdateRegionLatency(context.Context, *UpdateRegionLatencyRequest) (*UpdateRegionLatencyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateRegionLatency not implemented")
 }
 func (UnimplementedPlayerServiceServer) ApplyMatchResult(context.Context, *ApplyMatchResultRequest) (*ApplyMatchResultResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ApplyMatchResult not implemented")
@@ -170,6 +186,24 @@ func _PlayerService_GetPlayer_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlayerService_UpdateRegionLatency_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRegionLatencyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlayerServiceServer).UpdateRegionLatency(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlayerService_UpdateRegionLatency_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlayerServiceServer).UpdateRegionLatency(ctx, req.(*UpdateRegionLatencyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlayerService_ApplyMatchResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ApplyMatchResultRequest)
 	if err := dec(in); err != nil {
@@ -220,6 +254,10 @@ var PlayerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPlayer",
 			Handler:    _PlayerService_GetPlayer_Handler,
+		},
+		{
+			MethodName: "UpdateRegionLatency",
+			Handler:    _PlayerService_UpdateRegionLatency_Handler,
 		},
 		{
 			MethodName: "ApplyMatchResult",

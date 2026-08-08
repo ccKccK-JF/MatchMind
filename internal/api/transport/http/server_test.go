@@ -22,6 +22,8 @@ type fakeMatchmakingClient struct {
 	matchmakingv1.MatchmakingServiceClient
 	create  func(context.Context, *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error)
 	get     func(context.Context, *matchmakingv1.GetTicketRequest) (*matchmakingv1.GetTicketResponse, error)
+	cancel  func(context.Context, *matchmakingv1.CancelTicketRequest) (*matchmakingv1.CancelTicketResponse, error)
+	active  func(context.Context, *matchmakingv1.GetActiveTicketForPlayerRequest) (*matchmakingv1.GetActiveTicketForPlayerResponse, error)
 	analyze func(context.Context, *matchmakingv1.AnalyzeMatchQualityRequest) (*matchmakingv1.AnalyzeMatchQualityResponse, error)
 	replay  func(context.Context, *matchmakingv1.ReplayHistoricalMatchRequest) (*matchmakingv1.ReplayHistoricalMatchResponse, error)
 }
@@ -34,6 +36,14 @@ func (f fakeMatchmakingClient) GetTicket(ctx context.Context, request *matchmaki
 	return f.get(ctx, request)
 }
 
+func (f fakeMatchmakingClient) CancelTicket(ctx context.Context, request *matchmakingv1.CancelTicketRequest, _ ...grpc.CallOption) (*matchmakingv1.CancelTicketResponse, error) {
+	return f.cancel(ctx, request)
+}
+
+func (f fakeMatchmakingClient) GetActiveTicketForPlayer(ctx context.Context, request *matchmakingv1.GetActiveTicketForPlayerRequest, _ ...grpc.CallOption) (*matchmakingv1.GetActiveTicketForPlayerResponse, error) {
+	return f.active(ctx, request)
+}
+
 func (f fakeMatchmakingClient) AnalyzeMatchQuality(ctx context.Context, request *matchmakingv1.AnalyzeMatchQualityRequest, _ ...grpc.CallOption) (*matchmakingv1.AnalyzeMatchQualityResponse, error) {
 	return f.analyze(ctx, request)
 }
@@ -44,8 +54,9 @@ func (f fakeMatchmakingClient) ReplayHistoricalMatch(ctx context.Context, reques
 
 type fakePlayerClient struct {
 	playerv1.PlayerServiceClient
-	get     func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error)
-	history func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error)
+	get           func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error)
+	history       func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error)
+	updateLatency func(context.Context, *playerv1.UpdateRegionLatencyRequest) (*playerv1.UpdateRegionLatencyResponse, error)
 }
 
 type fakeSimulationClient struct {
@@ -84,6 +95,10 @@ func (f fakePlayerClient) GetRatingHistory(ctx context.Context, request *playerv
 	return f.history(ctx, request)
 }
 
+func (f fakePlayerClient) UpdateRegionLatency(ctx context.Context, request *playerv1.UpdateRegionLatencyRequest, _ ...grpc.CallOption) (*playerv1.UpdateRegionLatencyResponse, error) {
+	return f.updateLatency(ctx, request)
+}
+
 func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 	registry := platformmetrics.NewRegistry()
 	var captured *matchmakingv1.CreateTicketRequest
@@ -97,6 +112,7 @@ func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 		"preferred_roles":["core","support"],"region_latency":{"singapore":32}
 	}`))
 	request.Header.Set("Idempotency-Key", "create-1")
+	request.Header.Set("X-Player-ID", "player-1")
 	response := httptest.NewRecorder()
 
 	server.ServeHTTP(response, request)
@@ -115,15 +131,79 @@ func TestCreateTicketMapsJSONToGRPC(t *testing.T) {
 	}
 }
 
+func TestCreateAndCancelTicketRejectMissingOrMismatchedPlayerIdentity(t *testing.T) {
+	client := fakeMatchmakingClient{
+		create: func(_ context.Context, request *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error) {
+			return &matchmakingv1.CreateTicketResponse{Ticket: &matchmakingv1.MatchTicket{Id: "ticket-1", PlayerId: request.PlayerId}}, nil
+		},
+		cancel: func(_ context.Context, request *matchmakingv1.CancelTicketRequest) (*matchmakingv1.CancelTicketResponse, error) {
+			return &matchmakingv1.CancelTicketResponse{Ticket: &matchmakingv1.MatchTicket{Id: request.TicketId, PlayerId: request.PlayerId}}, nil
+		},
+	}
+	server := NewServer(nil, client, nil, nil)
+	createBody := `{"player_id":"player-1","mode":"ranked_5v5","client_version":"1.0.0","preferred_roles":["core"],"region_latency":{"hongkong":30}}`
+	mismatched := httptest.NewRequest(http.MethodPost, "/api/v1/tickets", strings.NewReader(createBody))
+	mismatched.Header.Set("X-Player-ID", "player-2")
+	mismatched.Header.Set("Idempotency-Key", "create-1")
+	mismatchedResponse := httptest.NewRecorder()
+	server.ServeHTTP(mismatchedResponse, mismatched)
+	if mismatchedResponse.Code != http.StatusForbidden {
+		t.Fatalf("mismatched create status = %d", mismatchedResponse.Code)
+	}
+	missingCancel := httptest.NewRequest(http.MethodDelete, "/api/v1/tickets/ticket-1", nil)
+	missingCancel.Header.Set("Idempotency-Key", "cancel-1")
+	missingCancelResponse := httptest.NewRecorder()
+	server.ServeHTTP(missingCancelResponse, missingCancel)
+	if missingCancelResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("missing cancel identity status = %d", missingCancelResponse.Code)
+	}
+	ownerCancel := httptest.NewRequest(http.MethodDelete, "/api/v1/tickets/ticket-1", nil)
+	ownerCancel.Header.Set("X-Player-ID", "player-1")
+	ownerCancel.Header.Set("Idempotency-Key", "cancel-1")
+	ownerCancelResponse := httptest.NewRecorder()
+	server.ServeHTTP(ownerCancelResponse, ownerCancel)
+	if ownerCancelResponse.Code != http.StatusOK {
+		t.Fatalf("owner cancel status = %d, body = %s", ownerCancelResponse.Code, ownerCancelResponse.Body.String())
+	}
+}
+
 func TestGRPCNotFoundMapsToHTTP(t *testing.T) {
 	client := fakeMatchmakingClient{get: func(context.Context, *matchmakingv1.GetTicketRequest) (*matchmakingv1.GetTicketResponse, error) {
 		return nil, status.Error(codes.NotFound, "ticket not found")
 	}}
 	server := NewServer(nil, client, nil, nil)
 	response := httptest.NewRecorder()
-	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/tickets/missing", nil))
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/tickets/missing", nil)
+	request.Header.Set("X-Player-ID", "player-1")
+	server.ServeHTTP(response, request)
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestGetTicketRequiresOwningPlayer(t *testing.T) {
+	client := fakeMatchmakingClient{get: func(context.Context, *matchmakingv1.GetTicketRequest) (*matchmakingv1.GetTicketResponse, error) {
+		return &matchmakingv1.GetTicketResponse{Ticket: &matchmakingv1.MatchTicket{Id: "ticket-1", PlayerId: "player-1"}}, nil
+	}}
+	server := NewServer(nil, client, nil, nil)
+	missingIdentity := httptest.NewRecorder()
+	server.ServeHTTP(missingIdentity, httptest.NewRequest(http.MethodGet, "/api/v1/tickets/ticket-1", nil))
+	if missingIdentity.Code != http.StatusUnauthorized {
+		t.Fatalf("missing identity status = %d", missingIdentity.Code)
+	}
+	forbiddenRequest := httptest.NewRequest(http.MethodGet, "/api/v1/tickets/ticket-1", nil)
+	forbiddenRequest.Header.Set("X-Player-ID", "player-2")
+	forbidden := httptest.NewRecorder()
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("other player status = %d", forbidden.Code)
+	}
+	ownerRequest := httptest.NewRequest(http.MethodGet, "/api/v1/tickets/ticket-1", nil)
+	ownerRequest.Header.Set("X-Player-ID", "player-1")
+	owner := httptest.NewRecorder()
+	server.ServeHTTP(owner, ownerRequest)
+	if owner.Code != http.StatusOK {
+		t.Fatalf("owner status = %d, body = %s", owner.Code, owner.Body.String())
 	}
 }
 
@@ -136,11 +216,41 @@ func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 			return &playerv1.GetRatingHistoryResponse{Changes: []*playerv1.RatingChange{{MatchId: "match-1", Delta: 16}}}, nil
 		},
 	}
-	server := NewServer(client, nil, nil, nil)
+	matchmaking := fakeMatchmakingClient{active: func(context.Context, *matchmakingv1.GetActiveTicketForPlayerRequest) (*matchmakingv1.GetActiveTicketForPlayerResponse, error) {
+		return &matchmakingv1.GetActiveTicketForPlayerResponse{Found: true, Ticket: &matchmakingv1.MatchTicket{
+			Id: "ticket-1", PlayerId: "player-1", State: matchmakingv1.TicketState_TICKET_STATE_QUEUED,
+		}}, nil
+	}}
+	server := NewServer(client, matchmaking, nil, nil)
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/players/player-1/rating", nil))
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"match_id":"match-1"`) {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"match_id":"match-1"`) ||
+		!strings.Contains(response.Body.String(), `"matchmaking_status":"QUEUED"`) ||
+		!strings.Contains(response.Body.String(), `"recent_match_ids":["match-1"]`) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestUpdatePlayerLatencyRequiresOwnerAndMapsMeasurements(t *testing.T) {
+	var captured *playerv1.UpdateRegionLatencyRequest
+	client := fakePlayerClient{updateLatency: func(_ context.Context, request *playerv1.UpdateRegionLatencyRequest) (*playerv1.UpdateRegionLatencyResponse, error) {
+		captured = request
+		return &playerv1.UpdateRegionLatencyResponse{Player: &playerv1.Player{Id: request.PlayerId, RegionLatencyMs: request.RegionLatencyMs}}, nil
+	}}
+	server := NewServer(client, nil, nil, nil)
+	forbiddenRequest := httptest.NewRequest(http.MethodPatch, "/api/v1/players/player-1/latency", strings.NewReader(`{"region_latency":{"hongkong":28}}`))
+	forbiddenRequest.Header.Set("X-Player-ID", "player-2")
+	forbidden := httptest.NewRecorder()
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("forbidden status = %d", forbidden.Code)
+	}
+	request := httptest.NewRequest(http.MethodPatch, "/api/v1/players/player-1/latency", strings.NewReader(`{"region_latency":{"hongkong":28,"tokyo":72}}`))
+	request.Header.Set("X-Player-ID", "player-1")
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || captured == nil || captured.PlayerId != "player-1" || captured.RegionLatencyMs["hongkong"] != 28 {
+		t.Fatalf("status = %d, captured = %#v, body = %s", response.Code, captured, response.Body.String())
 	}
 }
 

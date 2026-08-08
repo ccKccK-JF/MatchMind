@@ -1017,6 +1017,102 @@ func (x *GetTicketResponse) GetTicket() *MatchTicket {
 	return nil
 }
 
+type GetActiveTicketForPlayerRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveTicketForPlayerRequest) Reset() {
+	*x = GetActiveTicketForPlayerRequest{}
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveTicketForPlayerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveTicketForPlayerRequest) ProtoMessage() {}
+
+func (x *GetActiveTicketForPlayerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveTicketForPlayerRequest.ProtoReflect.Descriptor instead.
+func (*GetActiveTicketForPlayerRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetActiveTicketForPlayerRequest) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+type GetActiveTicketForPlayerResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Found         bool                   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	Ticket        *MatchTicket           `protobuf:"bytes,2,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveTicketForPlayerResponse) Reset() {
+	*x = GetActiveTicketForPlayerResponse{}
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveTicketForPlayerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveTicketForPlayerResponse) ProtoMessage() {}
+
+func (x *GetActiveTicketForPlayerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveTicketForPlayerResponse.ProtoReflect.Descriptor instead.
+func (*GetActiveTicketForPlayerResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetActiveTicketForPlayerResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *GetActiveTicketForPlayerResponse) GetTicket() *MatchTicket {
+	if x != nil {
+		return x.Ticket
+	}
+	return nil
+}
+
 type CancelTicketRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TicketId       string                 `protobuf:"bytes,1,opt,name=ticket_id,json=ticketId,proto3" json:"ticket_id,omitempty"`
@@ -1028,7 +1124,7 @@ type CancelTicketRequest struct {
 
 func (x *CancelTicketRequest) Reset() {
 	*x = CancelTicketRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[9]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1040,7 +1136,7 @@ func (x *CancelTicketRequest) String() string {
 func (*CancelTicketRequest) ProtoMessage() {}
 
 func (x *CancelTicketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[9]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1053,7 +1149,7 @@ func (x *CancelTicketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelTicketRequest.ProtoReflect.Descriptor instead.
 func (*CancelTicketRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{9}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CancelTicketRequest) GetTicketId() string {
@@ -1086,7 +1182,7 @@ type CancelTicketResponse struct {
 
 func (x *CancelTicketResponse) Reset() {
 	*x = CancelTicketResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[10]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1194,7 @@ func (x *CancelTicketResponse) String() string {
 func (*CancelTicketResponse) ProtoMessage() {}
 
 func (x *CancelTicketResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[10]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,7 +1207,7 @@ func (x *CancelTicketResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelTicketResponse.ProtoReflect.Descriptor instead.
 func (*CancelTicketResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{10}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CancelTicketResponse) GetTicket() *MatchTicket {
@@ -1130,7 +1226,7 @@ type GetMatchRequest struct {
 
 func (x *GetMatchRequest) Reset() {
 	*x = GetMatchRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[11]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1142,7 +1238,7 @@ func (x *GetMatchRequest) String() string {
 func (*GetMatchRequest) ProtoMessage() {}
 
 func (x *GetMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[11]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1155,7 +1251,7 @@ func (x *GetMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMatchRequest.ProtoReflect.Descriptor instead.
 func (*GetMatchRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{11}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetMatchRequest) GetMatchId() string {
@@ -1174,7 +1270,7 @@ type GetMatchResponse struct {
 
 func (x *GetMatchResponse) Reset() {
 	*x = GetMatchResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[12]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1186,7 +1282,7 @@ func (x *GetMatchResponse) String() string {
 func (*GetMatchResponse) ProtoMessage() {}
 
 func (x *GetMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[12]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1199,7 +1295,7 @@ func (x *GetMatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMatchResponse.ProtoReflect.Descriptor instead.
 func (*GetMatchResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{12}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetMatchResponse) GetMatch() *Match {
@@ -1218,7 +1314,7 @@ type StartMatchRequest struct {
 
 func (x *StartMatchRequest) Reset() {
 	*x = StartMatchRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[13]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1230,7 +1326,7 @@ func (x *StartMatchRequest) String() string {
 func (*StartMatchRequest) ProtoMessage() {}
 
 func (x *StartMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[13]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1243,7 +1339,7 @@ func (x *StartMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartMatchRequest.ProtoReflect.Descriptor instead.
 func (*StartMatchRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{13}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *StartMatchRequest) GetMatchId() string {
@@ -1262,7 +1358,7 @@ type StartMatchResponse struct {
 
 func (x *StartMatchResponse) Reset() {
 	*x = StartMatchResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[14]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1274,7 +1370,7 @@ func (x *StartMatchResponse) String() string {
 func (*StartMatchResponse) ProtoMessage() {}
 
 func (x *StartMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[14]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1287,7 +1383,7 @@ func (x *StartMatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartMatchResponse.ProtoReflect.Descriptor instead.
 func (*StartMatchResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{14}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StartMatchResponse) GetMatch() *Match {
@@ -1307,7 +1403,7 @@ type CompleteMatchRequest struct {
 
 func (x *CompleteMatchRequest) Reset() {
 	*x = CompleteMatchRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[15]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1319,7 +1415,7 @@ func (x *CompleteMatchRequest) String() string {
 func (*CompleteMatchRequest) ProtoMessage() {}
 
 func (x *CompleteMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[15]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1332,7 +1428,7 @@ func (x *CompleteMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteMatchRequest.ProtoReflect.Descriptor instead.
 func (*CompleteMatchRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{15}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CompleteMatchRequest) GetMatchId() string {
@@ -1358,7 +1454,7 @@ type CompleteMatchResponse struct {
 
 func (x *CompleteMatchResponse) Reset() {
 	*x = CompleteMatchResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[16]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1370,7 +1466,7 @@ func (x *CompleteMatchResponse) String() string {
 func (*CompleteMatchResponse) ProtoMessage() {}
 
 func (x *CompleteMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[16]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1383,7 +1479,7 @@ func (x *CompleteMatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteMatchResponse.ProtoReflect.Descriptor instead.
 func (*CompleteMatchResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{16}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CompleteMatchResponse) GetMatch() *Match {
@@ -1407,7 +1503,7 @@ type AnalyzeMatchQualityRequest struct {
 
 func (x *AnalyzeMatchQualityRequest) Reset() {
 	*x = AnalyzeMatchQualityRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[17]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1419,7 +1515,7 @@ func (x *AnalyzeMatchQualityRequest) String() string {
 func (*AnalyzeMatchQualityRequest) ProtoMessage() {}
 
 func (x *AnalyzeMatchQualityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[17]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1432,7 +1528,7 @@ func (x *AnalyzeMatchQualityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeMatchQualityRequest.ProtoReflect.Descriptor instead.
 func (*AnalyzeMatchQualityRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{17}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AnalyzeMatchQualityRequest) GetPolicyVersion() string {
@@ -1507,7 +1603,7 @@ type MatchQualityObservation struct {
 
 func (x *MatchQualityObservation) Reset() {
 	*x = MatchQualityObservation{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[18]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1615,7 @@ func (x *MatchQualityObservation) String() string {
 func (*MatchQualityObservation) ProtoMessage() {}
 
 func (x *MatchQualityObservation) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[18]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1628,7 @@ func (x *MatchQualityObservation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchQualityObservation.ProtoReflect.Descriptor instead.
 func (*MatchQualityObservation) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{18}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MatchQualityObservation) GetMatchId() string {
@@ -1709,7 +1805,7 @@ type PolicyQualitySummary struct {
 
 func (x *PolicyQualitySummary) Reset() {
 	*x = PolicyQualitySummary{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[19]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1721,7 +1817,7 @@ func (x *PolicyQualitySummary) String() string {
 func (*PolicyQualitySummary) ProtoMessage() {}
 
 func (x *PolicyQualitySummary) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[19]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1734,7 +1830,7 @@ func (x *PolicyQualitySummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyQualitySummary.ProtoReflect.Descriptor instead.
 func (*PolicyQualitySummary) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{19}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PolicyQualitySummary) GetPolicyVersion() string {
@@ -1831,7 +1927,7 @@ type AnalyzeMatchQualityResponse struct {
 
 func (x *AnalyzeMatchQualityResponse) Reset() {
 	*x = AnalyzeMatchQualityResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[20]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1843,7 +1939,7 @@ func (x *AnalyzeMatchQualityResponse) String() string {
 func (*AnalyzeMatchQualityResponse) ProtoMessage() {}
 
 func (x *AnalyzeMatchQualityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[20]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1856,7 +1952,7 @@ func (x *AnalyzeMatchQualityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeMatchQualityResponse.ProtoReflect.Descriptor instead.
 func (*AnalyzeMatchQualityResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{20}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AnalyzeMatchQualityResponse) GetObservations() []*MatchQualityObservation {
@@ -1885,7 +1981,7 @@ type ReplayHistoricalMatchRequest struct {
 
 func (x *ReplayHistoricalMatchRequest) Reset() {
 	*x = ReplayHistoricalMatchRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[21]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1897,7 +1993,7 @@ func (x *ReplayHistoricalMatchRequest) String() string {
 func (*ReplayHistoricalMatchRequest) ProtoMessage() {}
 
 func (x *ReplayHistoricalMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[21]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1910,7 +2006,7 @@ func (x *ReplayHistoricalMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayHistoricalMatchRequest.ProtoReflect.Descriptor instead.
 func (*ReplayHistoricalMatchRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{21}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ReplayHistoricalMatchRequest) GetMatchId() string {
@@ -1966,7 +2062,7 @@ type MatchPolicyDefinition struct {
 
 func (x *MatchPolicyDefinition) Reset() {
 	*x = MatchPolicyDefinition{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[22]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1978,7 +2074,7 @@ func (x *MatchPolicyDefinition) String() string {
 func (*MatchPolicyDefinition) ProtoMessage() {}
 
 func (x *MatchPolicyDefinition) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[22]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1991,7 +2087,7 @@ func (x *MatchPolicyDefinition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchPolicyDefinition.ProtoReflect.Descriptor instead.
 func (*MatchPolicyDefinition) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{22}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MatchPolicyDefinition) GetVersion() string {
@@ -2124,7 +2220,7 @@ type ReplayTeam struct {
 
 func (x *ReplayTeam) Reset() {
 	*x = ReplayTeam{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[23]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2136,7 +2232,7 @@ func (x *ReplayTeam) String() string {
 func (*ReplayTeam) ProtoMessage() {}
 
 func (x *ReplayTeam) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[23]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2149,7 +2245,7 @@ func (x *ReplayTeam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayTeam.ProtoReflect.Descriptor instead.
 func (*ReplayTeam) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{23}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ReplayTeam) GetPlayers() []*TeamPlayer {
@@ -2190,7 +2286,7 @@ type ReplayQuality struct {
 
 func (x *ReplayQuality) Reset() {
 	*x = ReplayQuality{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[24]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2202,7 +2298,7 @@ func (x *ReplayQuality) String() string {
 func (*ReplayQuality) ProtoMessage() {}
 
 func (x *ReplayQuality) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[24]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2215,7 +2311,7 @@ func (x *ReplayQuality) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayQuality.ProtoReflect.Descriptor instead.
 func (*ReplayQuality) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{24}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReplayQuality) GetTotalScore() float64 {
@@ -2303,7 +2399,7 @@ type ReplayOutcome struct {
 
 func (x *ReplayOutcome) Reset() {
 	*x = ReplayOutcome{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[25]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2315,7 +2411,7 @@ func (x *ReplayOutcome) String() string {
 func (*ReplayOutcome) ProtoMessage() {}
 
 func (x *ReplayOutcome) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[25]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2328,7 +2424,7 @@ func (x *ReplayOutcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayOutcome.ProtoReflect.Descriptor instead.
 func (*ReplayOutcome) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{25}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ReplayOutcome) GetPolicyVersion() string {
@@ -2444,7 +2540,7 @@ type ReplayHistoricalMatchResponse struct {
 
 func (x *ReplayHistoricalMatchResponse) Reset() {
 	*x = ReplayHistoricalMatchResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[26]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2456,7 +2552,7 @@ func (x *ReplayHistoricalMatchResponse) String() string {
 func (*ReplayHistoricalMatchResponse) ProtoMessage() {}
 
 func (x *ReplayHistoricalMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[26]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2469,7 +2565,7 @@ func (x *ReplayHistoricalMatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayHistoricalMatchResponse.ProtoReflect.Descriptor instead.
 func (*ReplayHistoricalMatchResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{26}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ReplayHistoricalMatchResponse) GetSourceMatchId() string {
@@ -2529,7 +2625,7 @@ type GetOperationalSnapshotRequest struct {
 
 func (x *GetOperationalSnapshotRequest) Reset() {
 	*x = GetOperationalSnapshotRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[27]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2541,7 +2637,7 @@ func (x *GetOperationalSnapshotRequest) String() string {
 func (*GetOperationalSnapshotRequest) ProtoMessage() {}
 
 func (x *GetOperationalSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[27]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2554,7 +2650,7 @@ func (x *GetOperationalSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOperationalSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetOperationalSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{27}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{29}
 }
 
 type PolicyExperiment struct {
@@ -2571,7 +2667,7 @@ type PolicyExperiment struct {
 
 func (x *PolicyExperiment) Reset() {
 	*x = PolicyExperiment{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[28]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2583,7 +2679,7 @@ func (x *PolicyExperiment) String() string {
 func (*PolicyExperiment) ProtoMessage() {}
 
 func (x *PolicyExperiment) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[28]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2596,7 +2692,7 @@ func (x *PolicyExperiment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyExperiment.ProtoReflect.Descriptor instead.
 func (*PolicyExperiment) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{28}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PolicyExperiment) GetId() string {
@@ -2652,7 +2748,7 @@ type GetOperationalSnapshotResponse struct {
 
 func (x *GetOperationalSnapshotResponse) Reset() {
 	*x = GetOperationalSnapshotResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[29]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2664,7 +2760,7 @@ func (x *GetOperationalSnapshotResponse) String() string {
 func (*GetOperationalSnapshotResponse) ProtoMessage() {}
 
 func (x *GetOperationalSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[29]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2677,7 +2773,7 @@ func (x *GetOperationalSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOperationalSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*GetOperationalSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{29}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetOperationalSnapshotResponse) GetQueueSize() int32 {
@@ -2713,7 +2809,7 @@ type ActivateApprovedPolicyRequest struct {
 
 func (x *ActivateApprovedPolicyRequest) Reset() {
 	*x = ActivateApprovedPolicyRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[30]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2725,7 +2821,7 @@ func (x *ActivateApprovedPolicyRequest) String() string {
 func (*ActivateApprovedPolicyRequest) ProtoMessage() {}
 
 func (x *ActivateApprovedPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[30]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2738,7 +2834,7 @@ func (x *ActivateApprovedPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateApprovedPolicyRequest.ProtoReflect.Descriptor instead.
 func (*ActivateApprovedPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{30}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ActivateApprovedPolicyRequest) GetApprovalId() string {
@@ -2778,7 +2874,7 @@ type ActivateApprovedPolicyResponse struct {
 
 func (x *ActivateApprovedPolicyResponse) Reset() {
 	*x = ActivateApprovedPolicyResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[31]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2790,7 +2886,7 @@ func (x *ActivateApprovedPolicyResponse) String() string {
 func (*ActivateApprovedPolicyResponse) ProtoMessage() {}
 
 func (x *ActivateApprovedPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[31]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2803,7 +2899,7 @@ func (x *ActivateApprovedPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateApprovedPolicyResponse.ProtoReflect.Descriptor instead.
 func (*ActivateApprovedPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{31}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ActivateApprovedPolicyResponse) GetExperiment() *PolicyExperiment {
@@ -2822,7 +2918,7 @@ type RollbackPolicyExperimentRequest struct {
 
 func (x *RollbackPolicyExperimentRequest) Reset() {
 	*x = RollbackPolicyExperimentRequest{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[32]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2834,7 +2930,7 @@ func (x *RollbackPolicyExperimentRequest) String() string {
 func (*RollbackPolicyExperimentRequest) ProtoMessage() {}
 
 func (x *RollbackPolicyExperimentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[32]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2847,7 +2943,7 @@ func (x *RollbackPolicyExperimentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackPolicyExperimentRequest.ProtoReflect.Descriptor instead.
 func (*RollbackPolicyExperimentRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{32}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RollbackPolicyExperimentRequest) GetExperimentId() string {
@@ -2866,7 +2962,7 @@ type RollbackPolicyExperimentResponse struct {
 
 func (x *RollbackPolicyExperimentResponse) Reset() {
 	*x = RollbackPolicyExperimentResponse{}
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[33]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2878,7 +2974,7 @@ func (x *RollbackPolicyExperimentResponse) String() string {
 func (*RollbackPolicyExperimentResponse) ProtoMessage() {}
 
 func (x *RollbackPolicyExperimentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[33]
+	mi := &file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2891,7 +2987,7 @@ func (x *RollbackPolicyExperimentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackPolicyExperimentResponse.ProtoReflect.Descriptor instead.
 func (*RollbackPolicyExperimentResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{33}
+	return file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RollbackPolicyExperimentResponse) GetRolledBack() bool {
@@ -2994,7 +3090,12 @@ const file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc = "" +
 	"\x10GetTicketRequest\x12\x1b\n" +
 	"\tticket_id\x18\x01 \x01(\tR\bticketId\"R\n" +
 	"\x11GetTicketResponse\x12=\n" +
-	"\x06ticket\x18\x01 \x01(\v2%.matchmind.matchmaking.v1.MatchTicketR\x06ticket\"x\n" +
+	"\x06ticket\x18\x01 \x01(\v2%.matchmind.matchmaking.v1.MatchTicketR\x06ticket\">\n" +
+	"\x1fGetActiveTicketForPlayerRequest\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\"w\n" +
+	" GetActiveTicketForPlayerResponse\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x12=\n" +
+	"\x06ticket\x18\x02 \x01(\v2%.matchmind.matchmaking.v1.MatchTicketR\x06ticket\"x\n" +
 	"\x13CancelTicketRequest\x12\x1b\n" +
 	"\tticket_id\x18\x01 \x01(\tR\bticketId\x12\x1b\n" +
 	"\tplayer_id\x18\x02 \x01(\tR\bplayerId\x12'\n" +
@@ -3191,11 +3292,11 @@ const file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc = "" +
 	"\vWinningTeam\x12\x1c\n" +
 	"\x18WINNING_TEAM_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eWINNING_TEAM_A\x10\x01\x12\x12\n" +
-	"\x0eWINNING_TEAM_B\x10\x022\xd6\n" +
-	"\n" +
+	"\x0eWINNING_TEAM_B\x10\x022\xea\v\n" +
 	"\x12MatchmakingService\x12m\n" +
 	"\fCreateTicket\x12-.matchmind.matchmaking.v1.CreateTicketRequest\x1a..matchmind.matchmaking.v1.CreateTicketResponse\x12d\n" +
-	"\tGetTicket\x12*.matchmind.matchmaking.v1.GetTicketRequest\x1a+.matchmind.matchmaking.v1.GetTicketResponse\x12m\n" +
+	"\tGetTicket\x12*.matchmind.matchmaking.v1.GetTicketRequest\x1a+.matchmind.matchmaking.v1.GetTicketResponse\x12\x91\x01\n" +
+	"\x18GetActiveTicketForPlayer\x129.matchmind.matchmaking.v1.GetActiveTicketForPlayerRequest\x1a:.matchmind.matchmaking.v1.GetActiveTicketForPlayerResponse\x12m\n" +
 	"\fCancelTicket\x12-.matchmind.matchmaking.v1.CancelTicketRequest\x1a..matchmind.matchmaking.v1.CancelTicketResponse\x12a\n" +
 	"\bGetMatch\x12).matchmind.matchmaking.v1.GetMatchRequest\x1a*.matchmind.matchmaking.v1.GetMatchResponse\x12g\n" +
 	"\n" +
@@ -3220,7 +3321,7 @@ func file_matchmind_matchmaking_v1_matchmaking_proto_rawDescGZIP() []byte {
 }
 
 var file_matchmind_matchmaking_v1_matchmaking_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_matchmind_matchmaking_v1_matchmaking_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_matchmind_matchmaking_v1_matchmaking_proto_goTypes = []any{
 	(TicketState)(0),                         // 0: matchmind.matchmaking.v1.TicketState
 	(MatchState)(0),                          // 1: matchmind.matchmaking.v1.MatchState
@@ -3234,102 +3335,107 @@ var file_matchmind_matchmaking_v1_matchmaking_proto_goTypes = []any{
 	(*CreateTicketResponse)(nil),             // 9: matchmind.matchmaking.v1.CreateTicketResponse
 	(*GetTicketRequest)(nil),                 // 10: matchmind.matchmaking.v1.GetTicketRequest
 	(*GetTicketResponse)(nil),                // 11: matchmind.matchmaking.v1.GetTicketResponse
-	(*CancelTicketRequest)(nil),              // 12: matchmind.matchmaking.v1.CancelTicketRequest
-	(*CancelTicketResponse)(nil),             // 13: matchmind.matchmaking.v1.CancelTicketResponse
-	(*GetMatchRequest)(nil),                  // 14: matchmind.matchmaking.v1.GetMatchRequest
-	(*GetMatchResponse)(nil),                 // 15: matchmind.matchmaking.v1.GetMatchResponse
-	(*StartMatchRequest)(nil),                // 16: matchmind.matchmaking.v1.StartMatchRequest
-	(*StartMatchResponse)(nil),               // 17: matchmind.matchmaking.v1.StartMatchResponse
-	(*CompleteMatchRequest)(nil),             // 18: matchmind.matchmaking.v1.CompleteMatchRequest
-	(*CompleteMatchResponse)(nil),            // 19: matchmind.matchmaking.v1.CompleteMatchResponse
-	(*AnalyzeMatchQualityRequest)(nil),       // 20: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest
-	(*MatchQualityObservation)(nil),          // 21: matchmind.matchmaking.v1.MatchQualityObservation
-	(*PolicyQualitySummary)(nil),             // 22: matchmind.matchmaking.v1.PolicyQualitySummary
-	(*AnalyzeMatchQualityResponse)(nil),      // 23: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse
-	(*ReplayHistoricalMatchRequest)(nil),     // 24: matchmind.matchmaking.v1.ReplayHistoricalMatchRequest
-	(*MatchPolicyDefinition)(nil),            // 25: matchmind.matchmaking.v1.MatchPolicyDefinition
-	(*ReplayTeam)(nil),                       // 26: matchmind.matchmaking.v1.ReplayTeam
-	(*ReplayQuality)(nil),                    // 27: matchmind.matchmaking.v1.ReplayQuality
-	(*ReplayOutcome)(nil),                    // 28: matchmind.matchmaking.v1.ReplayOutcome
-	(*ReplayHistoricalMatchResponse)(nil),    // 29: matchmind.matchmaking.v1.ReplayHistoricalMatchResponse
-	(*GetOperationalSnapshotRequest)(nil),    // 30: matchmind.matchmaking.v1.GetOperationalSnapshotRequest
-	(*PolicyExperiment)(nil),                 // 31: matchmind.matchmaking.v1.PolicyExperiment
-	(*GetOperationalSnapshotResponse)(nil),   // 32: matchmind.matchmaking.v1.GetOperationalSnapshotResponse
-	(*ActivateApprovedPolicyRequest)(nil),    // 33: matchmind.matchmaking.v1.ActivateApprovedPolicyRequest
-	(*ActivateApprovedPolicyResponse)(nil),   // 34: matchmind.matchmaking.v1.ActivateApprovedPolicyResponse
-	(*RollbackPolicyExperimentRequest)(nil),  // 35: matchmind.matchmaking.v1.RollbackPolicyExperimentRequest
-	(*RollbackPolicyExperimentResponse)(nil), // 36: matchmind.matchmaking.v1.RollbackPolicyExperimentResponse
-	nil,                                      // 37: matchmind.matchmaking.v1.MatchTicket.RegionLatencyMsEntry
-	nil,                                      // 38: matchmind.matchmaking.v1.CreateTicketRequest.RegionLatencyMsEntry
-	(v1.Role)(0),                             // 39: matchmind.player.v1.Role
-	(*timestamppb.Timestamp)(nil),            // 40: google.protobuf.Timestamp
+	(*GetActiveTicketForPlayerRequest)(nil),  // 12: matchmind.matchmaking.v1.GetActiveTicketForPlayerRequest
+	(*GetActiveTicketForPlayerResponse)(nil), // 13: matchmind.matchmaking.v1.GetActiveTicketForPlayerResponse
+	(*CancelTicketRequest)(nil),              // 14: matchmind.matchmaking.v1.CancelTicketRequest
+	(*CancelTicketResponse)(nil),             // 15: matchmind.matchmaking.v1.CancelTicketResponse
+	(*GetMatchRequest)(nil),                  // 16: matchmind.matchmaking.v1.GetMatchRequest
+	(*GetMatchResponse)(nil),                 // 17: matchmind.matchmaking.v1.GetMatchResponse
+	(*StartMatchRequest)(nil),                // 18: matchmind.matchmaking.v1.StartMatchRequest
+	(*StartMatchResponse)(nil),               // 19: matchmind.matchmaking.v1.StartMatchResponse
+	(*CompleteMatchRequest)(nil),             // 20: matchmind.matchmaking.v1.CompleteMatchRequest
+	(*CompleteMatchResponse)(nil),            // 21: matchmind.matchmaking.v1.CompleteMatchResponse
+	(*AnalyzeMatchQualityRequest)(nil),       // 22: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest
+	(*MatchQualityObservation)(nil),          // 23: matchmind.matchmaking.v1.MatchQualityObservation
+	(*PolicyQualitySummary)(nil),             // 24: matchmind.matchmaking.v1.PolicyQualitySummary
+	(*AnalyzeMatchQualityResponse)(nil),      // 25: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse
+	(*ReplayHistoricalMatchRequest)(nil),     // 26: matchmind.matchmaking.v1.ReplayHistoricalMatchRequest
+	(*MatchPolicyDefinition)(nil),            // 27: matchmind.matchmaking.v1.MatchPolicyDefinition
+	(*ReplayTeam)(nil),                       // 28: matchmind.matchmaking.v1.ReplayTeam
+	(*ReplayQuality)(nil),                    // 29: matchmind.matchmaking.v1.ReplayQuality
+	(*ReplayOutcome)(nil),                    // 30: matchmind.matchmaking.v1.ReplayOutcome
+	(*ReplayHistoricalMatchResponse)(nil),    // 31: matchmind.matchmaking.v1.ReplayHistoricalMatchResponse
+	(*GetOperationalSnapshotRequest)(nil),    // 32: matchmind.matchmaking.v1.GetOperationalSnapshotRequest
+	(*PolicyExperiment)(nil),                 // 33: matchmind.matchmaking.v1.PolicyExperiment
+	(*GetOperationalSnapshotResponse)(nil),   // 34: matchmind.matchmaking.v1.GetOperationalSnapshotResponse
+	(*ActivateApprovedPolicyRequest)(nil),    // 35: matchmind.matchmaking.v1.ActivateApprovedPolicyRequest
+	(*ActivateApprovedPolicyResponse)(nil),   // 36: matchmind.matchmaking.v1.ActivateApprovedPolicyResponse
+	(*RollbackPolicyExperimentRequest)(nil),  // 37: matchmind.matchmaking.v1.RollbackPolicyExperimentRequest
+	(*RollbackPolicyExperimentResponse)(nil), // 38: matchmind.matchmaking.v1.RollbackPolicyExperimentResponse
+	nil,                                      // 39: matchmind.matchmaking.v1.MatchTicket.RegionLatencyMsEntry
+	nil,                                      // 40: matchmind.matchmaking.v1.CreateTicketRequest.RegionLatencyMsEntry
+	(v1.Role)(0),                             // 41: matchmind.player.v1.Role
+	(*timestamppb.Timestamp)(nil),            // 42: google.protobuf.Timestamp
 }
 var file_matchmind_matchmaking_v1_matchmaking_proto_depIdxs = []int32{
 	0,  // 0: matchmind.matchmaking.v1.MatchTicket.state:type_name -> matchmind.matchmaking.v1.TicketState
-	39, // 1: matchmind.matchmaking.v1.MatchTicket.preferred_roles:type_name -> matchmind.player.v1.Role
-	37, // 2: matchmind.matchmaking.v1.MatchTicket.region_latency_ms:type_name -> matchmind.matchmaking.v1.MatchTicket.RegionLatencyMsEntry
-	40, // 3: matchmind.matchmaking.v1.MatchTicket.created_at:type_name -> google.protobuf.Timestamp
-	40, // 4: matchmind.matchmaking.v1.MatchTicket.reservation_expires_at:type_name -> google.protobuf.Timestamp
+	41, // 1: matchmind.matchmaking.v1.MatchTicket.preferred_roles:type_name -> matchmind.player.v1.Role
+	39, // 2: matchmind.matchmaking.v1.MatchTicket.region_latency_ms:type_name -> matchmind.matchmaking.v1.MatchTicket.RegionLatencyMsEntry
+	42, // 3: matchmind.matchmaking.v1.MatchTicket.created_at:type_name -> google.protobuf.Timestamp
+	42, // 4: matchmind.matchmaking.v1.MatchTicket.reservation_expires_at:type_name -> google.protobuf.Timestamp
 	5,  // 5: matchmind.matchmaking.v1.Team.player_details:type_name -> matchmind.matchmaking.v1.TeamPlayer
-	39, // 6: matchmind.matchmaking.v1.TeamPlayer.role:type_name -> matchmind.player.v1.Role
+	41, // 6: matchmind.matchmaking.v1.TeamPlayer.role:type_name -> matchmind.player.v1.Role
 	4,  // 7: matchmind.matchmaking.v1.Match.team_a:type_name -> matchmind.matchmaking.v1.Team
 	4,  // 8: matchmind.matchmaking.v1.Match.team_b:type_name -> matchmind.matchmaking.v1.Team
 	1,  // 9: matchmind.matchmaking.v1.Match.state:type_name -> matchmind.matchmaking.v1.MatchState
-	40, // 10: matchmind.matchmaking.v1.Match.created_at:type_name -> google.protobuf.Timestamp
+	42, // 10: matchmind.matchmaking.v1.Match.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 11: matchmind.matchmaking.v1.Match.result:type_name -> matchmind.matchmaking.v1.MatchResult
 	2,  // 12: matchmind.matchmaking.v1.MatchResult.winning_team:type_name -> matchmind.matchmaking.v1.WinningTeam
-	39, // 13: matchmind.matchmaking.v1.CreateTicketRequest.preferred_roles:type_name -> matchmind.player.v1.Role
-	38, // 14: matchmind.matchmaking.v1.CreateTicketRequest.region_latency_ms:type_name -> matchmind.matchmaking.v1.CreateTicketRequest.RegionLatencyMsEntry
+	41, // 13: matchmind.matchmaking.v1.CreateTicketRequest.preferred_roles:type_name -> matchmind.player.v1.Role
+	40, // 14: matchmind.matchmaking.v1.CreateTicketRequest.region_latency_ms:type_name -> matchmind.matchmaking.v1.CreateTicketRequest.RegionLatencyMsEntry
 	3,  // 15: matchmind.matchmaking.v1.CreateTicketResponse.ticket:type_name -> matchmind.matchmaking.v1.MatchTicket
 	3,  // 16: matchmind.matchmaking.v1.GetTicketResponse.ticket:type_name -> matchmind.matchmaking.v1.MatchTicket
-	3,  // 17: matchmind.matchmaking.v1.CancelTicketResponse.ticket:type_name -> matchmind.matchmaking.v1.MatchTicket
-	6,  // 18: matchmind.matchmaking.v1.GetMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
-	6,  // 19: matchmind.matchmaking.v1.StartMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
-	7,  // 20: matchmind.matchmaking.v1.CompleteMatchRequest.result:type_name -> matchmind.matchmaking.v1.MatchResult
-	6,  // 21: matchmind.matchmaking.v1.CompleteMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
-	40, // 22: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest.from:type_name -> google.protobuf.Timestamp
-	40, // 23: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest.to:type_name -> google.protobuf.Timestamp
-	40, // 24: matchmind.matchmaking.v1.MatchQualityObservation.created_at:type_name -> google.protobuf.Timestamp
-	21, // 25: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse.observations:type_name -> matchmind.matchmaking.v1.MatchQualityObservation
-	22, // 26: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse.summaries:type_name -> matchmind.matchmaking.v1.PolicyQualitySummary
-	25, // 27: matchmind.matchmaking.v1.ReplayHistoricalMatchRequest.candidate_policies:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
-	5,  // 28: matchmind.matchmaking.v1.ReplayTeam.players:type_name -> matchmind.matchmaking.v1.TeamPlayer
-	26, // 29: matchmind.matchmaking.v1.ReplayOutcome.team_a:type_name -> matchmind.matchmaking.v1.ReplayTeam
-	26, // 30: matchmind.matchmaking.v1.ReplayOutcome.team_b:type_name -> matchmind.matchmaking.v1.ReplayTeam
-	27, // 31: matchmind.matchmaking.v1.ReplayOutcome.quality:type_name -> matchmind.matchmaking.v1.ReplayQuality
-	28, // 32: matchmind.matchmaking.v1.ReplayHistoricalMatchResponse.outcomes:type_name -> matchmind.matchmaking.v1.ReplayOutcome
-	40, // 33: matchmind.matchmaking.v1.PolicyExperiment.started_at:type_name -> google.protobuf.Timestamp
-	25, // 34: matchmind.matchmaking.v1.GetOperationalSnapshotResponse.policies:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
-	31, // 35: matchmind.matchmaking.v1.GetOperationalSnapshotResponse.active_experiment:type_name -> matchmind.matchmaking.v1.PolicyExperiment
-	25, // 36: matchmind.matchmaking.v1.ActivateApprovedPolicyRequest.policy:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
-	31, // 37: matchmind.matchmaking.v1.ActivateApprovedPolicyResponse.experiment:type_name -> matchmind.matchmaking.v1.PolicyExperiment
-	8,  // 38: matchmind.matchmaking.v1.MatchmakingService.CreateTicket:input_type -> matchmind.matchmaking.v1.CreateTicketRequest
-	10, // 39: matchmind.matchmaking.v1.MatchmakingService.GetTicket:input_type -> matchmind.matchmaking.v1.GetTicketRequest
-	12, // 40: matchmind.matchmaking.v1.MatchmakingService.CancelTicket:input_type -> matchmind.matchmaking.v1.CancelTicketRequest
-	14, // 41: matchmind.matchmaking.v1.MatchmakingService.GetMatch:input_type -> matchmind.matchmaking.v1.GetMatchRequest
-	16, // 42: matchmind.matchmaking.v1.MatchmakingService.StartMatch:input_type -> matchmind.matchmaking.v1.StartMatchRequest
-	18, // 43: matchmind.matchmaking.v1.MatchmakingService.CompleteMatch:input_type -> matchmind.matchmaking.v1.CompleteMatchRequest
-	20, // 44: matchmind.matchmaking.v1.MatchmakingService.AnalyzeMatchQuality:input_type -> matchmind.matchmaking.v1.AnalyzeMatchQualityRequest
-	24, // 45: matchmind.matchmaking.v1.MatchmakingService.ReplayHistoricalMatch:input_type -> matchmind.matchmaking.v1.ReplayHistoricalMatchRequest
-	30, // 46: matchmind.matchmaking.v1.MatchmakingService.GetOperationalSnapshot:input_type -> matchmind.matchmaking.v1.GetOperationalSnapshotRequest
-	33, // 47: matchmind.matchmaking.v1.MatchmakingService.ActivateApprovedPolicy:input_type -> matchmind.matchmaking.v1.ActivateApprovedPolicyRequest
-	35, // 48: matchmind.matchmaking.v1.MatchmakingService.RollbackPolicyExperiment:input_type -> matchmind.matchmaking.v1.RollbackPolicyExperimentRequest
-	9,  // 49: matchmind.matchmaking.v1.MatchmakingService.CreateTicket:output_type -> matchmind.matchmaking.v1.CreateTicketResponse
-	11, // 50: matchmind.matchmaking.v1.MatchmakingService.GetTicket:output_type -> matchmind.matchmaking.v1.GetTicketResponse
-	13, // 51: matchmind.matchmaking.v1.MatchmakingService.CancelTicket:output_type -> matchmind.matchmaking.v1.CancelTicketResponse
-	15, // 52: matchmind.matchmaking.v1.MatchmakingService.GetMatch:output_type -> matchmind.matchmaking.v1.GetMatchResponse
-	17, // 53: matchmind.matchmaking.v1.MatchmakingService.StartMatch:output_type -> matchmind.matchmaking.v1.StartMatchResponse
-	19, // 54: matchmind.matchmaking.v1.MatchmakingService.CompleteMatch:output_type -> matchmind.matchmaking.v1.CompleteMatchResponse
-	23, // 55: matchmind.matchmaking.v1.MatchmakingService.AnalyzeMatchQuality:output_type -> matchmind.matchmaking.v1.AnalyzeMatchQualityResponse
-	29, // 56: matchmind.matchmaking.v1.MatchmakingService.ReplayHistoricalMatch:output_type -> matchmind.matchmaking.v1.ReplayHistoricalMatchResponse
-	32, // 57: matchmind.matchmaking.v1.MatchmakingService.GetOperationalSnapshot:output_type -> matchmind.matchmaking.v1.GetOperationalSnapshotResponse
-	34, // 58: matchmind.matchmaking.v1.MatchmakingService.ActivateApprovedPolicy:output_type -> matchmind.matchmaking.v1.ActivateApprovedPolicyResponse
-	36, // 59: matchmind.matchmaking.v1.MatchmakingService.RollbackPolicyExperiment:output_type -> matchmind.matchmaking.v1.RollbackPolicyExperimentResponse
-	49, // [49:60] is the sub-list for method output_type
-	38, // [38:49] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	3,  // 17: matchmind.matchmaking.v1.GetActiveTicketForPlayerResponse.ticket:type_name -> matchmind.matchmaking.v1.MatchTicket
+	3,  // 18: matchmind.matchmaking.v1.CancelTicketResponse.ticket:type_name -> matchmind.matchmaking.v1.MatchTicket
+	6,  // 19: matchmind.matchmaking.v1.GetMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
+	6,  // 20: matchmind.matchmaking.v1.StartMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
+	7,  // 21: matchmind.matchmaking.v1.CompleteMatchRequest.result:type_name -> matchmind.matchmaking.v1.MatchResult
+	6,  // 22: matchmind.matchmaking.v1.CompleteMatchResponse.match:type_name -> matchmind.matchmaking.v1.Match
+	42, // 23: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest.from:type_name -> google.protobuf.Timestamp
+	42, // 24: matchmind.matchmaking.v1.AnalyzeMatchQualityRequest.to:type_name -> google.protobuf.Timestamp
+	42, // 25: matchmind.matchmaking.v1.MatchQualityObservation.created_at:type_name -> google.protobuf.Timestamp
+	23, // 26: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse.observations:type_name -> matchmind.matchmaking.v1.MatchQualityObservation
+	24, // 27: matchmind.matchmaking.v1.AnalyzeMatchQualityResponse.summaries:type_name -> matchmind.matchmaking.v1.PolicyQualitySummary
+	27, // 28: matchmind.matchmaking.v1.ReplayHistoricalMatchRequest.candidate_policies:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
+	5,  // 29: matchmind.matchmaking.v1.ReplayTeam.players:type_name -> matchmind.matchmaking.v1.TeamPlayer
+	28, // 30: matchmind.matchmaking.v1.ReplayOutcome.team_a:type_name -> matchmind.matchmaking.v1.ReplayTeam
+	28, // 31: matchmind.matchmaking.v1.ReplayOutcome.team_b:type_name -> matchmind.matchmaking.v1.ReplayTeam
+	29, // 32: matchmind.matchmaking.v1.ReplayOutcome.quality:type_name -> matchmind.matchmaking.v1.ReplayQuality
+	30, // 33: matchmind.matchmaking.v1.ReplayHistoricalMatchResponse.outcomes:type_name -> matchmind.matchmaking.v1.ReplayOutcome
+	42, // 34: matchmind.matchmaking.v1.PolicyExperiment.started_at:type_name -> google.protobuf.Timestamp
+	27, // 35: matchmind.matchmaking.v1.GetOperationalSnapshotResponse.policies:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
+	33, // 36: matchmind.matchmaking.v1.GetOperationalSnapshotResponse.active_experiment:type_name -> matchmind.matchmaking.v1.PolicyExperiment
+	27, // 37: matchmind.matchmaking.v1.ActivateApprovedPolicyRequest.policy:type_name -> matchmind.matchmaking.v1.MatchPolicyDefinition
+	33, // 38: matchmind.matchmaking.v1.ActivateApprovedPolicyResponse.experiment:type_name -> matchmind.matchmaking.v1.PolicyExperiment
+	8,  // 39: matchmind.matchmaking.v1.MatchmakingService.CreateTicket:input_type -> matchmind.matchmaking.v1.CreateTicketRequest
+	10, // 40: matchmind.matchmaking.v1.MatchmakingService.GetTicket:input_type -> matchmind.matchmaking.v1.GetTicketRequest
+	12, // 41: matchmind.matchmaking.v1.MatchmakingService.GetActiveTicketForPlayer:input_type -> matchmind.matchmaking.v1.GetActiveTicketForPlayerRequest
+	14, // 42: matchmind.matchmaking.v1.MatchmakingService.CancelTicket:input_type -> matchmind.matchmaking.v1.CancelTicketRequest
+	16, // 43: matchmind.matchmaking.v1.MatchmakingService.GetMatch:input_type -> matchmind.matchmaking.v1.GetMatchRequest
+	18, // 44: matchmind.matchmaking.v1.MatchmakingService.StartMatch:input_type -> matchmind.matchmaking.v1.StartMatchRequest
+	20, // 45: matchmind.matchmaking.v1.MatchmakingService.CompleteMatch:input_type -> matchmind.matchmaking.v1.CompleteMatchRequest
+	22, // 46: matchmind.matchmaking.v1.MatchmakingService.AnalyzeMatchQuality:input_type -> matchmind.matchmaking.v1.AnalyzeMatchQualityRequest
+	26, // 47: matchmind.matchmaking.v1.MatchmakingService.ReplayHistoricalMatch:input_type -> matchmind.matchmaking.v1.ReplayHistoricalMatchRequest
+	32, // 48: matchmind.matchmaking.v1.MatchmakingService.GetOperationalSnapshot:input_type -> matchmind.matchmaking.v1.GetOperationalSnapshotRequest
+	35, // 49: matchmind.matchmaking.v1.MatchmakingService.ActivateApprovedPolicy:input_type -> matchmind.matchmaking.v1.ActivateApprovedPolicyRequest
+	37, // 50: matchmind.matchmaking.v1.MatchmakingService.RollbackPolicyExperiment:input_type -> matchmind.matchmaking.v1.RollbackPolicyExperimentRequest
+	9,  // 51: matchmind.matchmaking.v1.MatchmakingService.CreateTicket:output_type -> matchmind.matchmaking.v1.CreateTicketResponse
+	11, // 52: matchmind.matchmaking.v1.MatchmakingService.GetTicket:output_type -> matchmind.matchmaking.v1.GetTicketResponse
+	13, // 53: matchmind.matchmaking.v1.MatchmakingService.GetActiveTicketForPlayer:output_type -> matchmind.matchmaking.v1.GetActiveTicketForPlayerResponse
+	15, // 54: matchmind.matchmaking.v1.MatchmakingService.CancelTicket:output_type -> matchmind.matchmaking.v1.CancelTicketResponse
+	17, // 55: matchmind.matchmaking.v1.MatchmakingService.GetMatch:output_type -> matchmind.matchmaking.v1.GetMatchResponse
+	19, // 56: matchmind.matchmaking.v1.MatchmakingService.StartMatch:output_type -> matchmind.matchmaking.v1.StartMatchResponse
+	21, // 57: matchmind.matchmaking.v1.MatchmakingService.CompleteMatch:output_type -> matchmind.matchmaking.v1.CompleteMatchResponse
+	25, // 58: matchmind.matchmaking.v1.MatchmakingService.AnalyzeMatchQuality:output_type -> matchmind.matchmaking.v1.AnalyzeMatchQualityResponse
+	31, // 59: matchmind.matchmaking.v1.MatchmakingService.ReplayHistoricalMatch:output_type -> matchmind.matchmaking.v1.ReplayHistoricalMatchResponse
+	34, // 60: matchmind.matchmaking.v1.MatchmakingService.GetOperationalSnapshot:output_type -> matchmind.matchmaking.v1.GetOperationalSnapshotResponse
+	36, // 61: matchmind.matchmaking.v1.MatchmakingService.ActivateApprovedPolicy:output_type -> matchmind.matchmaking.v1.ActivateApprovedPolicyResponse
+	38, // 62: matchmind.matchmaking.v1.MatchmakingService.RollbackPolicyExperiment:output_type -> matchmind.matchmaking.v1.RollbackPolicyExperimentResponse
+	51, // [51:63] is the sub-list for method output_type
+	39, // [39:51] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_matchmind_matchmaking_v1_matchmaking_proto_init() }
@@ -3343,7 +3449,7 @@ func file_matchmind_matchmaking_v1_matchmaking_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc), len(file_matchmind_matchmaking_v1_matchmaking_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   36,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

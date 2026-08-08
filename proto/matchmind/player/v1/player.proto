@@ -9,6 +9,7 @@ option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1;p
 service PlayerService {
   rpc CreatePlayer(CreatePlayerRequest) returns (CreatePlayerResponse);
   rpc GetPlayer(GetPlayerRequest) returns (GetPlayerResponse);
+  rpc UpdateRegionLatency(UpdateRegionLatencyRequest) returns (UpdateRegionLatencyResponse);
   rpc ApplyMatchResult(ApplyMatchResultRequest) returns (ApplyMatchResultResponse);
   rpc GetRatingHistory(GetRatingHistoryRequest) returns (GetRatingHistoryResponse);
 }
@@ -60,6 +61,15 @@ message GetPlayerRequest {
 }
 
 message GetPlayerResponse {
+  Player player = 1;
+}
+
+message UpdateRegionLatencyRequest {
+  string player_id = 1;
+  map<string, int32> region_latency_ms = 2;
+}
+
+message UpdateRegionLatencyResponse {
   Player player = 1;
 }
 

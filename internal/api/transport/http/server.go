@@ -66,6 +66,7 @@ func NewServer(
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/players", server.createPlayer)
 	mux.HandleFunc("GET /api/v1/players/{player_id}/rating", server.getPlayerRating)
+	mux.HandleFunc("PATCH /api/v1/players/{player_id}/latency", server.updatePlayerLatency)
 	mux.HandleFunc("POST /api/v1/tickets", server.createTicket)
 	mux.HandleFunc("GET /api/v1/tickets/{ticket_id}", server.getTicket)
 	mux.HandleFunc("DELETE /api/v1/tickets/{ticket_id}", server.cancelTicket)
@@ -166,6 +167,10 @@ func (s *Server) createTicket(response http.ResponseWriter, request *http.Reques
 		writeError(response, err)
 		return
 	}
+	if _, err := requirePlayer(request, body.PlayerID); err != nil {
+		writeError(response, err)
+		return
+	}
 	roles, err := parseRoles(body.PreferredRoles)
 	if err != nil {
 		writeError(response, err)
@@ -187,8 +192,16 @@ func (s *Server) createTicket(response http.ResponseWriter, request *http.Reques
 }
 
 func (s *Server) getTicket(response http.ResponseWriter, request *http.Request) {
+	if strings.TrimSpace(request.Header.Get("X-Player-ID")) == "" {
+		writeError(response, status.Error(codes.Unauthenticated, "X-Player-ID is required"))
+		return
+	}
 	result, err := s.matchmaking.GetTicket(request.Context(), &matchmakingv1.GetTicketRequest{TicketId: request.PathValue("ticket_id")})
 	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if _, err := requirePlayer(request, result.GetTicket().GetPlayerId()); err != nil {
 		writeError(response, err)
 		return
 	}
@@ -196,9 +209,10 @@ func (s *Server) getTicket(response http.ResponseWriter, request *http.Request) 
 }
 
 func (s *Server) cancelTicket(response http.ResponseWriter, request *http.Request) {
-	playerID := request.Header.Get("X-Player-ID")
+	playerID := strings.TrimSpace(request.Header.Get("X-Player-ID"))
 	if playerID == "" {
-		playerID = request.URL.Query().Get("player_id")
+		writeError(response, status.Error(codes.Unauthenticated, "X-Player-ID is required"))
+		return
 	}
 	idempotencyKey := request.Header.Get("Idempotency-Key")
 	if idempotencyKey == "" {
@@ -354,10 +368,38 @@ func queryTimestamp(value, name string) (*timestamppb.Timestamp, error) {
 }
 
 type playerRatingResponse struct {
-	PlayerID        string                   `json:"player_id"`
-	Rating          float64                  `json:"rating"`
-	RatingDeviation float64                  `json:"rating_deviation"`
-	History         []*playerv1.RatingChange `json:"history"`
+	PlayerID          string                     `json:"player_id"`
+	Rating            float64                    `json:"rating"`
+	RatingDeviation   float64                    `json:"rating_deviation"`
+	History           []*playerv1.RatingChange   `json:"history"`
+	RecentMatchIDs    []string                   `json:"recent_match_ids"`
+	MatchmakingStatus string                     `json:"matchmaking_status"`
+	CurrentTicket     *matchmakingv1.MatchTicket `json:"current_ticket,omitempty"`
+}
+
+type updatePlayerLatencyRequest struct {
+	RegionLatency map[string]int32 `json:"region_latency"`
+}
+
+func (s *Server) updatePlayerLatency(response http.ResponseWriter, request *http.Request) {
+	playerID := request.PathValue("player_id")
+	if _, err := requirePlayer(request, playerID); err != nil {
+		writeError(response, err)
+		return
+	}
+	var body updatePlayerLatencyRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.players.UpdateRegionLatency(request.Context(), &playerv1.UpdateRegionLatencyRequest{
+		PlayerId: playerID, RegionLatencyMs: body.RegionLatency,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
 }
 
 func (s *Server) getPlayerRating(response http.ResponseWriter, request *http.Request) {
@@ -372,10 +414,41 @@ func (s *Server) getPlayerRating(response http.ResponseWriter, request *http.Req
 		writeError(response, err)
 		return
 	}
+	activeTicket, err := s.matchmaking.GetActiveTicketForPlayer(request.Context(), &matchmakingv1.GetActiveTicketForPlayerRequest{PlayerId: playerID})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	matchmakingStatus := "IDLE"
+	if activeTicket.GetFound() && activeTicket.GetTicket() != nil {
+		matchmakingStatus = strings.TrimPrefix(activeTicket.GetTicket().GetState().String(), "TICKET_STATE_")
+	}
 	writeJSON(response, http.StatusOK, playerRatingResponse{
 		PlayerID: playerResult.Player.Id, Rating: playerResult.Player.Rating,
 		RatingDeviation: playerResult.Player.RatingDeviation, History: historyResult.Changes,
+		RecentMatchIDs: recentMatchIDs(historyResult.Changes, 10), MatchmakingStatus: matchmakingStatus,
+		CurrentTicket: activeTicket.GetTicket(),
 	})
+}
+
+func recentMatchIDs(changes []*playerv1.RatingChange, limit int) []string {
+	if limit <= 0 || limit > len(changes) {
+		limit = len(changes)
+	}
+	result := make([]string, 0, limit)
+	seen := make(map[string]struct{}, limit)
+	for index := len(changes) - 1; index >= 0 && len(result) < limit; index-- {
+		matchID := strings.TrimSpace(changes[index].GetMatchId())
+		if matchID == "" {
+			continue
+		}
+		if _, duplicate := seen[matchID]; duplicate {
+			continue
+		}
+		seen[matchID] = struct{}{}
+		result = append(result, matchID)
+	}
+	return result
 }
 
 type runAgentAnalysisRequest struct {
@@ -601,6 +674,17 @@ func requireOperator(request *http.Request, allowedRoles ...string) (string, err
 		}
 	}
 	return "", status.Error(codes.PermissionDenied, "operator role is not permitted")
+}
+
+func requirePlayer(request *http.Request, expectedPlayerID string) (string, error) {
+	playerID := strings.TrimSpace(request.Header.Get("X-Player-ID"))
+	if playerID == "" {
+		return "", status.Error(codes.Unauthenticated, "X-Player-ID is required")
+	}
+	if playerID != strings.TrimSpace(expectedPlayerID) {
+		return "", status.Error(codes.PermissionDenied, "player is not permitted to access this resource")
+	}
+	return playerID, nil
 }
 
 func queryLimit(request *http.Request, maximum int32) (int32, error) {

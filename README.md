@@ -22,8 +22,10 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
 - The service process skeleton, Protobuf contracts, generation workflow,
   health checks, reflection, and graceful shutdown are complete.
 - `player-service` supports player creation/query, configurable Elo updates,
-  rating history, result idempotency, a concurrency-safe memory store, and an
-  optional transactional PostgreSQL repository.
+  regional latency replacement, rating history, result idempotency, a
+  concurrency-safe memory store, and an optional transactional PostgreSQL
+  repository. Player rating views include recent Match IDs and current
+  matchmaking status.
 - `matchmaking-service` supports idempotent ticket create/cancel/query, strict
   ticket and match state machines, partitioned queues, dynamic rating windows,
   party-safe candidate selection, deterministic 5v5 team/role assignment,
@@ -58,7 +60,8 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   predicted-versus-actual quality analysis, Greedy/Beam historical replay, and
   an audited Agent proposal.
 - `api-service` exposes the required REST routes, trace IDs, JSON error
-  mapping, health/readiness checks, and Prometheus-format API metrics.
+  mapping, Ticket owner checks, role-gated Agent operations, health/readiness
+  checks, and Prometheus-format API metrics.
 - `matchmaking-service` exposes the required queue, wait, attempt, success,
   failure, quality, reservation-conflict, and worker-duration metrics on
   `:8082`.
@@ -187,3 +190,4 @@ Runtime configuration:
 - [Testing and load testing](docs/TESTING.md)
 - [Reproducible demo](docs/DEMO.md)
 - [Database design](docs/DATABASE.md)
+- [Requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md)

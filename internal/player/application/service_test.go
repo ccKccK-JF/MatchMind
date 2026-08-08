@@ -53,3 +53,31 @@ func TestServiceGetMissingPlayer(t *testing.T) {
 		t.Fatalf("GetPlayer() error = %v, want ErrPlayerNotFound", err)
 	}
 }
+
+func TestUpdateRegionLatencyPersistsValidatedMeasurements(t *testing.T) {
+	repository := memory.NewRepository()
+	service := application.NewService(repository, func() time.Time {
+		return time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
+	})
+	_, err := service.CreatePlayer(context.Background(), application.CreatePlayerCommand{
+		ID: "player-1", Name: "Nova", InitialRating: 1500,
+		PreferredRoles: []domain.Role{domain.RoleCore}, HomeRegion: "hongkong",
+		RegionLatency: map[string]int{"hongkong": 30}, BehaviorScore: 95,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.UpdateRegionLatency(context.Background(), application.UpdateRegionLatencyCommand{
+		PlayerID: " player-1 ", Latency: map[string]int{"HongKong": 22, "tokyo": 65},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := service.GetPlayer(context.Background(), "player-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.RegionLatency()["hongkong"] != 22 || stored.RegionLatency()["tokyo"] != 65 {
+		t.Fatalf("updated/stored latency = %#v/%#v", updated.RegionLatency(), stored.RegionLatency())
+	}
+}
