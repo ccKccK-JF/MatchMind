@@ -13,6 +13,12 @@ scoring, reservation rollback and recovery, simulation reproducibility,
 idempotent rating updates, HTTP mapping, Prometheus output, and the complete
 three-service gRPC flow.
 
+Algorithm tests use a crafted candidate pool where Beam Search must improve
+role coverage and total quality over greedy selection. They also verify stable
+tie-breaking, anchor retention, party integrity, deterministic A/B assignment,
+and the configured treatment distribution. Batch simulation compares 1,000
+cases at concurrency 1 and 16 and requires byte-for-byte equivalent reports.
+
 With a real PostgreSQL instance, enable the isolated-schema persistence test:
 
 ```powershell

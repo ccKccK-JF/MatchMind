@@ -38,8 +38,10 @@ player-service      matchmaking-service   simulation-service
 2. The matchmaking service creates an idempotent Ticket and places it in a
    pool partitioned by mode, client version, and region.
 3. One or more workers select candidates using dynamic rating windows.
-4. Party-safe team formation assigns exactly five unique players per side and
-   covers all five roles.
+4. A policy selector chooses greedy or Beam Search formation. A/B mode hashes
+   a stable player key, experiment salt, and experiment ID into a deterministic
+   control/treatment bucket. Both algorithms keep parties intact, assign five
+   unique players per side, and cover all five roles.
 5. Quality scoring combines skill, roles, latency, party symmetry, and wait
    time. A low-quality candidate is rejected with reasons.
 6. All ten Tickets are atomically reserved. A Match is created only after the
@@ -47,6 +49,11 @@ player-service      matchmaking-service   simulation-service
 7. Server allocation marks the Match READY and atomically assigns all Tickets.
 8. The seeded simulator starts and finishes the Match, records process
    metrics, and applies one idempotent Elo batch.
+
+The chosen policy version is stored on each Match. This makes later replay and
+predicted-versus-actual quality analysis possible without reconstructing the
+active experiment. Offline batch simulation uses the same deterministic
+simulation model but deliberately bypasses Match completion and Elo updates.
 
 ## Concurrency guarantees
 

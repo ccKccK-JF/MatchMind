@@ -33,10 +33,15 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   commits. Finishing a Match atomically releases each player's active-Ticket
   guard so the next matchmaking session can start. The production adapter uses
   Redis sorted-set queues and Lua all-or-nothing reservation while PostgreSQL
-  remains durable and can rebuild missing Redis state at startup.
+  remains durable and can rebuild missing Redis state at startup. Team
+  formation supports both the baseline greedy strategy and a deterministic
+  Beam Search strategy, with stable player-level A/B assignment and persisted
+  policy versions for later comparison.
 - `simulation-service` runs reproducible seeded matches, records process
   metrics, updates ranked Elo through `player-service`, and completes matches
-  through `matchmaking-service`.
+  through `matchmaking-service`. Its offline batch API evaluates up to 10,000
+  seeded cases with bounded concurrency without changing live Match or Elo
+  state.
 - A three-service integration test proves the complete in-memory flow from ten
   players entering the queue through match completion and rating history.
 - `api-service` exposes the required REST routes, trace IDs, JSON error
@@ -134,6 +139,10 @@ Runtime configuration:
 | `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
 | `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
 | `MATCHMAKING_WORKER_COUNT` | `1` |
+| `MATCHMAKING_POLICY_MODE` | `beam` (`greedy`, `beam`, or `ab`) |
+| `MATCHMAKING_BEAM_WIDTH` | `64` |
+| `MATCHMAKING_AB_TREATMENT_BPS` | `5000` |
+| `MATCHMAKING_AB_SALT` | `matchmind-team-formation-v2` |
 | `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
 | `MATCHMAKING_MATCH_STORAGE_BACKEND` | Ticket backend (`postgres` when Ticket backend is `redis`) |
 | `REDIS_ADDRESS` | `localhost:6379` |

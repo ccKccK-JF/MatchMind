@@ -6,9 +6,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
+	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
 	platformmetrics "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -33,6 +35,15 @@ type fakePlayerClient struct {
 	playerv1.PlayerServiceClient
 	get     func(context.Context, *playerv1.GetPlayerRequest) (*playerv1.GetPlayerResponse, error)
 	history func(context.Context, *playerv1.GetRatingHistoryRequest) (*playerv1.GetRatingHistoryResponse, error)
+}
+
+type fakeSimulationClient struct {
+	simulationv1.SimulationServiceClient
+	batch func(context.Context, *simulationv1.SimulateBatchRequest) (*simulationv1.SimulateBatchResponse, error)
+}
+
+func (f fakeSimulationClient) SimulateBatch(ctx context.Context, request *simulationv1.SimulateBatchRequest, _ ...grpc.CallOption) (*simulationv1.SimulateBatchResponse, error) {
+	return f.batch(ctx, request)
 }
 
 func (f fakePlayerClient) GetPlayer(ctx context.Context, request *playerv1.GetPlayerRequest, _ ...grpc.CallOption) (*playerv1.GetPlayerResponse, error) {
@@ -100,5 +111,34 @@ func TestGetPlayerRatingIncludesHistory(t *testing.T) {
 	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/players/player-1/rating", nil))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"match_id":"match-1"`) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestBatchSimulationMapsJSONToGRPC(t *testing.T) {
+	var captured *simulationv1.SimulateBatchRequest
+	client := fakeSimulationClient{batch: func(ctx context.Context, request *simulationv1.SimulateBatchRequest) (*simulationv1.SimulateBatchResponse, error) {
+		deadline, exists := ctx.Deadline()
+		if !exists || time.Until(deadline) < 20*time.Second {
+			t.Fatalf("batch deadline = %v, exists = %v", deadline, exists)
+		}
+		captured = request
+		return &simulationv1.SimulateBatchResponse{SimulationCount: int32(len(request.Inputs)), TeamAWinRate: .6}, nil
+	}}
+	server := NewServer(nil, nil, client, nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/simulations/batch", strings.NewReader(`{
+		"concurrency":4,"inputs":[{"case_id":"case-1","random_seed":42,
+		"rating_a":1520,"rating_b":1480,"predicted_win_rate_a":0.557,
+		"role_score":90,"latency_score":85,"party_score":100}]
+	}`))
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if captured == nil || captured.Concurrency != 4 || len(captured.Inputs) != 1 || captured.Inputs[0].CaseId != "case-1" {
+		t.Fatalf("captured request = %#v", captured)
+	}
+	if !strings.Contains(response.Body.String(), `"simulation_count":1`) {
+		t.Fatalf("response = %s", response.Body.String())
 	}
 }

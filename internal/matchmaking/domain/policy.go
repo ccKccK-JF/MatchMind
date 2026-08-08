@@ -9,11 +9,20 @@ import (
 
 var ErrInvalidPolicy = errors.New("invalid match policy")
 
+type TeamAlgorithm string
+
+const (
+	TeamAlgorithmGreedy TeamAlgorithm = "greedy"
+	TeamAlgorithmBeam   TeamAlgorithm = "beam"
+)
+
 type MatchPolicy struct {
 	Version string
 
 	TeamSize       int
 	CandidateLimit int
+	TeamAlgorithm  TeamAlgorithm
+	BeamWidth      int
 
 	SkillWeight   float64
 	RoleWeight    float64
@@ -32,9 +41,11 @@ type MatchPolicy struct {
 
 func DefaultPolicy() MatchPolicy {
 	return MatchPolicy{
-		Version:                  "v1",
+		Version:                  "v1-greedy",
 		TeamSize:                 5,
 		CandidateLimit:           30,
+		TeamAlgorithm:            TeamAlgorithmGreedy,
+		BeamWidth:                64,
 		SkillWeight:              0.40,
 		RoleWeight:               0.20,
 		LatencyWeight:            0.20,
@@ -50,6 +61,13 @@ func DefaultPolicy() MatchPolicy {
 	}
 }
 
+func BeamPolicy() MatchPolicy {
+	policy := DefaultPolicy()
+	policy.Version = "v2-beam"
+	policy.TeamAlgorithm = TeamAlgorithmBeam
+	return policy
+}
+
 func (p MatchPolicy) Validate() error {
 	weights := []float64{p.SkillWeight, p.RoleWeight, p.LatencyWeight, p.PartyWeight, p.WaitWeight}
 	var total float64
@@ -63,6 +81,9 @@ func (p MatchPolicy) Validate() error {
 		return ErrInvalidPolicy
 	}
 	if strings.TrimSpace(p.Version) == "" || p.TeamSize != 5 || p.CandidateLimit < p.TeamSize*2 {
+		return ErrInvalidPolicy
+	}
+	if (p.TeamAlgorithm != TeamAlgorithmGreedy && p.TeamAlgorithm != TeamAlgorithmBeam) || p.BeamWidth < 1 || p.BeamWidth > 1024 {
 		return ErrInvalidPolicy
 	}
 	if p.InitialRatingRange < 0 || p.MaxRatingRange < p.InitialRatingRange || p.RatingExpansionPerSecond < 0 {

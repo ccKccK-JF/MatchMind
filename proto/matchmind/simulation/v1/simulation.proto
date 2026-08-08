@@ -6,6 +6,34 @@ option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/
 
 service SimulationService {
   rpc SimulateMatch(SimulateMatchRequest) returns (SimulateMatchResponse);
+  rpc SimulateBatch(SimulateBatchRequest) returns (SimulateBatchResponse);
+}
+
+message BatchSimulationInput {
+  string case_id = 1;
+  int64 random_seed = 2;
+  double rating_a = 3;
+  double rating_b = 4;
+  double predicted_win_rate_a = 5;
+  double role_score = 6;
+  double latency_score = 7;
+  double party_score = 8;
+}
+
+message SimulateBatchRequest {
+  repeated BatchSimulationInput inputs = 1;
+  int32 concurrency = 2;
+}
+
+message SimulateBatchResponse {
+  repeated SimulateMatchResponse results = 1;
+  int32 simulation_count = 2;
+  double team_a_win_rate = 3;
+  double average_duration_seconds = 4;
+  double average_actual_quality_score = 5;
+  double one_sided_rate = 6;
+  double afk_rate = 7;
+  double surrender_rate = 8;
 }
 
 enum WinningTeam {

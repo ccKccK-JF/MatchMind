@@ -1,6 +1,9 @@
 package observability
 
-import "github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+import (
+	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
+	"github.com/ccKccK-JF/MatchMind/internal/platform/metrics"
+)
 
 type MatchmakingMetrics struct {
 	queueSize           *metrics.Gauge
@@ -11,6 +14,10 @@ type MatchmakingMetrics struct {
 	qualityScore        *metrics.Histogram
 	reservationConflict *metrics.Counter
 	workerDuration      *metrics.Histogram
+	greedyDuration      *metrics.Histogram
+	beamDuration        *metrics.Histogram
+	greedyQuality       *metrics.Histogram
+	beamQuality         *metrics.Histogram
 }
 
 func NewMatchmakingMetrics(registry *metrics.Registry) *MatchmakingMetrics {
@@ -23,14 +30,27 @@ func NewMatchmakingMetrics(registry *metrics.Registry) *MatchmakingMetrics {
 		qualityScore:        registry.NewHistogram("match_quality_score", "Calculated match quality score on the 0-100 scale.", []float64{50, 60, 70, 75, 80, 85, 90, 95, 100}),
 		reservationConflict: registry.NewCounter("ticket_reservation_conflict_total", "Total atomic ticket reservation conflicts."),
 		workerDuration:      registry.NewHistogram("match_worker_duration_seconds", "Duration of one matchmaking worker iteration.", []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1}),
+		greedyDuration:      registry.NewHistogram("match_team_formation_greedy_duration_seconds", "Greedy team formation duration.", []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2}),
+		beamDuration:        registry.NewHistogram("match_team_formation_beam_duration_seconds", "Beam Search team formation duration.", []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2}),
+		greedyQuality:       registry.NewHistogram("match_team_formation_greedy_quality_score", "Quality selected by greedy team formation.", []float64{50, 60, 70, 80, 90, 95, 100}),
+		beamQuality:         registry.NewHistogram("match_team_formation_beam_quality_score", "Quality selected by Beam Search team formation.", []float64{50, 60, 70, 80, 90, 95, 100}),
 	}
 }
 
-func (m *MatchmakingMetrics) SetQueueSize(value int)              { m.queueSize.Set(float64(value)) }
-func (m *MatchmakingMetrics) IncMatchAttempt()                    { m.matchAttempt.Inc() }
-func (m *MatchmakingMetrics) IncMatchSuccess()                    { m.matchSuccess.Inc() }
-func (m *MatchmakingMetrics) IncMatchFailure()                    { m.matchFailure.Inc() }
-func (m *MatchmakingMetrics) IncReservationConflict()             { m.reservationConflict.Inc() }
-func (m *MatchmakingMetrics) ObserveWaitSeconds(value float64)    { m.waitSeconds.Observe(value) }
-func (m *MatchmakingMetrics) ObserveQualityScore(value float64)   { m.qualityScore.Observe(value) }
+func (m *MatchmakingMetrics) SetQueueSize(value int)            { m.queueSize.Set(float64(value)) }
+func (m *MatchmakingMetrics) IncMatchAttempt()                  { m.matchAttempt.Inc() }
+func (m *MatchmakingMetrics) IncMatchSuccess()                  { m.matchSuccess.Inc() }
+func (m *MatchmakingMetrics) IncMatchFailure()                  { m.matchFailure.Inc() }
+func (m *MatchmakingMetrics) IncReservationConflict()           { m.reservationConflict.Inc() }
+func (m *MatchmakingMetrics) ObserveWaitSeconds(value float64)  { m.waitSeconds.Observe(value) }
+func (m *MatchmakingMetrics) ObserveQualityScore(value float64) { m.qualityScore.Observe(value) }
+func (m *MatchmakingMetrics) ObserveTeamFormation(algorithm domain.TeamAlgorithm, duration, quality float64) {
+	if algorithm == domain.TeamAlgorithmBeam {
+		m.beamDuration.Observe(duration)
+		m.beamQuality.Observe(quality)
+		return
+	}
+	m.greedyDuration.Observe(duration)
+	m.greedyQuality.Observe(quality)
+}
 func (m *MatchmakingMetrics) ObserveWorkerDuration(value float64) { m.workerDuration.Observe(value) }

@@ -122,7 +122,53 @@ func main() {
 	players := playergateway.NewClient(playerv1.NewPlayerServiceClient(playerConnection))
 	service := application.NewTicketService(store, players, nil, nil)
 	matchService := application.NewMatchService(matchStore, store, nil)
-	policy := domain.DefaultPolicy()
+	greedyPolicy := domain.DefaultPolicy()
+	beamPolicy := domain.BeamPolicy()
+	beamWidth, err := config.Int("MATCHMAKING_BEAM_WIDTH", beamPolicy.BeamWidth)
+	if err != nil {
+		slog.Error("invalid Beam Search width", "error", err)
+		os.Exit(1)
+	}
+	beamPolicy.BeamWidth = beamWidth
+	if err := beamPolicy.Validate(); err != nil {
+		slog.Error("invalid Beam Search policy", "error", err)
+		os.Exit(1)
+	}
+	policyMode := strings.ToLower(config.String("MATCHMAKING_POLICY_MODE", "beam"))
+	policy := beamPolicy
+	var policyManager *application.PolicyManager
+	switch policyMode {
+	case "greedy":
+		policy = greedyPolicy
+	case "beam":
+		policy = beamPolicy
+	case "ab":
+		treatmentBasisPoints, configErr := config.Int("MATCHMAKING_AB_TREATMENT_BPS", 5000)
+		if configErr != nil {
+			slog.Error("invalid A/B treatment allocation", "error", configErr)
+			os.Exit(1)
+		}
+		policyManager, err = application.NewPolicyManager(
+			[]domain.MatchPolicy{greedyPolicy, beamPolicy}, greedyPolicy.Version,
+		)
+		if err == nil {
+			err = policyManager.StartExperiment(application.PolicyExperiment{
+				ID: "team-formation-v2", ControlVersion: greedyPolicy.Version,
+				TreatmentVersion: beamPolicy.Version, TreatmentBasisPoints: treatmentBasisPoints,
+				AssignmentSalt: config.String("MATCHMAKING_AB_SALT", "matchmind-team-formation-v2"),
+				StartedAt:      time.Now(),
+			})
+		}
+		if err != nil {
+			slog.Error("configure matchmaking A/B experiment", "error", err)
+			os.Exit(1)
+		}
+		policy = greedyPolicy
+	default:
+		slog.Error("unsupported matchmaking policy mode", "mode", policyMode)
+		os.Exit(1)
+	}
+	slog.Info("matchmaking policy configured", "mode", policyMode, "default_version", policy.Version, "beam_width", beamPolicy.BeamWidth)
 	workerCount, err := config.Int("MATCHMAKING_WORKER_COUNT", 1)
 	if err != nil {
 		slog.Error("invalid matchmaking worker count", "error", err)
@@ -141,6 +187,9 @@ func main() {
 		if workerErr != nil {
 			slog.Error("create matchmaking worker", "worker_index", workerIndex, "error", workerErr)
 			os.Exit(1)
+		}
+		if policyManager != nil {
+			worker.SetPolicySelector(policyManager)
 		}
 		worker.SetMetrics(workerMetrics)
 		go worker.Run(ctx, 250*time.Millisecond)

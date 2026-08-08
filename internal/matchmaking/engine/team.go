@@ -34,6 +34,14 @@ type TeamFormation struct {
 }
 
 func FormTeams(candidates CandidateResult, policy domain.MatchPolicy) (TeamFormation, error) {
+	if policy.TeamAlgorithm == domain.TeamAlgorithmBeam {
+		formation, _, _, err := OptimizeTeams(candidates, candidateRegion(candidates), candidateReferenceTime(candidates), policy)
+		return formation, err
+	}
+	return formTeamsGreedy(candidates, policy)
+}
+
+func formTeamsGreedy(candidates CandidateResult, policy domain.MatchPolicy) (TeamFormation, error) {
 	if err := policy.Validate(); err != nil {
 		return TeamFormation{}, err
 	}

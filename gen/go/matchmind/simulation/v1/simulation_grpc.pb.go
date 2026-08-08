@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	SimulationService_SimulateMatch_FullMethodName = "/matchmind.simulation.v1.SimulationService/SimulateMatch"
+	SimulationService_SimulateBatch_FullMethodName = "/matchmind.simulation.v1.SimulationService/SimulateBatch"
 )
 
 // SimulationServiceClient is the client API for SimulationService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SimulationServiceClient interface {
 	SimulateMatch(ctx context.Context, in *SimulateMatchRequest, opts ...grpc.CallOption) (*SimulateMatchResponse, error)
+	SimulateBatch(ctx context.Context, in *SimulateBatchRequest, opts ...grpc.CallOption) (*SimulateBatchResponse, error)
 }
 
 type simulationServiceClient struct {
@@ -47,11 +49,22 @@ func (c *simulationServiceClient) SimulateMatch(ctx context.Context, in *Simulat
 	return out, nil
 }
 
+func (c *simulationServiceClient) SimulateBatch(ctx context.Context, in *SimulateBatchRequest, opts ...grpc.CallOption) (*SimulateBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SimulateBatchResponse)
+	err := c.cc.Invoke(ctx, SimulationService_SimulateBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SimulationServiceServer is the server API for SimulationService service.
 // All implementations must embed UnimplementedSimulationServiceServer
 // for forward compatibility.
 type SimulationServiceServer interface {
 	SimulateMatch(context.Context, *SimulateMatchRequest) (*SimulateMatchResponse, error)
+	SimulateBatch(context.Context, *SimulateBatchRequest) (*SimulateBatchResponse, error)
 	mustEmbedUnimplementedSimulationServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedSimulationServiceServer struct{}
 
 func (UnimplementedSimulationServiceServer) SimulateMatch(context.Context, *SimulateMatchRequest) (*SimulateMatchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SimulateMatch not implemented")
+}
+func (UnimplementedSimulationServiceServer) SimulateBatch(context.Context, *SimulateBatchRequest) (*SimulateBatchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SimulateBatch not implemented")
 }
 func (UnimplementedSimulationServiceServer) mustEmbedUnimplementedSimulationServiceServer() {}
 func (UnimplementedSimulationServiceServer) testEmbeddedByValue()                           {}
@@ -104,6 +120,24 @@ func _SimulationService_SimulateMatch_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SimulationService_SimulateBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SimulateBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SimulationServiceServer).SimulateBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SimulationService_SimulateBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SimulationServiceServer).SimulateBatch(ctx, req.(*SimulateBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SimulationService_ServiceDesc is the grpc.ServiceDesc for SimulationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var SimulationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SimulateMatch",
 			Handler:    _SimulationService_SimulateMatch_Handler,
+		},
+		{
+			MethodName: "SimulateBatch",
+			Handler:    _SimulationService_SimulateBatch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

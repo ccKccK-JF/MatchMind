@@ -34,7 +34,9 @@ Invoke-RestMethod http://localhost:8080/ready
 
 The Compose stack runs PostgreSQL migrations, a PostgreSQL-backed Player
 service, Redis-backed active matchmaking queues, ten matching workers, and
-Prometheus. Public endpoints:
+Prometheus. It enables a 50/50 greedy-versus-Beam A/B experiment by default;
+override `MATCHMAKING_POLICY_MODE` with `greedy` or `beam` to pin one strategy.
+Public endpoints:
 
 - API: `http://localhost:8080`
 - matchmaking metrics: `http://localhost:8082/metrics`

@@ -35,6 +35,20 @@ func TestWorkerCreatesReadyMatchAndAssignsAllTickets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	manager, err := application.NewPolicyManager(
+		[]domain.MatchPolicy{domain.DefaultPolicy(), domain.BeamPolicy()}, domain.DefaultPolicy().Version,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.StartExperiment(application.PolicyExperiment{
+		ID: "beam-test", ControlVersion: domain.DefaultPolicy().Version,
+		TreatmentVersion: domain.BeamPolicy().Version, TreatmentBasisPoints: 10000,
+		AssignmentSalt: "test", StartedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	worker.SetPolicySelector(manager)
 
 	match, err := worker.RunOnce(context.Background())
 	if err != nil {
@@ -42,6 +56,9 @@ func TestWorkerCreatesReadyMatchAndAssignsAllTickets(t *testing.T) {
 	}
 	if match.State() != domain.MatchStateReady || match.ServerAddress() == "" || match.ConnectionToken() == "" {
 		t.Fatalf("match state/address/token = %s/%q/%q", match.State(), match.ServerAddress(), match.ConnectionToken())
+	}
+	if match.PolicyVersion() != domain.BeamPolicy().Version {
+		t.Fatalf("match policy version = %s, want %s", match.PolicyVersion(), domain.BeamPolicy().Version)
 	}
 	if len(match.TeamA().Players) != 5 || len(match.TeamB().Players) != 5 {
 		t.Fatalf("team sizes = %d/%d", len(match.TeamA().Players), len(match.TeamB().Players))

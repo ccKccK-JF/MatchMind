@@ -28,6 +28,42 @@ func (s *Server) SimulateMatch(ctx context.Context, request *simulationv1.Simula
 	if err != nil {
 		return nil, simulationError(err)
 	}
+	return resultToProto(result), nil
+}
+
+func (s *Server) SimulateBatch(ctx context.Context, request *simulationv1.SimulateBatchRequest) (*simulationv1.SimulateBatchResponse, error) {
+	if request == nil || len(request.GetInputs()) == 0 || len(request.GetInputs()) > application.MaxBatchSimulationCases {
+		return nil, status.Error(codes.InvalidArgument, "between 1 and 10000 simulation inputs are required")
+	}
+	inputs := make([]simulationdomain.Input, len(request.GetInputs()))
+	for index, input := range request.GetInputs() {
+		if input == nil {
+			return nil, status.Error(codes.InvalidArgument, "simulation input is required")
+		}
+		inputs[index] = simulationdomain.Input{
+			MatchID: input.GetCaseId(), RandomSeed: input.GetRandomSeed(),
+			RatingA: input.GetRatingA(), RatingB: input.GetRatingB(),
+			PredictedWinRateA: input.GetPredictedWinRateA(), RoleScore: input.GetRoleScore(),
+			LatencyScore: input.GetLatencyScore(), PartyScore: input.GetPartyScore(),
+		}
+	}
+	report, err := s.service.SimulateBatch(ctx, inputs, int(request.GetConcurrency()))
+	if err != nil {
+		return nil, simulationError(err)
+	}
+	results := make([]*simulationv1.SimulateMatchResponse, len(report.Results))
+	for index, result := range report.Results {
+		results[index] = resultToProto(result)
+	}
+	return &simulationv1.SimulateBatchResponse{
+		Results: results, SimulationCount: int32(report.SimulationCount),
+		TeamAWinRate: report.TeamAWinRate, AverageDurationSeconds: report.AverageDuration,
+		AverageActualQualityScore: report.AverageActualQuality, OneSidedRate: report.OneSidedRate,
+		AfkRate: report.AFKRate, SurrenderRate: report.SurrenderRate,
+	}, nil
+}
+
+func resultToProto(result simulationdomain.Result) *simulationv1.SimulateMatchResponse {
 	winningTeam := simulationv1.WinningTeam_WINNING_TEAM_UNSPECIFIED
 	if result.WinningTeam == simulationdomain.WinningTeamA {
 		winningTeam = simulationv1.WinningTeam_WINNING_TEAM_A
@@ -39,7 +75,7 @@ func (s *Server) SimulateMatch(ctx context.Context, request *simulationv1.Simula
 		ScoreA: int32(result.ScoreA), ScoreB: int32(result.ScoreB), MaxAdvantage: result.MaxAdvantage,
 		HasAfk: result.HasAFK, Surrendered: result.Surrendered, OneSided: result.OneSided,
 		ActualQualityScore: result.ActualQualityScore, RandomSeed: result.RandomSeed,
-	}, nil
+	}
 }
 
 func simulationError(err error) error {

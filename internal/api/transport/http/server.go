@@ -21,8 +21,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const maxRequestBodyBytes = 1 << 20
+const maxRequestBodyBytes = 8 << 20
 const downstreamTimeout = 3 * time.Second
+const batchDownstreamTimeout = 30 * time.Second
 
 type Server struct {
 	players     playerv1.PlayerServiceClient
@@ -61,13 +62,18 @@ func NewServer(
 	mux.HandleFunc("DELETE /api/v1/tickets/{ticket_id}", server.cancelTicket)
 	mux.HandleFunc("GET /api/v1/matches/{match_id}", server.getMatch)
 	mux.HandleFunc("POST /api/v1/matches/{match_id}/simulate", server.simulateMatch)
+	mux.HandleFunc("POST /api/v1/simulations/batch", server.simulateBatch)
 	server.handler = mux
 	return server
 }
 
 func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	startedAt := time.Now()
-	ctx, cancel := context.WithTimeout(request.Context(), downstreamTimeout)
+	timeout := downstreamTimeout
+	if request.URL.Path == "/api/v1/simulations/batch" {
+		timeout = batchDownstreamTimeout
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), timeout)
 	defer cancel()
 	request = request.WithContext(ctx)
 	traceID := strings.TrimSpace(request.Header.Get("X-Trace-ID"))
@@ -212,6 +218,46 @@ func (s *Server) simulateMatch(response http.ResponseWriter, request *http.Reque
 	}
 	result, err := s.simulation.SimulateMatch(request.Context(), &simulationv1.SimulateMatchRequest{
 		MatchId: request.PathValue("match_id"), RandomSeed: body.RandomSeed,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+type batchSimulationInput struct {
+	CaseID            string  `json:"case_id"`
+	RandomSeed        int64   `json:"random_seed"`
+	RatingA           float64 `json:"rating_a"`
+	RatingB           float64 `json:"rating_b"`
+	PredictedWinRateA float64 `json:"predicted_win_rate_a"`
+	RoleScore         float64 `json:"role_score"`
+	LatencyScore      float64 `json:"latency_score"`
+	PartyScore        float64 `json:"party_score"`
+}
+
+type batchSimulationRequest struct {
+	Inputs      []batchSimulationInput `json:"inputs"`
+	Concurrency int32                  `json:"concurrency"`
+}
+
+func (s *Server) simulateBatch(response http.ResponseWriter, request *http.Request) {
+	var body batchSimulationRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	inputs := make([]*simulationv1.BatchSimulationInput, len(body.Inputs))
+	for index, input := range body.Inputs {
+		inputs[index] = &simulationv1.BatchSimulationInput{
+			CaseId: input.CaseID, RandomSeed: input.RandomSeed,
+			RatingA: input.RatingA, RatingB: input.RatingB, PredictedWinRateA: input.PredictedWinRateA,
+			RoleScore: input.RoleScore, LatencyScore: input.LatencyScore, PartyScore: input.PartyScore,
+		}
+	}
+	result, err := s.simulation.SimulateBatch(request.Context(), &simulationv1.SimulateBatchRequest{
+		Inputs: inputs, Concurrency: body.Concurrency,
 	})
 	if err != nil {
 		writeError(response, err)

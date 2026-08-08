@@ -101,6 +101,34 @@ Content-Type: application/json
 When omitted, the gateway generates a seed and returns it in the response.
 Simulation is idempotent per match: a repeated call returns the stored result.
 
+Run an offline batch without updating live Matches or player ratings:
+
+```http
+POST /api/v1/simulations/batch
+Content-Type: application/json
+
+{
+  "concurrency": 8,
+  "inputs": [
+    {
+      "case_id": "balanced-001",
+      "random_seed": 42,
+      "rating_a": 1500,
+      "rating_b": 1500,
+      "predicted_win_rate_a": 0.5,
+      "role_score": 95,
+      "latency_score": 90,
+      "party_score": 100
+    }
+  ]
+}
+```
+
+The batch accepts 1 to 10,000 cases, preserves input order, and returns every
+simulation plus aggregate win-rate, duration, actual-quality, one-sided, AFK,
+and surrender statistics. `concurrency` defaults to the available CPU count
+and is capped at 64.
+
 ## Operations
 
 The public gateway exposes:
@@ -119,6 +147,11 @@ Its metrics include all required core names: `match_queue_size`,
 `match_wait_seconds`, `match_attempt_total`, `match_success_total`,
 `match_failure_total`, `match_quality_score`,
 `ticket_reservation_conflict_total`, and `match_worker_duration_seconds`.
+Greedy-versus-Beam comparison is exposed through
+`match_team_formation_greedy_duration_seconds`,
+`match_team_formation_beam_duration_seconds`,
+`match_team_formation_greedy_quality_score`, and
+`match_team_formation_beam_quality_score`.
 
 Player and Simulation expose the same operational routes on ports `8081` and
 `8083` respectively. Their gRPC health services remain available for internal

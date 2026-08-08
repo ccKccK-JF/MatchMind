@@ -70,6 +70,258 @@ func (WinningTeam) EnumDescriptor() ([]byte, []int) {
 	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{0}
 }
 
+type BatchSimulationInput struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	CaseId            string                 `protobuf:"bytes,1,opt,name=case_id,json=caseId,proto3" json:"case_id,omitempty"`
+	RandomSeed        int64                  `protobuf:"varint,2,opt,name=random_seed,json=randomSeed,proto3" json:"random_seed,omitempty"`
+	RatingA           float64                `protobuf:"fixed64,3,opt,name=rating_a,json=ratingA,proto3" json:"rating_a,omitempty"`
+	RatingB           float64                `protobuf:"fixed64,4,opt,name=rating_b,json=ratingB,proto3" json:"rating_b,omitempty"`
+	PredictedWinRateA float64                `protobuf:"fixed64,5,opt,name=predicted_win_rate_a,json=predictedWinRateA,proto3" json:"predicted_win_rate_a,omitempty"`
+	RoleScore         float64                `protobuf:"fixed64,6,opt,name=role_score,json=roleScore,proto3" json:"role_score,omitempty"`
+	LatencyScore      float64                `protobuf:"fixed64,7,opt,name=latency_score,json=latencyScore,proto3" json:"latency_score,omitempty"`
+	PartyScore        float64                `protobuf:"fixed64,8,opt,name=party_score,json=partyScore,proto3" json:"party_score,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *BatchSimulationInput) Reset() {
+	*x = BatchSimulationInput{}
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchSimulationInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchSimulationInput) ProtoMessage() {}
+
+func (x *BatchSimulationInput) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchSimulationInput.ProtoReflect.Descriptor instead.
+func (*BatchSimulationInput) Descriptor() ([]byte, []int) {
+	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *BatchSimulationInput) GetCaseId() string {
+	if x != nil {
+		return x.CaseId
+	}
+	return ""
+}
+
+func (x *BatchSimulationInput) GetRandomSeed() int64 {
+	if x != nil {
+		return x.RandomSeed
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetRatingA() float64 {
+	if x != nil {
+		return x.RatingA
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetRatingB() float64 {
+	if x != nil {
+		return x.RatingB
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetPredictedWinRateA() float64 {
+	if x != nil {
+		return x.PredictedWinRateA
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetRoleScore() float64 {
+	if x != nil {
+		return x.RoleScore
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetLatencyScore() float64 {
+	if x != nil {
+		return x.LatencyScore
+	}
+	return 0
+}
+
+func (x *BatchSimulationInput) GetPartyScore() float64 {
+	if x != nil {
+		return x.PartyScore
+	}
+	return 0
+}
+
+type SimulateBatchRequest struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Inputs        []*BatchSimulationInput `protobuf:"bytes,1,rep,name=inputs,proto3" json:"inputs,omitempty"`
+	Concurrency   int32                   `protobuf:"varint,2,opt,name=concurrency,proto3" json:"concurrency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SimulateBatchRequest) Reset() {
+	*x = SimulateBatchRequest{}
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SimulateBatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SimulateBatchRequest) ProtoMessage() {}
+
+func (x *SimulateBatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SimulateBatchRequest.ProtoReflect.Descriptor instead.
+func (*SimulateBatchRequest) Descriptor() ([]byte, []int) {
+	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SimulateBatchRequest) GetInputs() []*BatchSimulationInput {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+func (x *SimulateBatchRequest) GetConcurrency() int32 {
+	if x != nil {
+		return x.Concurrency
+	}
+	return 0
+}
+
+type SimulateBatchResponse struct {
+	state                     protoimpl.MessageState   `protogen:"open.v1"`
+	Results                   []*SimulateMatchResponse `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	SimulationCount           int32                    `protobuf:"varint,2,opt,name=simulation_count,json=simulationCount,proto3" json:"simulation_count,omitempty"`
+	TeamAWinRate              float64                  `protobuf:"fixed64,3,opt,name=team_a_win_rate,json=teamAWinRate,proto3" json:"team_a_win_rate,omitempty"`
+	AverageDurationSeconds    float64                  `protobuf:"fixed64,4,opt,name=average_duration_seconds,json=averageDurationSeconds,proto3" json:"average_duration_seconds,omitempty"`
+	AverageActualQualityScore float64                  `protobuf:"fixed64,5,opt,name=average_actual_quality_score,json=averageActualQualityScore,proto3" json:"average_actual_quality_score,omitempty"`
+	OneSidedRate              float64                  `protobuf:"fixed64,6,opt,name=one_sided_rate,json=oneSidedRate,proto3" json:"one_sided_rate,omitempty"`
+	AfkRate                   float64                  `protobuf:"fixed64,7,opt,name=afk_rate,json=afkRate,proto3" json:"afk_rate,omitempty"`
+	SurrenderRate             float64                  `protobuf:"fixed64,8,opt,name=surrender_rate,json=surrenderRate,proto3" json:"surrender_rate,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *SimulateBatchResponse) Reset() {
+	*x = SimulateBatchResponse{}
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SimulateBatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SimulateBatchResponse) ProtoMessage() {}
+
+func (x *SimulateBatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SimulateBatchResponse.ProtoReflect.Descriptor instead.
+func (*SimulateBatchResponse) Descriptor() ([]byte, []int) {
+	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SimulateBatchResponse) GetResults() []*SimulateMatchResponse {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+func (x *SimulateBatchResponse) GetSimulationCount() int32 {
+	if x != nil {
+		return x.SimulationCount
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetTeamAWinRate() float64 {
+	if x != nil {
+		return x.TeamAWinRate
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetAverageDurationSeconds() float64 {
+	if x != nil {
+		return x.AverageDurationSeconds
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetAverageActualQualityScore() float64 {
+	if x != nil {
+		return x.AverageActualQualityScore
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetOneSidedRate() float64 {
+	if x != nil {
+		return x.OneSidedRate
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetAfkRate() float64 {
+	if x != nil {
+		return x.AfkRate
+	}
+	return 0
+}
+
+func (x *SimulateBatchResponse) GetSurrenderRate() float64 {
+	if x != nil {
+		return x.SurrenderRate
+	}
+	return 0
+}
+
 type SimulateMatchRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MatchId       string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
@@ -80,7 +332,7 @@ type SimulateMatchRequest struct {
 
 func (x *SimulateMatchRequest) Reset() {
 	*x = SimulateMatchRequest{}
-	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[0]
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -92,7 +344,7 @@ func (x *SimulateMatchRequest) String() string {
 func (*SimulateMatchRequest) ProtoMessage() {}
 
 func (x *SimulateMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[0]
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -105,7 +357,7 @@ func (x *SimulateMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulateMatchRequest.ProtoReflect.Descriptor instead.
 func (*SimulateMatchRequest) Descriptor() ([]byte, []int) {
-	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{0}
+	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SimulateMatchRequest) GetMatchId() string {
@@ -141,7 +393,7 @@ type SimulateMatchResponse struct {
 
 func (x *SimulateMatchResponse) Reset() {
 	*x = SimulateMatchResponse{}
-	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[1]
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -153,7 +405,7 @@ func (x *SimulateMatchResponse) String() string {
 func (*SimulateMatchResponse) ProtoMessage() {}
 
 func (x *SimulateMatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[1]
+	mi := &file_matchmind_simulation_v1_simulation_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -166,7 +418,7 @@ func (x *SimulateMatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulateMatchResponse.ProtoReflect.Descriptor instead.
 func (*SimulateMatchResponse) Descriptor() ([]byte, []int) {
-	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{1}
+	return file_matchmind_simulation_v1_simulation_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SimulateMatchResponse) GetMatchId() string {
@@ -250,7 +502,31 @@ var File_matchmind_simulation_v1_simulation_proto protoreflect.FileDescriptor
 
 const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"\n" +
-	"(matchmind/simulation/v1/simulation.proto\x12\x17matchmind.simulation.v1\"R\n" +
+	"(matchmind/simulation/v1/simulation.proto\x12\x17matchmind.simulation.v1\"\x9c\x02\n" +
+	"\x14BatchSimulationInput\x12\x17\n" +
+	"\acase_id\x18\x01 \x01(\tR\x06caseId\x12\x1f\n" +
+	"\vrandom_seed\x18\x02 \x01(\x03R\n" +
+	"randomSeed\x12\x19\n" +
+	"\brating_a\x18\x03 \x01(\x01R\aratingA\x12\x19\n" +
+	"\brating_b\x18\x04 \x01(\x01R\aratingB\x12/\n" +
+	"\x14predicted_win_rate_a\x18\x05 \x01(\x01R\x11predictedWinRateA\x12\x1d\n" +
+	"\n" +
+	"role_score\x18\x06 \x01(\x01R\troleScore\x12#\n" +
+	"\rlatency_score\x18\a \x01(\x01R\flatencyScore\x12\x1f\n" +
+	"\vparty_score\x18\b \x01(\x01R\n" +
+	"partyScore\"\x7f\n" +
+	"\x14SimulateBatchRequest\x12E\n" +
+	"\x06inputs\x18\x01 \x03(\v2-.matchmind.simulation.v1.BatchSimulationInputR\x06inputs\x12 \n" +
+	"\vconcurrency\x18\x02 \x01(\x05R\vconcurrency\"\x96\x03\n" +
+	"\x15SimulateBatchResponse\x12H\n" +
+	"\aresults\x18\x01 \x03(\v2..matchmind.simulation.v1.SimulateMatchResponseR\aresults\x12)\n" +
+	"\x10simulation_count\x18\x02 \x01(\x05R\x0fsimulationCount\x12%\n" +
+	"\x0fteam_a_win_rate\x18\x03 \x01(\x01R\fteamAWinRate\x128\n" +
+	"\x18average_duration_seconds\x18\x04 \x01(\x01R\x16averageDurationSeconds\x12?\n" +
+	"\x1caverage_actual_quality_score\x18\x05 \x01(\x01R\x19averageActualQualityScore\x12$\n" +
+	"\x0eone_sided_rate\x18\x06 \x01(\x01R\foneSidedRate\x12\x19\n" +
+	"\bafk_rate\x18\a \x01(\x01R\aafkRate\x12%\n" +
+	"\x0esurrender_rate\x18\b \x01(\x01R\rsurrenderRate\"R\n" +
 	"\x14SimulateMatchRequest\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12\x1f\n" +
 	"\vrandom_seed\x18\x02 \x01(\x03R\n" +
@@ -272,9 +548,10 @@ const file_matchmind_simulation_v1_simulation_proto_rawDesc = "" +
 	"\vWinningTeam\x12\x1c\n" +
 	"\x18WINNING_TEAM_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eWINNING_TEAM_A\x10\x01\x12\x12\n" +
-	"\x0eWINNING_TEAM_B\x10\x022\x83\x01\n" +
+	"\x0eWINNING_TEAM_B\x10\x022\xf3\x01\n" +
 	"\x11SimulationService\x12n\n" +
-	"\rSimulateMatch\x12-.matchmind.simulation.v1.SimulateMatchRequest\x1a..matchmind.simulation.v1.SimulateMatchResponseBLZJgithub.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1;simulationv1b\x06proto3"
+	"\rSimulateMatch\x12-.matchmind.simulation.v1.SimulateMatchRequest\x1a..matchmind.simulation.v1.SimulateMatchResponse\x12n\n" +
+	"\rSimulateBatch\x12-.matchmind.simulation.v1.SimulateBatchRequest\x1a..matchmind.simulation.v1.SimulateBatchResponseBLZJgithub.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1;simulationv1b\x06proto3"
 
 var (
 	file_matchmind_simulation_v1_simulation_proto_rawDescOnce sync.Once
@@ -289,21 +566,28 @@ func file_matchmind_simulation_v1_simulation_proto_rawDescGZIP() []byte {
 }
 
 var file_matchmind_simulation_v1_simulation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_matchmind_simulation_v1_simulation_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_matchmind_simulation_v1_simulation_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_matchmind_simulation_v1_simulation_proto_goTypes = []any{
 	(WinningTeam)(0),              // 0: matchmind.simulation.v1.WinningTeam
-	(*SimulateMatchRequest)(nil),  // 1: matchmind.simulation.v1.SimulateMatchRequest
-	(*SimulateMatchResponse)(nil), // 2: matchmind.simulation.v1.SimulateMatchResponse
+	(*BatchSimulationInput)(nil),  // 1: matchmind.simulation.v1.BatchSimulationInput
+	(*SimulateBatchRequest)(nil),  // 2: matchmind.simulation.v1.SimulateBatchRequest
+	(*SimulateBatchResponse)(nil), // 3: matchmind.simulation.v1.SimulateBatchResponse
+	(*SimulateMatchRequest)(nil),  // 4: matchmind.simulation.v1.SimulateMatchRequest
+	(*SimulateMatchResponse)(nil), // 5: matchmind.simulation.v1.SimulateMatchResponse
 }
 var file_matchmind_simulation_v1_simulation_proto_depIdxs = []int32{
-	0, // 0: matchmind.simulation.v1.SimulateMatchResponse.winning_team:type_name -> matchmind.simulation.v1.WinningTeam
-	1, // 1: matchmind.simulation.v1.SimulationService.SimulateMatch:input_type -> matchmind.simulation.v1.SimulateMatchRequest
-	2, // 2: matchmind.simulation.v1.SimulationService.SimulateMatch:output_type -> matchmind.simulation.v1.SimulateMatchResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: matchmind.simulation.v1.SimulateBatchRequest.inputs:type_name -> matchmind.simulation.v1.BatchSimulationInput
+	5, // 1: matchmind.simulation.v1.SimulateBatchResponse.results:type_name -> matchmind.simulation.v1.SimulateMatchResponse
+	0, // 2: matchmind.simulation.v1.SimulateMatchResponse.winning_team:type_name -> matchmind.simulation.v1.WinningTeam
+	4, // 3: matchmind.simulation.v1.SimulationService.SimulateMatch:input_type -> matchmind.simulation.v1.SimulateMatchRequest
+	2, // 4: matchmind.simulation.v1.SimulationService.SimulateBatch:input_type -> matchmind.simulation.v1.SimulateBatchRequest
+	5, // 5: matchmind.simulation.v1.SimulationService.SimulateMatch:output_type -> matchmind.simulation.v1.SimulateMatchResponse
+	3, // 6: matchmind.simulation.v1.SimulationService.SimulateBatch:output_type -> matchmind.simulation.v1.SimulateBatchResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_matchmind_simulation_v1_simulation_proto_init() }
@@ -317,7 +601,7 @@ func file_matchmind_simulation_v1_simulation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matchmind_simulation_v1_simulation_proto_rawDesc), len(file_matchmind_simulation_v1_simulation_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
