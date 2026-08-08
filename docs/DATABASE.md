@@ -30,6 +30,9 @@ historical Tickets.
 allocation, state, prediction, result, actual quality, and a monotonic
 revision. Updates reject stale revisions. The final READY Match update and all
 reserved-to-assigned Ticket transitions share one database transaction.
+Finished-Match quality analysis uses the existing policy/creation-time index;
+historical replay joins the Match's immutable Ticket IDs back to durable Ticket
+snapshots. Neither operation writes to Match, Ticket, or Elo state.
 
 The planned `outbox_events` table will store messages in the same transaction
 as business changes. Consumers will deduplicate by event ID before applying

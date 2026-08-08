@@ -17,10 +17,19 @@ type Server struct {
 	matchmakingv1.UnimplementedMatchmakingServiceServer
 	service      *application.TicketService
 	matchService *application.MatchService
+	analysis     *application.AnalysisService
 }
 
-func NewServer(service *application.TicketService, matchService *application.MatchService) *Server {
-	return &Server{service: service, matchService: matchService}
+func NewServer(
+	service *application.TicketService,
+	matchService *application.MatchService,
+	analysis ...*application.AnalysisService,
+) *Server {
+	server := &Server{service: service, matchService: matchService}
+	if len(analysis) > 0 {
+		server.analysis = analysis[0]
+	}
+	return server
 }
 
 func (s *Server) CreateTicket(ctx context.Context, request *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error) {
@@ -114,6 +123,126 @@ func (s *Server) CompleteMatch(ctx context.Context, request *matchmakingv1.Compl
 		return nil, ticketError(err)
 	}
 	return &matchmakingv1.CompleteMatchResponse{Match: matchToProto(match)}, nil
+}
+
+func (s *Server) AnalyzeMatchQuality(
+	ctx context.Context,
+	request *matchmakingv1.AnalyzeMatchQualityRequest,
+) (*matchmakingv1.AnalyzeMatchQualityResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required")
+	}
+	if s.analysis == nil {
+		return nil, status.Error(codes.Unavailable, "match analysis service is unavailable")
+	}
+	filter := application.MatchHistoryFilter{
+		PolicyVersion: request.GetPolicyVersion(), Mode: request.GetMode(),
+		ServerRegion: request.GetServerRegion(), Limit: int(request.GetLimit()),
+	}
+	if request.GetFrom() != nil {
+		if err := request.GetFrom().CheckValid(); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "from must be a valid timestamp")
+		}
+		filter.From = request.GetFrom().AsTime()
+	}
+	if request.GetTo() != nil {
+		if err := request.GetTo().CheckValid(); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "to must be a valid timestamp")
+		}
+		filter.To = request.GetTo().AsTime()
+	}
+	analysis, err := s.analysis.AnalyzeMatchQuality(ctx, filter)
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	response := &matchmakingv1.AnalyzeMatchQualityResponse{}
+	for _, observation := range analysis.Observations {
+		response.Observations = append(response.Observations, qualityObservationToProto(observation))
+	}
+	for _, summary := range analysis.Summaries {
+		response.Summaries = append(response.Summaries, qualitySummaryToProto(summary))
+	}
+	return response, nil
+}
+
+func (s *Server) ReplayHistoricalMatch(
+	ctx context.Context,
+	request *matchmakingv1.ReplayHistoricalMatchRequest,
+) (*matchmakingv1.ReplayHistoricalMatchResponse, error) {
+	if request == nil || request.GetMatchId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "match_id is required")
+	}
+	if s.analysis == nil {
+		return nil, status.Error(codes.Unavailable, "match analysis service is unavailable")
+	}
+	report, err := s.analysis.ReplayHistoricalMatch(ctx, application.ReplayRequest{
+		MatchID: request.GetMatchId(), PolicyVersions: request.GetPolicyVersions(), TicketIDs: request.GetTicketIds(),
+	})
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	response := &matchmakingv1.ReplayHistoricalMatchResponse{
+		SourceMatchId: report.SourceMatchID, SourcePolicyVersion: report.SourcePolicyVersion,
+		SourcePredictedQuality: report.SourcePredictedQuality, SourceActualQuality: report.SourceActualQuality,
+		SourceAbsoluteError: report.SourceAbsoluteError, TicketCount: int32(report.TicketCount),
+	}
+	for _, outcome := range report.Outcomes {
+		response.Outcomes = append(response.Outcomes, replayOutcomeToProto(outcome))
+	}
+	return response, nil
+}
+
+func qualityObservationToProto(observation application.MatchQualityObservation) *matchmakingv1.MatchQualityObservation {
+	return &matchmakingv1.MatchQualityObservation{
+		MatchId: observation.MatchID, PolicyVersion: observation.PolicyVersion,
+		Mode: observation.Mode, ServerRegion: observation.ServerRegion,
+		PredictedQuality: observation.PredictedQuality, ActualQuality: observation.ActualQuality,
+		SignedQualityError: observation.SignedQualityError, AbsoluteQualityError: observation.AbsoluteQualityError,
+		PredictedWinRateA: observation.PredictedWinRateA, TeamAOutcome: observation.TeamAOutcome,
+		WinProbabilityBrier: observation.WinProbabilityBrier, DurationSeconds: int32(observation.DurationSeconds),
+		OneSided: observation.OneSided, HasAfk: observation.HasAFK, Surrendered: observation.Surrendered,
+		CreatedAt: timestamppb.New(observation.CreatedAt),
+	}
+}
+
+func qualitySummaryToProto(summary application.PolicyQualitySummary) *matchmakingv1.PolicyQualitySummary {
+	return &matchmakingv1.PolicyQualitySummary{
+		PolicyVersion: summary.PolicyVersion, MatchCount: int32(summary.MatchCount),
+		AveragePredictedQuality: summary.AveragePredictedQuality, AverageActualQuality: summary.AverageActualQuality,
+		MeanSignedQualityError: summary.MeanSignedQualityError, MeanAbsoluteQualityError: summary.MeanAbsoluteQualityError,
+		WinProbabilityBrierScore: summary.WinProbabilityBrierScore, TeamAWinRate: summary.TeamAWinRate,
+		AverageDurationSeconds: summary.AverageDurationSeconds, OneSidedRate: summary.OneSidedRate,
+		AfkRate: summary.AFKRate, SurrenderRate: summary.SurrenderRate,
+	}
+}
+
+func replayOutcomeToProto(outcome application.ReplayOutcome) *matchmakingv1.ReplayOutcome {
+	quality := outcome.Quality
+	return &matchmakingv1.ReplayOutcome{
+		PolicyVersion: outcome.PolicyVersion, Algorithm: string(outcome.Algorithm), Matched: outcome.Matched,
+		FailureReason: outcome.FailureReason, AcceptedTickets: int32(outcome.AcceptedTickets),
+		RejectedTickets: int32(outcome.RejectedTickets), CandidateSets: int32(outcome.CandidateSets),
+		FormationsEvaluated: int32(outcome.FormationsEvaluated), TeamA: replayTeamToProto(outcome.TeamA),
+		TeamB: replayTeamToProto(outcome.TeamB), Quality: &matchmakingv1.ReplayQuality{
+			TotalScore: quality.TotalScore, SkillScore: quality.SkillScore, RoleScore: quality.RoleScore,
+			LatencyScore: quality.LatencyScore, PartyScore: quality.PartyScore, WaitScore: quality.WaitScore,
+			PredictedWinRateA: quality.PredictedWinRateA, PredictedWinRateB: quality.PredictedWinRateB,
+			Reasons: append([]string(nil), quality.Reasons...),
+		},
+		QualityDelta: outcome.QualityDelta, SameTeamSplit: outcome.SameTeamSplit,
+		SameRoleAssignments: outcome.SameRoleAssignments,
+	}
+}
+
+func replayTeamToProto(team application.ReplayTeam) *matchmakingv1.ReplayTeam {
+	result := &matchmakingv1.ReplayTeam{AverageRating: team.AverageRating, RoleScore: team.RoleScore}
+	for _, player := range team.Players {
+		result.Players = append(result.Players, &matchmakingv1.TeamPlayer{
+			PlayerId: player.PlayerID, TicketId: player.TicketID, PartyId: player.PartyID,
+			Role: roleToProto(player.Role), Rating: player.Rating,
+		})
+	}
+	return result
 }
 
 func rolesFromProto(roles []playerv1.Role) ([]domain.Role, error) {
@@ -310,11 +439,14 @@ func matchStateToProto(state domain.MatchState) matchmakingv1.MatchState {
 
 func ticketError(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrInvalidTicket), errors.Is(err, application.ErrIdempotencyKeyRequired):
+	case errors.Is(err, domain.ErrInvalidTicket), errors.Is(err, application.ErrIdempotencyKeyRequired),
+		errors.Is(err, application.ErrInvalidAnalysis):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, application.ErrTicketNotFound), errors.Is(err, application.ErrPlayerNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, application.ErrMatchNotFound):
+		return status.Error(codes.NotFound, err.Error())
+	case errors.Is(err, application.ErrPolicyNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, application.ErrActiveTicketExists):
 		return status.Error(codes.AlreadyExists, err.Error())

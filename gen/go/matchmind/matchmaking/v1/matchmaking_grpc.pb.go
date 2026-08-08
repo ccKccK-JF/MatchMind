@@ -19,12 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MatchmakingService_CreateTicket_FullMethodName  = "/matchmind.matchmaking.v1.MatchmakingService/CreateTicket"
-	MatchmakingService_GetTicket_FullMethodName     = "/matchmind.matchmaking.v1.MatchmakingService/GetTicket"
-	MatchmakingService_CancelTicket_FullMethodName  = "/matchmind.matchmaking.v1.MatchmakingService/CancelTicket"
-	MatchmakingService_GetMatch_FullMethodName      = "/matchmind.matchmaking.v1.MatchmakingService/GetMatch"
-	MatchmakingService_StartMatch_FullMethodName    = "/matchmind.matchmaking.v1.MatchmakingService/StartMatch"
-	MatchmakingService_CompleteMatch_FullMethodName = "/matchmind.matchmaking.v1.MatchmakingService/CompleteMatch"
+	MatchmakingService_CreateTicket_FullMethodName          = "/matchmind.matchmaking.v1.MatchmakingService/CreateTicket"
+	MatchmakingService_GetTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/GetTicket"
+	MatchmakingService_CancelTicket_FullMethodName          = "/matchmind.matchmaking.v1.MatchmakingService/CancelTicket"
+	MatchmakingService_GetMatch_FullMethodName              = "/matchmind.matchmaking.v1.MatchmakingService/GetMatch"
+	MatchmakingService_StartMatch_FullMethodName            = "/matchmind.matchmaking.v1.MatchmakingService/StartMatch"
+	MatchmakingService_CompleteMatch_FullMethodName         = "/matchmind.matchmaking.v1.MatchmakingService/CompleteMatch"
+	MatchmakingService_AnalyzeMatchQuality_FullMethodName   = "/matchmind.matchmaking.v1.MatchmakingService/AnalyzeMatchQuality"
+	MatchmakingService_ReplayHistoricalMatch_FullMethodName = "/matchmind.matchmaking.v1.MatchmakingService/ReplayHistoricalMatch"
 )
 
 // MatchmakingServiceClient is the client API for MatchmakingService service.
@@ -37,6 +39,8 @@ type MatchmakingServiceClient interface {
 	GetMatch(ctx context.Context, in *GetMatchRequest, opts ...grpc.CallOption) (*GetMatchResponse, error)
 	StartMatch(ctx context.Context, in *StartMatchRequest, opts ...grpc.CallOption) (*StartMatchResponse, error)
 	CompleteMatch(ctx context.Context, in *CompleteMatchRequest, opts ...grpc.CallOption) (*CompleteMatchResponse, error)
+	AnalyzeMatchQuality(ctx context.Context, in *AnalyzeMatchQualityRequest, opts ...grpc.CallOption) (*AnalyzeMatchQualityResponse, error)
+	ReplayHistoricalMatch(ctx context.Context, in *ReplayHistoricalMatchRequest, opts ...grpc.CallOption) (*ReplayHistoricalMatchResponse, error)
 }
 
 type matchmakingServiceClient struct {
@@ -107,6 +111,26 @@ func (c *matchmakingServiceClient) CompleteMatch(ctx context.Context, in *Comple
 	return out, nil
 }
 
+func (c *matchmakingServiceClient) AnalyzeMatchQuality(ctx context.Context, in *AnalyzeMatchQualityRequest, opts ...grpc.CallOption) (*AnalyzeMatchQualityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AnalyzeMatchQualityResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_AnalyzeMatchQuality_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *matchmakingServiceClient) ReplayHistoricalMatch(ctx context.Context, in *ReplayHistoricalMatchRequest, opts ...grpc.CallOption) (*ReplayHistoricalMatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReplayHistoricalMatchResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_ReplayHistoricalMatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MatchmakingServiceServer is the server API for MatchmakingService service.
 // All implementations must embed UnimplementedMatchmakingServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type MatchmakingServiceServer interface {
 	GetMatch(context.Context, *GetMatchRequest) (*GetMatchResponse, error)
 	StartMatch(context.Context, *StartMatchRequest) (*StartMatchResponse, error)
 	CompleteMatch(context.Context, *CompleteMatchRequest) (*CompleteMatchResponse, error)
+	AnalyzeMatchQuality(context.Context, *AnalyzeMatchQualityRequest) (*AnalyzeMatchQualityResponse, error)
+	ReplayHistoricalMatch(context.Context, *ReplayHistoricalMatchRequest) (*ReplayHistoricalMatchResponse, error)
 	mustEmbedUnimplementedMatchmakingServiceServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedMatchmakingServiceServer) StartMatch(context.Context, *StartM
 }
 func (UnimplementedMatchmakingServiceServer) CompleteMatch(context.Context, *CompleteMatchRequest) (*CompleteMatchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CompleteMatch not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) AnalyzeMatchQuality(context.Context, *AnalyzeMatchQualityRequest) (*AnalyzeMatchQualityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AnalyzeMatchQuality not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) ReplayHistoricalMatch(context.Context, *ReplayHistoricalMatchRequest) (*ReplayHistoricalMatchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReplayHistoricalMatch not implemented")
 }
 func (UnimplementedMatchmakingServiceServer) mustEmbedUnimplementedMatchmakingServiceServer() {}
 func (UnimplementedMatchmakingServiceServer) testEmbeddedByValue()                            {}
@@ -274,6 +306,42 @@ func _MatchmakingService_CompleteMatch_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MatchmakingService_AnalyzeMatchQuality_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AnalyzeMatchQualityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).AnalyzeMatchQuality(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_AnalyzeMatchQuality_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).AnalyzeMatchQuality(ctx, req.(*AnalyzeMatchQualityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MatchmakingService_ReplayHistoricalMatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplayHistoricalMatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).ReplayHistoricalMatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_ReplayHistoricalMatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).ReplayHistoricalMatch(ctx, req.(*ReplayHistoricalMatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MatchmakingService_ServiceDesc is the grpc.ServiceDesc for MatchmakingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +372,14 @@ var MatchmakingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteMatch",
 			Handler:    _MatchmakingService_CompleteMatch_Handler,
+		},
+		{
+			MethodName: "AnalyzeMatchQuality",
+			Handler:    _MatchmakingService_AnalyzeMatchQuality_Handler,
+		},
+		{
+			MethodName: "ReplayHistoricalMatch",
+			Handler:    _MatchmakingService_ReplayHistoricalMatch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

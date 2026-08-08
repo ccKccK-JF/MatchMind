@@ -144,6 +144,13 @@ func TestPostgreSQLTicketPersistenceAndAtomicReservation(t *testing.T) {
 	if err := matches.CompleteMatchAndReleaseTickets(ctx, restored, now.Add(5*time.Second)); err != nil {
 		t.Fatal(err)
 	}
+	history, err := matches.ListFinished(ctx, application.MatchHistoryFilter{
+		PolicyVersion: "v1", Mode: "ranked_5v5", ServerRegion: "hongkong",
+		From: now.Add(-time.Second), To: now.Add(time.Second), Limit: 10,
+	})
+	if err != nil || len(history) != 1 || history[0].ID() != restored.ID() {
+		t.Fatalf("finished Match history = %#v, %v", history, err)
+	}
 	next := newPersistentTicket(t, "ticket-next", "player-00", roles[0], now.Add(6*time.Second))
 	if _, err := tickets.CreateQueued(ctx, next, "create-next"); err != nil {
 		t.Fatalf("create Ticket after Match completion: %v", err)

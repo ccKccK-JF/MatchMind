@@ -16,7 +16,10 @@ The script performs the following observable flow:
 6. queries predicted win rate and the five-part quality score;
 7. simulates the Match with seed `42`;
 8. queries a player's changed Elo and one rating-history entry;
-9. prints the Match ID and result, then terminates all demo processes.
+9. compares predicted quality with the stored actual quality;
+10. replays the historical Ticket snapshot through Greedy and Beam policies;
+11. prints the Match, analysis, and replay summary, then terminates all demo
+    processes.
 
 Because the seed is fixed, the same input state produces the same simulation
 result. API responses include an `X-Trace-ID`, and operational metrics remain

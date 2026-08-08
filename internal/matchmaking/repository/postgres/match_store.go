@@ -25,6 +25,7 @@ type MatchStore struct {
 }
 
 var _ application.MatchRepository = (*MatchStore)(nil)
+var _ application.MatchHistoryReader = (*MatchStore)(nil)
 
 func NewMatchStore(pool *pgxpool.Pool) *MatchStore {
 	return &MatchStore{pool: pool}
@@ -65,6 +66,57 @@ func (s *MatchStore) Get(ctx context.Context, matchID string) (*domain.Match, er
 		return nil, fmt.Errorf("select match: %w", err)
 	}
 	return match, nil
+}
+
+func (s *MatchStore) ListFinished(
+	ctx context.Context,
+	filter application.MatchHistoryFilter,
+) ([]*domain.Match, error) {
+	conditions := []string{"state = 'FINISHED'"}
+	arguments := make([]any, 0, 6)
+	addCondition := func(condition string, value any) {
+		arguments = append(arguments, value)
+		conditions = append(conditions, fmt.Sprintf(condition, len(arguments)))
+	}
+	if filter.PolicyVersion != "" {
+		addCondition("policy_version = $%d", filter.PolicyVersion)
+	}
+	if filter.Mode != "" {
+		addCondition("mode = $%d", filter.Mode)
+	}
+	if filter.ServerRegion != "" {
+		addCondition("server_region = $%d", filter.ServerRegion)
+	}
+	if !filter.From.IsZero() {
+		addCondition("created_at >= $%d", filter.From)
+	}
+	if !filter.To.IsZero() {
+		addCondition("created_at < $%d", filter.To)
+	}
+	limit := filter.Limit
+	if limit <= 0 || limit > application.MaxAnalysisLimit {
+		limit = application.DefaultAnalysisLimit
+	}
+	arguments = append(arguments, limit)
+	query := `SELECT ` + matchColumns + ` FROM matches WHERE ` + strings.Join(conditions, " AND ") +
+		fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", len(arguments))
+	rows, err := s.pool.Query(ctx, query, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("list finished matches: %w", err)
+	}
+	defer rows.Close()
+	result := make([]*domain.Match, 0, limit)
+	for rows.Next() {
+		match, scanErr := scanMatch(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("scan finished match: %w", scanErr)
+		}
+		result = append(result, match)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate finished matches: %w", err)
+	}
+	return result, nil
 }
 
 func (s *MatchStore) Update(ctx context.Context, match *domain.Match) error {

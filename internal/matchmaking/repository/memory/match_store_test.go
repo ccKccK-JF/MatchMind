@@ -43,6 +43,49 @@ func TestMatchStoreCreateGetUpdate(t *testing.T) {
 	}
 }
 
+func TestMatchStoreListFinishedAppliesFilters(t *testing.T) {
+	ctx := context.Background()
+	store := NewMatchStore()
+	match := newTestMatchForStore(t)
+	createdAt := match.CreatedAt()
+	if err := store.Create(ctx, match); err != nil {
+		t.Fatal(err)
+	}
+	transitions := []func() error{
+		func() error { return match.StartAllocation(createdAt.Add(time.Second)) },
+		func() error { return match.MarkReady("127.0.0.1:7000", "token", createdAt.Add(2*time.Second)) },
+		func() error { return match.Start(createdAt.Add(3 * time.Second)) },
+		func() error {
+			return match.Complete(domain.MatchResult{
+				WinningTeam: domain.WinningTeamA, DurationSeconds: 1200,
+				ScoreA: 20, ScoreB: 15, MaxAdvantage: 5000, ActualQualityScore: 85,
+			}, createdAt.Add(20*time.Minute))
+		},
+	}
+	for _, transition := range transitions {
+		if err := transition(); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Update(ctx, match); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := store.ListFinished(ctx, application.MatchHistoryFilter{
+		PolicyVersion: "v1", Mode: "ranked_5v5", ServerRegion: "hongkong",
+		From: createdAt.Add(-time.Second), To: createdAt.Add(time.Second), Limit: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].ID() != match.ID() {
+		t.Fatalf("finished matches = %#v", result)
+	}
+	filtered, err := store.ListFinished(ctx, application.MatchHistoryFilter{PolicyVersion: "other", Limit: 10})
+	if err != nil || len(filtered) != 0 {
+		t.Fatalf("filtered matches = %#v, %v", filtered, err)
+	}
+}
+
 func newTestMatchForStore(t *testing.T) *domain.Match {
 	t.Helper()
 	team := func(prefix string) domain.MatchTeam {

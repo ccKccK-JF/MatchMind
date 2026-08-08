@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const maxRequestBodyBytes = 8 << 20
@@ -62,7 +64,9 @@ func NewServer(
 	mux.HandleFunc("DELETE /api/v1/tickets/{ticket_id}", server.cancelTicket)
 	mux.HandleFunc("GET /api/v1/matches/{match_id}", server.getMatch)
 	mux.HandleFunc("POST /api/v1/matches/{match_id}/simulate", server.simulateMatch)
+	mux.HandleFunc("POST /api/v1/matches/{match_id}/replay", server.replayHistoricalMatch)
 	mux.HandleFunc("POST /api/v1/simulations/batch", server.simulateBatch)
+	mux.HandleFunc("GET /api/v1/analytics/match-quality", server.analyzeMatchQuality)
 	server.handler = mux
 	return server
 }
@@ -70,7 +74,7 @@ func NewServer(
 func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	startedAt := time.Now()
 	timeout := downstreamTimeout
-	if request.URL.Path == "/api/v1/simulations/batch" {
+	if request.URL.Path == "/api/v1/simulations/batch" || strings.HasSuffix(request.URL.Path, "/replay") {
 		timeout = batchDownstreamTimeout
 	}
 	ctx, cancel := context.WithTimeout(request.Context(), timeout)
@@ -264,6 +268,71 @@ func (s *Server) simulateBatch(response http.ResponseWriter, request *http.Reque
 		return
 	}
 	writeProto(response, http.StatusOK, result)
+}
+
+type replayHistoricalMatchRequest struct {
+	PolicyVersions []string `json:"policy_versions"`
+	TicketIDs      []string `json:"ticket_ids"`
+}
+
+func (s *Server) replayHistoricalMatch(response http.ResponseWriter, request *http.Request) {
+	var body replayHistoricalMatchRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.matchmaking.ReplayHistoricalMatch(request.Context(), &matchmakingv1.ReplayHistoricalMatchRequest{
+		MatchId: request.PathValue("match_id"), PolicyVersions: body.PolicyVersions, TicketIds: body.TicketIDs,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func (s *Server) analyzeMatchQuality(response http.ResponseWriter, request *http.Request) {
+	query := request.URL.Query()
+	limit := int32(0)
+	if value := strings.TrimSpace(query.Get("limit")); value != "" {
+		parsed, err := strconv.ParseInt(value, 10, 32)
+		if err != nil {
+			writeError(response, status.Error(codes.InvalidArgument, "limit must be an integer"))
+			return
+		}
+		limit = int32(parsed)
+	}
+	from, err := queryTimestamp(query.Get("from"), "from")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	to, err := queryTimestamp(query.Get("to"), "to")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.matchmaking.AnalyzeMatchQuality(request.Context(), &matchmakingv1.AnalyzeMatchQualityRequest{
+		PolicyVersion: query.Get("policy_version"), Mode: query.Get("mode"),
+		ServerRegion: query.Get("server_region"), From: from, To: to, Limit: limit,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func queryTimestamp(value, name string) (*timestamppb.Timestamp, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s must use RFC3339 format", name)
+	}
+	return timestamppb.New(parsed), nil
 }
 
 type playerRatingResponse struct {

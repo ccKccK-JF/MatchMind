@@ -19,8 +19,10 @@ import (
 
 type fakeMatchmakingClient struct {
 	matchmakingv1.MatchmakingServiceClient
-	create func(context.Context, *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error)
-	get    func(context.Context, *matchmakingv1.GetTicketRequest) (*matchmakingv1.GetTicketResponse, error)
+	create  func(context.Context, *matchmakingv1.CreateTicketRequest) (*matchmakingv1.CreateTicketResponse, error)
+	get     func(context.Context, *matchmakingv1.GetTicketRequest) (*matchmakingv1.GetTicketResponse, error)
+	analyze func(context.Context, *matchmakingv1.AnalyzeMatchQualityRequest) (*matchmakingv1.AnalyzeMatchQualityResponse, error)
+	replay  func(context.Context, *matchmakingv1.ReplayHistoricalMatchRequest) (*matchmakingv1.ReplayHistoricalMatchResponse, error)
 }
 
 func (f fakeMatchmakingClient) CreateTicket(ctx context.Context, request *matchmakingv1.CreateTicketRequest, _ ...grpc.CallOption) (*matchmakingv1.CreateTicketResponse, error) {
@@ -29,6 +31,14 @@ func (f fakeMatchmakingClient) CreateTicket(ctx context.Context, request *matchm
 
 func (f fakeMatchmakingClient) GetTicket(ctx context.Context, request *matchmakingv1.GetTicketRequest, _ ...grpc.CallOption) (*matchmakingv1.GetTicketResponse, error) {
 	return f.get(ctx, request)
+}
+
+func (f fakeMatchmakingClient) AnalyzeMatchQuality(ctx context.Context, request *matchmakingv1.AnalyzeMatchQualityRequest, _ ...grpc.CallOption) (*matchmakingv1.AnalyzeMatchQualityResponse, error) {
+	return f.analyze(ctx, request)
+}
+
+func (f fakeMatchmakingClient) ReplayHistoricalMatch(ctx context.Context, request *matchmakingv1.ReplayHistoricalMatchRequest, _ ...grpc.CallOption) (*matchmakingv1.ReplayHistoricalMatchResponse, error) {
+	return f.replay(ctx, request)
 }
 
 type fakePlayerClient struct {
@@ -140,5 +150,63 @@ func TestBatchSimulationMapsJSONToGRPC(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `"simulation_count":1`) {
 		t.Fatalf("response = %s", response.Body.String())
+	}
+}
+
+func TestAnalyzeMatchQualityMapsQueryToGRPC(t *testing.T) {
+	var captured *matchmakingv1.AnalyzeMatchQualityRequest
+	client := fakeMatchmakingClient{analyze: func(_ context.Context, request *matchmakingv1.AnalyzeMatchQualityRequest) (*matchmakingv1.AnalyzeMatchQualityResponse, error) {
+		captured = request
+		return &matchmakingv1.AnalyzeMatchQualityResponse{Summaries: []*matchmakingv1.PolicyQualitySummary{{
+			PolicyVersion: "v2-beam", MatchCount: 20, MeanAbsoluteQualityError: 4.5,
+		}}}, nil
+	}}
+	server := NewServer(nil, client, nil, nil)
+	request := httptest.NewRequest(http.MethodGet,
+		"/api/v1/analytics/match-quality?policy_version=v2-beam&mode=ranked_5v5&server_region=hongkong&from=2026-08-01T00%3A00%3A00Z&to=2026-08-08T00%3A00%3A00Z&limit=50", nil)
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if captured == nil || captured.PolicyVersion != "v2-beam" || captured.Mode != "ranked_5v5" ||
+		captured.ServerRegion != "hongkong" || captured.Limit != 50 || captured.From == nil || captured.To == nil {
+		t.Fatalf("captured request = %#v", captured)
+	}
+	if !strings.Contains(response.Body.String(), `"mean_absolute_quality_error":4.5`) {
+		t.Fatalf("response = %s", response.Body.String())
+	}
+}
+
+func TestReplayHistoricalMatchMapsJSONAndUsesLongTimeout(t *testing.T) {
+	var captured *matchmakingv1.ReplayHistoricalMatchRequest
+	client := fakeMatchmakingClient{replay: func(ctx context.Context, request *matchmakingv1.ReplayHistoricalMatchRequest) (*matchmakingv1.ReplayHistoricalMatchResponse, error) {
+		deadline, exists := ctx.Deadline()
+		if !exists || time.Until(deadline) < 20*time.Second {
+			t.Fatalf("replay deadline = %v, exists = %v", deadline, exists)
+		}
+		captured = request
+		return &matchmakingv1.ReplayHistoricalMatchResponse{SourceMatchId: request.MatchId, TicketCount: int32(len(request.TicketIds))}, nil
+	}}
+	server := NewServer(nil, client, nil, nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/replay", strings.NewReader(`{
+		"policy_versions":["v1-greedy","v2-beam"],"ticket_ids":["ticket-1","ticket-2"]
+	}`))
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if captured == nil || captured.MatchId != "match-1" || len(captured.PolicyVersions) != 2 || len(captured.TicketIds) != 2 {
+		t.Fatalf("captured request = %#v", captured)
+	}
+}
+
+func TestAnalyzeMatchQualityRejectsInvalidTimestamp(t *testing.T) {
+	server := NewServer(nil, fakeMatchmakingClient{}, nil, nil)
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/analytics/match-quality?from=not-a-time", nil))
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }

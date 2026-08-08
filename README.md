@@ -36,14 +36,18 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   remains durable and can rebuild missing Redis state at startup. Team
   formation supports both the baseline greedy strategy and a deterministic
   Beam Search strategy, with stable player-level A/B assignment and persisted
-  policy versions for later comparison.
+  policy versions for later comparison. Finished Matches can be analyzed by
+  policy, region, mode, and time range; historical Ticket snapshots can be
+  replayed read-only through multiple policies to compare counterfactual team
+  formation and predicted quality.
 - `simulation-service` runs reproducible seeded matches, records process
   metrics, updates ranked Elo through `player-service`, and completes matches
   through `matchmaking-service`. Its offline batch API evaluates up to 10,000
   seeded cases with bounded concurrency without changing live Match or Elo
   state.
 - A three-service integration test proves the complete in-memory flow from ten
-  players entering the queue through match completion and rating history.
+  players entering the queue through match completion, rating history,
+  predicted-versus-actual quality analysis, and Greedy/Beam historical replay.
 - `api-service` exposes the required REST routes, trace IDs, JSON error
   mapping, health/readiness checks, and Prometheus-format API metrics.
 - `matchmaking-service` exposes the required queue, wait, attempt, success,

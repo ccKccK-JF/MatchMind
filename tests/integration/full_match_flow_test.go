@@ -54,8 +54,14 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 		func() time.Time { return now },
 	)
 	matchService := matchmakingapp.NewMatchService(matchStore, ticketStore, func() time.Time { return now })
+	analysisService, err := matchmakingapp.NewAnalysisService(
+		matchStore, ticketStore, []domain.MatchPolicy{domain.DefaultPolicy(), domain.BeamPolicy()},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	matchmakingConnection := startBufconnServer(t, func(server *grpc.Server) {
-		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakinggrpc.NewServer(ticketService, matchService))
+		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakinggrpc.NewServer(ticketService, matchService, analysisService))
 	})
 	matchmakingClient := matchmakingv1.NewMatchmakingServiceClient(matchmakingConnection)
 
@@ -152,6 +158,26 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 	}
 	if len(history.GetChanges()) != 1 || history.GetChanges()[0].GetMatchId() != match.ID() {
 		t.Fatalf("rating history = %+v", history.GetChanges())
+	}
+	qualityAnalysis, err := matchmakingClient.AnalyzeMatchQuality(ctx, &matchmakingv1.AnalyzeMatchQualityRequest{
+		Mode: "ranked_5v5", ServerRegion: "hongkong", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("AnalyzeMatchQuality() error = %v", err)
+	}
+	if len(qualityAnalysis.GetObservations()) != 1 || len(qualityAnalysis.GetSummaries()) != 1 ||
+		qualityAnalysis.GetObservations()[0].GetActualQuality() != firstResult.GetActualQualityScore() {
+		t.Fatalf("quality analysis = %+v", qualityAnalysis)
+	}
+	replay, err := matchmakingClient.ReplayHistoricalMatch(ctx, &matchmakingv1.ReplayHistoricalMatchRequest{
+		MatchId: match.ID(), PolicyVersions: []string{"v1-greedy", "v2-beam"},
+	})
+	if err != nil {
+		t.Fatalf("ReplayHistoricalMatch() error = %v", err)
+	}
+	if replay.GetTicketCount() != 10 || len(replay.GetOutcomes()) != 2 ||
+		!replay.GetOutcomes()[0].GetMatched() || !replay.GetOutcomes()[1].GetMatched() {
+		t.Fatalf("historical replay = %+v", replay)
 	}
 	_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
 		PlayerId: firstPlayerID, Mode: "ranked_5v5", ClientVersion: "1.0.0",

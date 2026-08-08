@@ -18,6 +18,10 @@ role coverage and total quality over greedy selection. They also verify stable
 tie-breaking, anchor retention, party integrity, deterministic A/B assignment,
 and the configured treatment distribution. Batch simulation compares 1,000
 cases at concurrency 1 and 16 and requires byte-for-byte equivalent reports.
+Analysis tests verify signed/absolute prediction error, per-policy aggregation,
+Brier win-probability scoring, normalized filters, invalid bounds, deterministic
+historical replay, and non-mutation of source Tickets. The complete in-memory
+gRPC test now finishes a Match and then exercises both analysis and replay.
 
 With a real PostgreSQL instance, enable the isolated-schema persistence test:
 
@@ -31,6 +35,8 @@ storage, idempotent Ticket creation, ten-row atomic reservation, durable Match
 recovery, optimistic revision conflicts, and transactional Match/Ticket
 assignment. The in-memory and PostgreSQL flows also verify that players cannot
 requeue during an assigned Match but can create a new Ticket after it finishes.
+The PostgreSQL path additionally queries the finished-Match history using
+policy, mode, region, time-range, and limit filters.
 
 With a real Redis instance, enable the Lua reservation/recovery test:
 

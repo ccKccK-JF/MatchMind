@@ -14,6 +14,8 @@ service MatchmakingService {
   rpc GetMatch(GetMatchRequest) returns (GetMatchResponse);
   rpc StartMatch(StartMatchRequest) returns (StartMatchResponse);
   rpc CompleteMatch(CompleteMatchRequest) returns (CompleteMatchResponse);
+  rpc AnalyzeMatchQuality(AnalyzeMatchQualityRequest) returns (AnalyzeMatchQualityResponse);
+  rpc ReplayHistoricalMatch(ReplayHistoricalMatchRequest) returns (ReplayHistoricalMatchResponse);
 }
 
 enum TicketState {
@@ -165,4 +167,103 @@ message CompleteMatchRequest {
 
 message CompleteMatchResponse {
   Match match = 1;
+}
+
+message AnalyzeMatchQualityRequest {
+  string policy_version = 1;
+  string mode = 2;
+  string server_region = 3;
+  google.protobuf.Timestamp from = 4;
+  google.protobuf.Timestamp to = 5;
+  int32 limit = 6;
+}
+
+message MatchQualityObservation {
+  string match_id = 1;
+  string policy_version = 2;
+  string mode = 3;
+  string server_region = 4;
+  double predicted_quality = 5;
+  double actual_quality = 6;
+  double signed_quality_error = 7;
+  double absolute_quality_error = 8;
+  double predicted_win_rate_a = 9;
+  double team_a_outcome = 10;
+  double win_probability_brier = 11;
+  int32 duration_seconds = 12;
+  bool one_sided = 13;
+  bool has_afk = 14;
+  bool surrendered = 15;
+  google.protobuf.Timestamp created_at = 16;
+}
+
+message PolicyQualitySummary {
+  string policy_version = 1;
+  int32 match_count = 2;
+  double average_predicted_quality = 3;
+  double average_actual_quality = 4;
+  double mean_signed_quality_error = 5;
+  double mean_absolute_quality_error = 6;
+  double win_probability_brier_score = 7;
+  double team_a_win_rate = 8;
+  double average_duration_seconds = 9;
+  double one_sided_rate = 10;
+  double afk_rate = 11;
+  double surrender_rate = 12;
+}
+
+message AnalyzeMatchQualityResponse {
+  repeated MatchQualityObservation observations = 1;
+  repeated PolicyQualitySummary summaries = 2;
+}
+
+message ReplayHistoricalMatchRequest {
+  string match_id = 1;
+  repeated string policy_versions = 2;
+  repeated string ticket_ids = 3;
+}
+
+message ReplayTeam {
+  repeated TeamPlayer players = 1;
+  double average_rating = 2;
+  double role_score = 3;
+}
+
+message ReplayQuality {
+  double total_score = 1;
+  double skill_score = 2;
+  double role_score = 3;
+  double latency_score = 4;
+  double party_score = 5;
+  double wait_score = 6;
+  double predicted_win_rate_a = 7;
+  double predicted_win_rate_b = 8;
+  repeated string reasons = 9;
+}
+
+message ReplayOutcome {
+  string policy_version = 1;
+  string algorithm = 2;
+  bool matched = 3;
+  string failure_reason = 4;
+  int32 accepted_tickets = 5;
+  int32 rejected_tickets = 6;
+  int32 candidate_sets = 7;
+  int32 formations_evaluated = 8;
+  ReplayTeam team_a = 9;
+  ReplayTeam team_b = 10;
+  ReplayQuality quality = 11;
+  double quality_delta = 12;
+  bool same_team_split = 13;
+  bool same_role_assignments = 14;
+}
+
+message ReplayHistoricalMatchResponse {
+  string source_match_id = 1;
+  string source_policy_version = 2;
+  double source_predicted_quality = 3;
+  double source_actual_quality = 4;
+  double source_absolute_error = 5;
+  int32 ticket_count = 6;
+  repeated ReplayOutcome outcomes = 7;
 }

@@ -129,6 +129,41 @@ simulation plus aggregate win-rate, duration, actual-quality, one-sided, AFK,
 and surrender statistics. `concurrency` defaults to the available CPU count
 and is capped at 64.
 
+## Historical analysis and replay
+
+Analyze finished Matches, optionally filtering by policy, mode, server region,
+and a half-open RFC3339 time range (`from <= created_at < to`):
+
+```http
+GET /api/v1/analytics/match-quality?policy_version=v2-beam&mode=ranked_5v5&server_region=hongkong&from=2026-08-01T00%3A00%3A00Z&to=2026-08-08T00%3A00%3A00Z&limit=100
+```
+
+The response includes per-Match predicted and actual quality, signed and
+absolute error, predicted Team A win probability, observed outcome, and Brier
+score. Policy summaries include mean quality error, win-probability Brier
+score, win rate, duration, and one-sided/AFK/surrender rates. The default limit
+is 100 finished Matches and the maximum is 1,000.
+
+Replay a finished Match without reserving Tickets, creating a Match, or
+changing Elo:
+
+```http
+POST /api/v1/matches/{match_id}/replay
+Content-Type: application/json
+
+{
+  "policy_versions": ["v1-greedy", "v2-beam"]
+}
+```
+
+With no `ticket_ids`, replay reconstructs the ten Ticket snapshots used by the
+source Match. Supplying 10 to the selected policies' candidate limit allows a
+larger historical candidate snapshot to be replayed. Each outcome reports
+accepted/rejected counts, selected teams and roles, predicted quality and its
+delta from the source, search diagnostics, and whether the team split and role
+assignments match history. A failed counterfactual is returned as an outcome
+with `matched: false`; replay never mutates persisted state.
+
 ## Operations
 
 The public gateway exposes:

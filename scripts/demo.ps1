@@ -106,6 +106,9 @@ try {
     $match = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/matches/$matchId"
     $simulation = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/matches/$matchId/simulate" -ContentType "application/json" -Body '{"random_seed":42}'
     $rating = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/players/demo-player-00/rating"
+    $analysis = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/analytics/match-quality?mode=ranked_5v5&server_region=hongkong&limit=10"
+    $replayBody = @{ policy_versions = @("v1-greedy", "v2-beam") } | ConvertTo-Json -Depth 3
+    $replay = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/matches/$matchId/replay" -ContentType "application/json" -Body $replayBody
 
     [pscustomobject]@{
         match_id = $matchId
@@ -116,6 +119,10 @@ try {
         random_seed = $simulation.random_seed
         player_00_rating_after_match = $rating.rating
         player_00_history_entries = $rating.history.Count
+        quality_prediction_absolute_error = $analysis.observations[0].absolute_quality_error
+        policy_quality_summary_count = $analysis.summaries.Count
+        replay_policy_versions = ($replay.outcomes.policy_version -join ", ")
+        replay_quality_scores = (($replay.outcomes | ForEach-Object { "{0}:{1:N2}" -f $_.policy_version, $_.quality.total_score }) -join ", ")
         api_metrics = "$BaseUrl/metrics"
         matchmaking_metrics = "http://localhost:8082/metrics"
     } | Format-List

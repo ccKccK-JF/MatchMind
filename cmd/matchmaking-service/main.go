@@ -36,6 +36,11 @@ type ticketRepository interface {
 	application.AssignedTicketCompleter
 }
 
+type matchRepository interface {
+	application.MatchRepository
+	application.MatchHistoryReader
+}
+
 func main() {
 	logging.Configure()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -109,7 +114,7 @@ func main() {
 		slog.Error("unsupported matchmaking Ticket storage backend", "backend", ticketBackend)
 		os.Exit(1)
 	}
-	var matchStore application.MatchRepository
+	var matchStore matchRepository
 	switch matchBackend {
 	case "memory":
 		matchStore = memory.NewMatchStore()
@@ -194,7 +199,14 @@ func main() {
 		worker.SetMetrics(workerMetrics)
 		go worker.Run(ctx, 250*time.Millisecond)
 	}
-	transport := matchmakinggrpc.NewServer(service, matchService)
+	analysisService, err := application.NewAnalysisService(
+		matchStore, store, []domain.MatchPolicy{greedyPolicy, beamPolicy},
+	)
+	if err != nil {
+		slog.Error("create match analysis service", "error", err)
+		os.Exit(1)
+	}
+	transport := matchmakinggrpc.NewServer(service, matchService, analysisService)
 
 	address := config.String("MATCHMAKING_GRPC_ADDRESS", ":50052")
 	errCh := make(chan error, 2)
