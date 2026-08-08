@@ -1,150 +1,111 @@
 # MatchMind
 
-MatchMind is a Go-based 5v5 matchmaking and match-quality optimization
-platform. The first version uses small, independently runnable services and
-gRPC/Protocol Buffers for internal APIs.
+MatchMind 是一个使用 Go 实现的 5V5 智能匹配与战局质量优化平台。项目采用多个
+可独立运行的微服务，外部提供 REST API，内部使用 Protobuf/gRPC 通信，重点展示
+匹配算法、并发一致性、分布式状态、战局模拟、历史回放和受控 Agent 策略优化。
 
-## Services
+## 服务组成
 
-| Service | Default address | Responsibility |
+| 服务 | 默认地址 | 职责 |
 |---|---:|---|
-| `player-service` | gRPC `:50051`, HTTP `:8081` | Player profiles and ratings |
-| `matchmaking-service` | gRPC `:50052`, HTTP `:8082` | Tickets, queues, team formation, and matches |
-| `simulation-service` | gRPC `:50053`, HTTP `:8083` | Deterministic match simulation |
-| `agent-service` | gRPC `:50054`, HTTP `:8084` | Offline policy advice, risk review, approval audit, and controlled rollout |
-| `api-service` | HTTP `:8080` | Public REST API and downstream readiness |
+| `player-service` | gRPC `:50051`、HTTP `:8081` | 玩家资料、封禁和 Elo/Glicko-2 评分 |
+| `matchmaking-service` | gRPC `:50052`、HTTP `:8082` | Ticket、队列、分队、预占、游戏服分配和 Match |
+| `simulation-service` | gRPC `:50053`、HTTP `:8083` | 固定种子的可复现战局模拟和赛后闭环 |
+| `agent-service` | gRPC `:50054`、HTTP `:8084` | 离线策略建议、风险审核、审批审计和灰度发布 |
+| `api-service` | HTTP `:8080` | 公共 REST 网关和下游聚合就绪检查 |
 
-The four internal gRPC services expose standard gRPC health and reflection.
-Every process exposes HTTP liveness/readiness/metrics endpoints.
+四个内部服务都提供标准 gRPC 健康检查和反射；每个进程都提供 HTTP 存活、就绪和
+Prometheus 指标端点。
 
-## Development status
+## 已实现能力
 
-- The service process skeleton, Protobuf contracts, generation workflow,
-  health checks, reflection, and graceful shutdown are complete.
-- `player-service` supports player creation/query, configurable Elo or
-  Glicko-2 updates, rating deviation and volatility, regional latency
-  replacement, validated per-Hero proficiency, behavior stability,
-  administrator-controlled player bans, rating history, result idempotency, a
-  concurrency-safe memory store, and an optional transactional PostgreSQL
-  repository. Player rating views include recent Match IDs and current
-  matchmaking status.
-- `matchmaking-service` supports idempotent ticket create/cancel/query, strict
-  ticket and match state machines, partitioned queues, dynamic rating windows,
-  bounded wait-driven latency windows, time-based non-preferred-role
-  relaxation, party-safe candidate selection, deterministic 5v5 team/role
-  assignment, deterministic role-compatible Hero selection, immutable Hero
-  and behavior Match snapshots, allowlisted ranked/normal/training modes with
-  distinct matchmaking and rating behavior, fail-closed live player-ban checks, five-part quality scoring, atomic reservation, automatic
-  workers, and match connection details. Ticket queues and Matches can use
-  memory or PostgreSQL;
-  the PostgreSQL path includes batch reservation, expiry recovery, durable
-  Match snapshots, optimistic revisions, and atomic Match-ready/Ticket-assigned
-  commits. Finishing a Match atomically releases each player's active-Ticket
-  guard and local game-server capacity so the next session can start. Server
-  selection scores every available region using average/max latency, team
-  latency difference, variance, and live capacity. The local allocator is
-  concurrency-safe, and the Agones adapter reads Fleet ready replicas and
-  creates atomic `GameServerAllocation` resources through the Kubernetes API.
-  The production queue adapter uses
-  Redis sorted-set queues and Lua all-or-nothing reservation while PostgreSQL
-  remains durable and can rebuild missing Redis state at startup. Team
-  formation supports both the baseline greedy strategy and a deterministic
-  Beam Search strategy, with stable player-level A/B assignment and persisted
-  policy versions for later comparison. Finished Matches can be analyzed by
-  policy, region, mode, and time range; historical Ticket snapshots can be
-  replayed read-only through multiple policies to compare counterfactual team
-  formation and predicted quality.
-- `simulation-service` runs reproducible seeded matches, records process
-  metrics, models Hero proficiency and behavior-driven AFK risk, updates the
-  configured ranked rating through `player-service`, and completes matches
-  through `matchmaking-service`. Its offline batch API evaluates up to 10,000
-  seeded cases with bounded concurrency without changing live Match or rating
-  state.
-- `agent-service` has a fixed five-tool allowlist and cannot issue Shell or
-  arbitrary SQL. It reads queue/policy/quality data, generates a structured
-  candidate policy, replays historical Matches offline, and records fairness,
-  latency, role-fill, sample-size, and high-rating-player risk findings. A
-  separate reviewer must approve a passing proposal before an administrator
-  can start a guarded rollout; activation and rollback are audited and
-  retry-safe. Runs and proposals support memory or PostgreSQL storage.
-- A full-service integration test proves the complete in-memory flow from ten
-  players entering the queue through match completion, rating history,
-  predicted-versus-actual quality analysis, Greedy/Beam historical replay, and
-  an audited Agent proposal.
-- `api-service` exposes the required REST routes, end-to-end trace IDs, JSON
-  error mapping, Ticket owner checks, role-gated Agent operations,
-  health/readiness checks, and Prometheus-format API metrics. Shared gRPC
-  interceptors carry each trace through Player, Matchmaking, Simulation, and
-  Agent calls and add correlated method/status/duration records to JSON logs.
-- `matchmaking-service` exposes the required queue, wait, attempt, success,
-  failure, quality, reservation-conflict, and worker-duration metrics on
-  `:8082`.
+- 玩家创建、查询、区域延迟更新、管理员封禁、英雄熟练度和行为稳定分；
+- 可配置 Elo 或 Glicko-2，保存评分、不确定度、波动率和幂等评分历史；
+- 严格的 Ticket/Match 状态机，以及创建、取消、结果上报等幂等边界；
+- 按模式、客户端版本和区域分池，最长等待优先，并支持并发安全的队列操作；
+- 随等待时间有界放宽评分窗口、延迟范围和非偏好位置，硬约束始终不可放宽；
+- 保持开黑队伍完整，支持 Greedy 与 Beam Search 两种确定性 5V5 分队算法；
+- 实力、位置、延迟、组队和等待五维质量评分，并返回主要扣分原因；
+- 排位、普通和训练三种受控模式，只有排位模式修改正式评分；
+- 10 个英雄、五个位置、自动选择位置兼容且熟练度最高的英雄；
+- PostgreSQL 持久化、Redis Lua 原子预占、过期恢复和多 Worker 唯一分配；
+- 基于平均/最大延迟、队间差异、方差和容量的跨区域游戏服选择；
+- 本地容量分配器和 Agones `GameServerAllocation` 适配器；
+- 固定随机种子的战局模拟，涵盖胜负、比分、时长、资源差、AFK、投降和实际质量；
+- 历史质量分析、Greedy/Beam 回放、稳定 A/B 分桶及策略版本对比；
+- 只读工具白名单、五项风险检查、职责分离、人工审批、灰度发布和回滚审计；
+- 端到端 Trace ID、结构化日志、Prometheus 指标、超时和优雅关闭；
+- 单元、并发、集成、竞态和一键五服务验收脚本。
 
-The local process demo defaults to memory and Elo. Docker Compose runs Player/rating,
-Ticket, and Match durability on PostgreSQL plus Redis coordination. An external
-message broker, distributed tracing backend, and durable telemetry storage
-remain later milestones.
-
-## Architecture
+## 目录结构
 
 ```text
-cmd/                 process entry points
-proto/               source-of-truth Protobuf contracts
-gen/go/              generated Go messages and gRPC stubs
-internal/*            domain, application, and transport implementation
-internal/platform/    shared process infrastructure
-scripts/              repeatable local development commands
+cmd/                    各服务与工具的进程入口
+configs/                环境变量示例
+deployments/            Prometheus 与 Agones 部署配置
+docs/
+  product/              原始需求与游戏内容边界
+  design/               架构、数据库、英雄和模式设计
+  guides/               API、部署、测试、演示和求职指南
+  quality/              需求到实现证据的追踪矩阵
+gen/go/                 根据 Protobuf 生成的 Go 代码
+internal/               领域、应用、适配器和平台实现
+migrations/             按顺序执行的 PostgreSQL 迁移
+proto/                  内部服务契约的唯一事实来源
+scripts/                生成、工具安装、竞态和演示脚本
+tests/integration/      跨服务及外部环境集成测试
 ```
 
-Business logic must not depend directly on gRPC, a database, or a message
-broker. Transport and persistence packages adapt the domain/application layer
-to external systems.
+业务规则位于 `internal/*/domain`，用例编排位于 `application`，传输、网关和仓储
+只负责适配外部协议与基础设施。领域层不直接依赖 gRPC、数据库或消息中间件。
 
-## Local setup on Windows
+## Windows 本地开发
 
-Install the code-generation tools:
+安装代码生成工具：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-tools.ps1
 ```
 
-If Go module downloads require the local Clash proxy shown in the development
-environment:
+需要使用本机 Clash 代理时：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-tools.ps1 -Proxy http://127.0.0.1:7897
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-tools.ps1 `
+  -Proxy http://127.0.0.1:7897
 ```
 
-Lint Protobuf contracts and generate Go code:
+检查 Protobuf 并生成 Go 代码：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\generate.ps1
 ```
 
-Download Go module dependencies and run tests:
+执行基础质量门禁：
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-docs.ps1
 go mod tidy
-go test ./...
+go test -count=1 ./...
+go vet ./...
 ```
 
-The full test suite includes domain tests, repository concurrency tests, gRPC
-status-code tests, and an in-memory end-to-end gRPC test.
-
-Install the pinned portable compiler and run the Windows race detector:
+安装固定版本的 Windows 竞态检测工具链并运行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-race-tools.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\race.ps1
 ```
 
-Run the complete five-process demo:
+执行完整五服务演示：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1
 ```
 
-Run the services in separate terminals, in dependency order:
+脚本会构建并临时启动五个服务，验证完整闭环，写入
+`.cache/demo/acceptance-report.json`，然后无条件关闭所有临时进程。
+
+如需手动启动，按依赖顺序在不同终端运行：
 
 ```powershell
 go run .\cmd\player-service
@@ -154,68 +115,40 @@ go run .\cmd\agent-service
 go run .\cmd\api-service
 ```
 
-The HTTP API is then available at `http://localhost:8080`. See
-[`docs/API.md`](docs/API.md) for request examples. Matchmaking Prometheus
-metrics are available at `http://localhost:8082/metrics`.
+公共 API 位于 `http://localhost:8080`，匹配指标位于
+`http://localhost:8082/metrics`。
 
-Runtime configuration:
+## 常用配置
 
-| Variable | Default |
-|---|---|
-| `PLAYER_GRPC_ADDRESS` | `:50051` |
-| `PLAYER_HTTP_ADDRESS` | `:8081` |
-| `PLAYER_RATING_SYSTEM` | `elo` (`elo` or `glicko2`) |
-| `PLAYER_ELO_K_FACTOR` | `32` |
-| `PLAYER_GLICKO2_TAU` | `0.5` (valid range `0.3` to `1.2`) |
-| `PLAYER_STORAGE_BACKEND` | `memory` |
-| `POSTGRES_DSN` | `postgres://matchmind:matchmind@localhost:5432/matchmind?sslmode=disable` |
-| `MATCHMAKING_GRPC_ADDRESS` | `:50052` |
-| `MATCHMAKING_HTTP_ADDRESS` | `:8082` |
-| `MATCHMAKING_WORKER_COUNT` | `1` |
-| `MATCHMAKING_POLICY_MODE` | `beam` (`greedy`, `beam`, or `ab`) |
-| `MATCHMAKING_BEAM_WIDTH` | `64` |
-| `MATCHMAKING_AB_TREATMENT_BPS` | `5000` |
-| `MATCHMAKING_AB_SALT` | `matchmind-team-formation-v2` |
-| `MATCHMAKING_ALLOCATOR_BACKEND` | `local` (`local` or `agones`) |
-| `MATCHMAKING_LOCAL_REGION_CAPACITIES` | `hongkong=100,singapore=100,tokyo=100` |
-| `AGONES_API_URL` | `https://kubernetes.default.svc` |
-| `AGONES_NAMESPACE` | `matchmind` |
-| `AGONES_CA_FILE` | in-cluster service-account CA file |
-| `AGONES_BEARER_TOKEN_FILE` | in-cluster service-account token file |
-| `AGONES_HTTP_TIMEOUT_SECONDS` | `5` |
-| `AGONES_GAME_LABEL_KEY` / `AGONES_GAME_LABEL_VALUE` | `matchmind.dev/game` / `matchmind` |
-| `AGONES_REGION_LABEL_KEY` | `matchmind.dev/region` |
-| `AGENT_CONTROL_TOKEN` | `matchmind-local-agent-control` (must match Agent and Matchmaking) |
-| `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
-| `MATCHMAKING_MATCH_STORAGE_BACKEND` | Ticket backend (`postgres` when Ticket backend is `redis`) |
-| `REDIS_ADDRESS` | `localhost:6379` |
-| `REDIS_PASSWORD` | empty |
-| `REDIS_DB` | `0` |
-| `REDIS_KEY_PREFIX` | `matchmind` |
-| `PLAYER_GRPC_TARGET` | `localhost:50051` |
-| `SIMULATION_GRPC_ADDRESS` | `:50053` |
-| `SIMULATION_HTTP_ADDRESS` | `:8083` |
-| `AGENT_GRPC_ADDRESS` | `:50054` |
-| `AGENT_HTTP_ADDRESS` | `:8084` |
-| `AGENT_STORAGE_BACKEND` | `memory` |
-| `AGENT_NAME` | `matchmind-policy-advisor` |
-| `AGENT_MODEL` | `deterministic-policy-advisor-v1` |
-| `AGENT_PROMPT_VERSION` | `matchmind-agent-v1` |
-| `AGENT_DEFAULT_BASE_POLICY` | `v2-beam` |
-| `MATCHMAKING_GRPC_TARGET` | `localhost:50052` |
-| `SIMULATION_GRPC_TARGET` | `localhost:50053` |
-| `AGENT_GRPC_TARGET` | `localhost:50054` |
-| `API_HTTP_ADDRESS` | `:8080` |
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `PLAYER_RATING_SYSTEM` | `elo` | `elo` 或 `glicko2` |
+| `PLAYER_ELO_K_FACTOR` | `32` | Elo K Factor |
+| `PLAYER_GLICKO2_TAU` | `0.5` | Glicko-2 系统常数，范围 `0.3` 到 `1.2` |
+| `PLAYER_STORAGE_BACKEND` | `memory` | `memory` 或 `postgres` |
+| `POSTGRES_DSN` | 本地 MatchMind DSN | PostgreSQL 连接串 |
+| `MATCHMAKING_WORKER_COUNT` | `1` | 匹配 Worker 数量 |
+| `MATCHMAKING_POLICY_MODE` | `beam` | `greedy`、`beam` 或 `ab` |
+| `MATCHMAKING_BEAM_WIDTH` | `64` | Beam Search 宽度 |
+| `MATCHMAKING_AB_TREATMENT_BPS` | `5000` | 实验组基点数 |
+| `MATCHMAKING_ALLOCATOR_BACKEND` | `local` | `local` 或 `agones` |
+| `MATCHMAKING_LOCAL_REGION_CAPACITIES` | `hongkong=100,singapore=100,tokyo=100` | 本地各区域容量 |
+| `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` | `memory` 或 `redis` |
+| `MATCHMAKING_MATCH_STORAGE_BACKEND` | 跟随 Ticket 后端 | `memory` 或 `postgres` |
+| `REDIS_ADDRESS` | `localhost:6379` | Redis 地址 |
+| `AGENT_STORAGE_BACKEND` | `memory` | `memory` 或 `postgres` |
+| `AGENT_CONTROL_TOKEN` | 本地开发令牌 | Agent 与 Matchmaking 必须一致 |
 
-## Documentation
+端口、Agones、Agent 版本和全部配置见 `configs/.env.example`。
 
-- [System architecture](docs/ARCHITECTURE.md)
-- [HTTP API](docs/API.md)
-- [Hero catalog](docs/HEROES.md)
-- [Game modes](docs/GAME_MODES.md)
-- [Deployment](docs/DEPLOYMENT.md)
-- [Testing and load testing](docs/TESTING.md)
-- [Reproducible demo](docs/DEMO.md)
-- [Portfolio and interview guide](docs/PORTFOLIO_GUIDE.md)
-- [Database design](docs/DATABASE.md)
-- [Requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md)
+## 文档入口
+
+完整文档导航见 [docs/README.md](docs/README.md)。推荐阅读顺序：
+
+1. [产品需求](docs/product/REQUIREMENTS.md)
+2. [游戏内容边界](docs/product/GAME_CONTENT.md)
+3. [系统架构](docs/design/ARCHITECTURE.md)
+4. [HTTP API](docs/guides/API.md)
+5. [可重复演示](docs/guides/DEMO.md)
+6. [求职展示与学习指南](docs/guides/PORTFOLIO_GUIDE.md)
+7. [需求追踪矩阵](docs/quality/REQUIREMENTS_TRACEABILITY.md)

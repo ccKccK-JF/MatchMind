@@ -1,5 +1,7 @@
-# Public packages
+# 公共包目录
 
-MatchMind currently exposes versioned generated clients from `gen/go` and has
-no additional hand-written public Go library. Domain and application packages
-remain under `internal` so external programs cannot bypass service contracts.
+MatchMind 当前只通过 `gen/go` 暴露版本化生成客户端，不额外提供手写公共 Go 库。
+领域和应用包保留在 `internal`，防止外部程序绕过服务契约直接依赖业务实现。
+
+如果未来出现稳定、与业务无关且确实需要被其他仓库导入的 Go 库，再放入本目录；
+不能仅为了复用少量代码把领域模型移出 `internal`。
