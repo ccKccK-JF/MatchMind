@@ -52,3 +52,15 @@ func TestTicketActivityMigrationIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentMigrationIsEmbedded(t *testing.T) {
+	body, err := Files.ReadFile("005_agent.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"CREATE TABLE IF NOT EXISTS agent_runs", "CREATE TABLE IF NOT EXISTS policy_proposals", "PENDING_APPROVAL", "ROLLING_BACK", "treatment_basis_points", "assignment_salt"} {
+		if !strings.Contains(string(body), expected) {
+			t.Fatalf("migration does not contain %q", expected)
+		}
+	}
+}

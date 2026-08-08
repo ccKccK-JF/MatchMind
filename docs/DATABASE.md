@@ -34,6 +34,18 @@ Finished-Match quality analysis uses the existing policy/creation-time index;
 historical replay joins the Match's immutable Ticket IDs back to durable Ticket
 snapshots. Neither operation writes to Match, Ticket, or Elo state.
 
+`agent_runs` is an append-oriented audit record containing the Agent/model and
+prompt versions, request and structured output, selected policy version,
+status, timing, and the JSON transcript of allowlisted tool calls. A startup
+recovery pass marks abandoned `RUNNING` rows failed rather than silently
+rerunning them.
+
+`policy_proposals` stores one proposal per Agent run: the candidate policy,
+rationale, all five risk findings, requester/reviewer identities, state,
+persisted rollout basis points and assignment salt, experiment ID, activation,
+rollback, and timestamps. State updates use compare-and-swap predicates. The
+run completion and initial proposal insert share one transaction.
+
 The planned `outbox_events` table will store messages in the same transaction
 as business changes. Consumers will deduplicate by event ID before applying
 side effects.
@@ -53,8 +65,8 @@ or change nothing. PostgreSQL remains the durable source of truth. At startup,
 the service rebuilds missing Redis queue entries from active PostgreSQL
 Tickets and reconciles expired reservations.
 
-PostgreSQL is the durable correctness path for Player, Ticket, Match, and Elo
-state. Redis is disposable coordination state: reservation scripts validate
+PostgreSQL is the durable correctness path for Player, Ticket, Match, Elo, and
+Agent audit state. Redis is disposable coordination state: reservation scripts validate
 all Ticket metadata before the first write, retries with the same reservation
 are idempotent, and PostgreSQL rejection rolls the Redis reservation back. A
 startup pass recovers expired PostgreSQL reservations and recreates missing

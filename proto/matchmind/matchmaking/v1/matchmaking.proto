@@ -16,6 +16,9 @@ service MatchmakingService {
   rpc CompleteMatch(CompleteMatchRequest) returns (CompleteMatchResponse);
   rpc AnalyzeMatchQuality(AnalyzeMatchQualityRequest) returns (AnalyzeMatchQualityResponse);
   rpc ReplayHistoricalMatch(ReplayHistoricalMatchRequest) returns (ReplayHistoricalMatchResponse);
+  rpc GetOperationalSnapshot(GetOperationalSnapshotRequest) returns (GetOperationalSnapshotResponse);
+  rpc ActivateApprovedPolicy(ActivateApprovedPolicyRequest) returns (ActivateApprovedPolicyResponse);
+  rpc RollbackPolicyExperiment(RollbackPolicyExperimentRequest) returns (RollbackPolicyExperimentResponse);
 }
 
 enum TicketState {
@@ -195,6 +198,12 @@ message MatchQualityObservation {
   bool has_afk = 14;
   bool surrendered = 15;
   google.protobuf.Timestamp created_at = 16;
+  double skill_score = 17;
+  double role_score = 18;
+  double latency_score = 19;
+  double party_score = 20;
+  double wait_score = 21;
+  double average_rating = 22;
 }
 
 message PolicyQualitySummary {
@@ -221,6 +230,27 @@ message ReplayHistoricalMatchRequest {
   string match_id = 1;
   repeated string policy_versions = 2;
   repeated string ticket_ids = 3;
+  repeated MatchPolicyDefinition candidate_policies = 4;
+}
+
+message MatchPolicyDefinition {
+  string version = 1;
+  int32 team_size = 2;
+  int32 candidate_limit = 3;
+  string team_algorithm = 4;
+  int32 beam_width = 5;
+  double skill_weight = 6;
+  double role_weight = 7;
+  double latency_weight = 8;
+  double party_weight = 9;
+  double wait_weight = 10;
+  double initial_rating_range = 11;
+  double max_rating_range = 12;
+  double rating_expansion_per_second = 13;
+  int32 max_latency_ms = 14;
+  double min_quality_score = 15;
+  int64 reservation_ttl_ms = 16;
+  int64 ticket_ttl_ms = 17;
 }
 
 message ReplayTeam {
@@ -266,4 +296,40 @@ message ReplayHistoricalMatchResponse {
   double source_absolute_error = 5;
   int32 ticket_count = 6;
   repeated ReplayOutcome outcomes = 7;
+}
+
+message GetOperationalSnapshotRequest {}
+
+message PolicyExperiment {
+  string id = 1;
+  string control_version = 2;
+  string treatment_version = 3;
+  int32 treatment_basis_points = 4;
+  string assignment_salt = 5;
+  google.protobuf.Timestamp started_at = 6;
+}
+
+message GetOperationalSnapshotResponse {
+  int32 queue_size = 1;
+  repeated MatchPolicyDefinition policies = 2;
+  PolicyExperiment active_experiment = 3;
+}
+
+message ActivateApprovedPolicyRequest {
+  string approval_id = 1;
+  MatchPolicyDefinition policy = 2;
+  int32 treatment_basis_points = 3;
+  string assignment_salt = 4;
+}
+
+message ActivateApprovedPolicyResponse {
+  PolicyExperiment experiment = 1;
+}
+
+message RollbackPolicyExperimentRequest {
+  string experiment_id = 1;
+}
+
+message RollbackPolicyExperimentResponse {
+  bool rolled_back = 1;
 }

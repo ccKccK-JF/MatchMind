@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	agentv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/agent/v1"
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
@@ -26,11 +27,13 @@ import (
 const maxRequestBodyBytes = 8 << 20
 const downstreamTimeout = 3 * time.Second
 const batchDownstreamTimeout = 30 * time.Second
+const agentDownstreamTimeout = 2 * time.Minute
 
 type Server struct {
 	players     playerv1.PlayerServiceClient
 	matchmaking matchmakingv1.MatchmakingServiceClient
 	simulation  simulationv1.SimulationServiceClient
+	agent       agentv1.AgentServiceClient
 	metrics     *APIMetrics
 	handler     http.Handler
 }
@@ -54,8 +57,12 @@ func NewServer(
 	matchmaking matchmakingv1.MatchmakingServiceClient,
 	simulation simulationv1.SimulationServiceClient,
 	metrics *APIMetrics,
+	agent ...agentv1.AgentServiceClient,
 ) *Server {
 	server := &Server{players: players, matchmaking: matchmaking, simulation: simulation, metrics: metrics}
+	if len(agent) > 0 {
+		server.agent = agent[0]
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/players", server.createPlayer)
 	mux.HandleFunc("GET /api/v1/players/{player_id}/rating", server.getPlayerRating)
@@ -67,6 +74,14 @@ func NewServer(
 	mux.HandleFunc("POST /api/v1/matches/{match_id}/replay", server.replayHistoricalMatch)
 	mux.HandleFunc("POST /api/v1/simulations/batch", server.simulateBatch)
 	mux.HandleFunc("GET /api/v1/analytics/match-quality", server.analyzeMatchQuality)
+	mux.HandleFunc("POST /api/v1/agent/runs", server.runAgentAnalysis)
+	mux.HandleFunc("GET /api/v1/agent/runs", server.listAgentRuns)
+	mux.HandleFunc("GET /api/v1/agent/runs/{run_id}", server.getAgentRun)
+	mux.HandleFunc("GET /api/v1/agent/proposals", server.listPolicyProposals)
+	mux.HandleFunc("GET /api/v1/agent/proposals/{proposal_id}", server.getPolicyProposal)
+	mux.HandleFunc("POST /api/v1/agent/proposals/{proposal_id}/review", server.reviewPolicyProposal)
+	mux.HandleFunc("POST /api/v1/agent/proposals/{proposal_id}/activate", server.activatePolicyProposal)
+	mux.HandleFunc("POST /api/v1/agent/proposals/{proposal_id}/rollback", server.rollbackPolicyProposal)
 	server.handler = mux
 	return server
 }
@@ -76,6 +91,9 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 	timeout := downstreamTimeout
 	if request.URL.Path == "/api/v1/simulations/batch" || strings.HasSuffix(request.URL.Path, "/replay") {
 		timeout = batchDownstreamTimeout
+	}
+	if strings.HasPrefix(request.URL.Path, "/api/v1/agent/") {
+		timeout = agentDownstreamTimeout
 	}
 	ctx, cancel := context.WithTimeout(request.Context(), timeout)
 	defer cancel()
@@ -358,6 +376,243 @@ func (s *Server) getPlayerRating(response http.ResponseWriter, request *http.Req
 		PlayerID: playerResult.Player.Id, Rating: playerResult.Player.Rating,
 		RatingDeviation: playerResult.Player.RatingDeviation, History: historyResult.Changes,
 	})
+}
+
+type runAgentAnalysisRequest struct {
+	BasePolicyVersion string `json:"base_policy_version"`
+	Mode              string `json:"mode"`
+	ServerRegion      string `json:"server_region"`
+	From              string `json:"from"`
+	To                string `json:"to"`
+	HistoricalLimit   int32  `json:"historical_limit"`
+}
+
+func (s *Server) runAgentAnalysis(response http.ResponseWriter, request *http.Request) {
+	operatorID, err := requireOperator(request, "analyst", "admin")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	var body runAgentAnalysisRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	from, err := queryTimestamp(body.From, "from")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	to, err := queryTimestamp(body.To, "to")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.agent.RunAnalysis(request.Context(), &agentv1.RunAnalysisRequest{
+		RequestedBy: operatorID, BasePolicyVersion: body.BasePolicyVersion,
+		Mode: body.Mode, ServerRegion: body.ServerRegion, From: from, To: to,
+		HistoricalLimit: body.HistoricalLimit,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusCreated, result)
+}
+
+func (s *Server) getAgentRun(response http.ResponseWriter, request *http.Request) {
+	if _, err := requireOperator(request, "analyst", "reviewer", "admin"); err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	result, err := s.agent.GetRun(request.Context(), &agentv1.GetRunRequest{RunId: request.PathValue("run_id")})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func (s *Server) listAgentRuns(response http.ResponseWriter, request *http.Request) {
+	if _, err := requireOperator(request, "analyst", "reviewer", "admin"); err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	limit, err := queryLimit(request, 1000)
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.agent.ListRuns(request.Context(), &agentv1.ListRunsRequest{Limit: limit})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func (s *Server) getPolicyProposal(response http.ResponseWriter, request *http.Request) {
+	if _, err := requireOperator(request, "analyst", "reviewer", "admin"); err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	result, err := s.agent.GetProposal(request.Context(), &agentv1.GetProposalRequest{ProposalId: request.PathValue("proposal_id")})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func (s *Server) listPolicyProposals(response http.ResponseWriter, request *http.Request) {
+	if _, err := requireOperator(request, "analyst", "reviewer", "admin"); err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	limit, err := queryLimit(request, 1000)
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.agent.ListProposals(request.Context(), &agentv1.ListProposalsRequest{Limit: limit})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+type reviewPolicyProposalRequest struct {
+	Decision string `json:"decision"`
+	Reason   string `json:"reason"`
+}
+
+func (s *Server) reviewPolicyProposal(response http.ResponseWriter, request *http.Request) {
+	reviewerID, err := requireOperator(request, "reviewer", "admin")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	var body reviewPolicyProposalRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	decision := strings.ToLower(strings.TrimSpace(body.Decision))
+	if decision != "approve" && decision != "reject" {
+		writeError(response, status.Error(codes.InvalidArgument, "decision must be approve or reject"))
+		return
+	}
+	result, err := s.agent.ReviewProposal(request.Context(), &agentv1.ReviewProposalRequest{
+		ProposalId: request.PathValue("proposal_id"), ReviewerId: reviewerID,
+		Reason: body.Reason, Approve: decision == "approve",
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+type activatePolicyProposalRequest struct {
+	TreatmentBasisPoints int32  `json:"treatment_basis_points"`
+	AssignmentSalt       string `json:"assignment_salt"`
+}
+
+func (s *Server) activatePolicyProposal(response http.ResponseWriter, request *http.Request) {
+	operatorID, err := requireOperator(request, "admin")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	var body activatePolicyProposalRequest
+	if err := decodeJSON(response, request, &body); err != nil {
+		writeError(response, err)
+		return
+	}
+	result, err := s.agent.ActivateProposal(request.Context(), &agentv1.ActivateProposalRequest{
+		ProposalId: request.PathValue("proposal_id"), OperatorId: operatorID,
+		TreatmentBasisPoints: body.TreatmentBasisPoints, AssignmentSalt: body.AssignmentSalt,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func (s *Server) rollbackPolicyProposal(response http.ResponseWriter, request *http.Request) {
+	operatorID, err := requireOperator(request, "admin")
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if s.agent == nil {
+		writeError(response, status.Error(codes.Unavailable, "Agent service is unavailable"))
+		return
+	}
+	result, err := s.agent.RollbackProposal(request.Context(), &agentv1.RollbackProposalRequest{
+		ProposalId: request.PathValue("proposal_id"), OperatorId: operatorID,
+	})
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	writeProto(response, http.StatusOK, result)
+}
+
+func requireOperator(request *http.Request, allowedRoles ...string) (string, error) {
+	operatorID := strings.TrimSpace(request.Header.Get("X-Operator-ID"))
+	role := strings.ToLower(strings.TrimSpace(request.Header.Get("X-Operator-Role")))
+	if operatorID == "" || role == "" {
+		return "", status.Error(codes.Unauthenticated, "X-Operator-ID and X-Operator-Role are required")
+	}
+	for _, allowed := range allowedRoles {
+		if role == allowed {
+			return operatorID, nil
+		}
+	}
+	return "", status.Error(codes.PermissionDenied, "operator role is not permitted")
+}
+
+func queryLimit(request *http.Request, maximum int32) (int32, error) {
+	value := strings.TrimSpace(request.URL.Query().Get("limit"))
+	if value == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.ParseInt(value, 10, 32)
+	if err != nil || parsed < 1 || parsed > int64(maximum) {
+		return 0, status.Errorf(codes.InvalidArgument, "limit must be between 1 and %d", maximum)
+	}
+	return int32(parsed), nil
 }
 
 func parseRoles(values []string) ([]playerv1.Role, error) {

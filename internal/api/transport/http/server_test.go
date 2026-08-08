@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	agentv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/agent/v1"
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
@@ -50,6 +51,25 @@ type fakePlayerClient struct {
 type fakeSimulationClient struct {
 	simulationv1.SimulationServiceClient
 	batch func(context.Context, *simulationv1.SimulateBatchRequest) (*simulationv1.SimulateBatchResponse, error)
+}
+
+type fakeAgentClient struct {
+	agentv1.AgentServiceClient
+	run      func(context.Context, *agentv1.RunAnalysisRequest) (*agentv1.RunAnalysisResponse, error)
+	review   func(context.Context, *agentv1.ReviewProposalRequest) (*agentv1.ReviewProposalResponse, error)
+	activate func(context.Context, *agentv1.ActivateProposalRequest) (*agentv1.ActivateProposalResponse, error)
+}
+
+func (f fakeAgentClient) RunAnalysis(ctx context.Context, request *agentv1.RunAnalysisRequest, _ ...grpc.CallOption) (*agentv1.RunAnalysisResponse, error) {
+	return f.run(ctx, request)
+}
+
+func (f fakeAgentClient) ReviewProposal(ctx context.Context, request *agentv1.ReviewProposalRequest, _ ...grpc.CallOption) (*agentv1.ReviewProposalResponse, error) {
+	return f.review(ctx, request)
+}
+
+func (f fakeAgentClient) ActivateProposal(ctx context.Context, request *agentv1.ActivateProposalRequest, _ ...grpc.CallOption) (*agentv1.ActivateProposalResponse, error) {
+	return f.activate(ctx, request)
 }
 
 func (f fakeSimulationClient) SimulateBatch(ctx context.Context, request *simulationv1.SimulateBatchRequest, _ ...grpc.CallOption) (*simulationv1.SimulateBatchResponse, error) {
@@ -208,5 +228,72 @@ func TestAnalyzeMatchQualityRejectsInvalidTimestamp(t *testing.T) {
 	server.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/analytics/match-quality?from=not-a-time", nil))
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestAgentRunRequiresOperatorAndMapsIdentity(t *testing.T) {
+	var captured *agentv1.RunAnalysisRequest
+	client := fakeAgentClient{run: func(ctx context.Context, request *agentv1.RunAnalysisRequest) (*agentv1.RunAnalysisResponse, error) {
+		deadline, exists := ctx.Deadline()
+		if !exists || time.Until(deadline) < time.Minute {
+			t.Fatalf("Agent deadline = %v, exists = %v", deadline, exists)
+		}
+		captured = request
+		return &agentv1.RunAnalysisResponse{Run: &agentv1.AuditRun{Id: "run-1"}, Proposal: &agentv1.PolicyProposal{Id: "proposal-1"}}, nil
+	}}
+	server := NewServer(nil, nil, nil, nil, client)
+	body := `{"base_policy_version":"v2-beam","mode":"ranked_5v5","server_region":"hongkong","historical_limit":20}`
+	unauthorized := httptest.NewRecorder()
+	server.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/api/v1/agent/runs", strings.NewReader(body)))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized status = %d, body = %s", unauthorized.Code, unauthorized.Body.String())
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/runs", strings.NewReader(body))
+	request.Header.Set("X-Operator-ID", "analyst-1")
+	request.Header.Set("X-Operator-Role", "analyst")
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated || captured == nil || captured.RequestedBy != "analyst-1" || captured.HistoricalLimit != 20 {
+		t.Fatalf("status = %d, captured = %#v, body = %s", response.Code, captured, response.Body.String())
+	}
+}
+
+func TestAgentReviewAndActivationEnforceRoles(t *testing.T) {
+	var review *agentv1.ReviewProposalRequest
+	var activation *agentv1.ActivateProposalRequest
+	client := fakeAgentClient{
+		review: func(_ context.Context, request *agentv1.ReviewProposalRequest) (*agentv1.ReviewProposalResponse, error) {
+			review = request
+			return &agentv1.ReviewProposalResponse{Proposal: &agentv1.PolicyProposal{Id: request.ProposalId}}, nil
+		},
+		activate: func(_ context.Context, request *agentv1.ActivateProposalRequest) (*agentv1.ActivateProposalResponse, error) {
+			activation = request
+			return &agentv1.ActivateProposalResponse{Proposal: &agentv1.PolicyProposal{Id: request.ProposalId}}, nil
+		},
+	}
+	server := NewServer(nil, nil, nil, nil, client)
+	forbiddenRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/proposals/proposal-1/review", strings.NewReader(`{"decision":"approve","reason":"ok"}`))
+	forbiddenRequest.Header.Set("X-Operator-ID", "analyst-1")
+	forbiddenRequest.Header.Set("X-Operator-Role", "analyst")
+	forbidden := httptest.NewRecorder()
+	server.ServeHTTP(forbidden, forbiddenRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("forbidden status = %d", forbidden.Code)
+	}
+	reviewRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/proposals/proposal-1/review", strings.NewReader(`{"decision":"approve","reason":"risk passed"}`))
+	reviewRequest.Header.Set("X-Operator-ID", "reviewer-1")
+	reviewRequest.Header.Set("X-Operator-Role", "reviewer")
+	reviewResponse := httptest.NewRecorder()
+	server.ServeHTTP(reviewResponse, reviewRequest)
+	if reviewResponse.Code != http.StatusOK || review == nil || review.ReviewerId != "reviewer-1" || !review.Approve {
+		t.Fatalf("review status = %d, request = %#v", reviewResponse.Code, review)
+	}
+	activateRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/proposals/proposal-1/activate", strings.NewReader(`{"treatment_basis_points":1000,"assignment_salt":"guarded"}`))
+	activateRequest.Header.Set("X-Operator-ID", "admin-1")
+	activateRequest.Header.Set("X-Operator-Role", "admin")
+	activateResponse := httptest.NewRecorder()
+	server.ServeHTTP(activateResponse, activateRequest)
+	if activateResponse.Code != http.StatusOK || activation == nil || activation.OperatorId != "admin-1" || activation.TreatmentBasisPoints != 1000 {
+		t.Fatalf("activation status = %d, request = %#v", activateResponse.Code, activation)
 	}
 }

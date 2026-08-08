@@ -86,6 +86,7 @@ services:
       MATCHMAKING_POLICY_MODE: "ab"
       MATCHMAKING_BEAM_WIDTH: "64"
       MATCHMAKING_AB_TREATMENT_BPS: "5000"
+      AGENT_CONTROL_TOKEN: "matchmind-compose-agent-control"
       MATCHMAKING_TICKET_STORAGE_BACKEND: "redis"
       MATCHMAKING_MATCH_STORAGE_BACKEND: "postgres"
       POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
@@ -129,6 +130,35 @@ services:
       retries: 12
       start_period: 5s
 
+  agent:
+    <<: *service-defaults
+    build:
+      context: .
+      args:
+        SERVICE: agent-service
+    environment:
+      AGENT_GRPC_ADDRESS: ":50054"
+      AGENT_HTTP_ADDRESS: ":8084"
+      AGENT_STORAGE_BACKEND: "postgres"
+      AGENT_NAME: "matchmind-policy-advisor"
+      AGENT_MODEL: "deterministic-policy-advisor-v1"
+      AGENT_PROMPT_VERSION: "matchmind-agent-v1"
+      AGENT_DEFAULT_BASE_POLICY: "v1-greedy"
+      AGENT_CONTROL_TOKEN: "matchmind-compose-agent-control"
+      POSTGRES_DSN: "postgres://matchmind:matchmind@postgres:5432/matchmind?sslmode=disable"
+      MATCHMAKING_GRPC_TARGET: "matchmaking:50052"
+    depends_on:
+      matchmaking:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8084/ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 5s
+
   api:
     <<: *service-defaults
     build:
@@ -140,12 +170,15 @@ services:
       PLAYER_GRPC_TARGET: "player:50051"
       MATCHMAKING_GRPC_TARGET: "matchmaking:50052"
       SIMULATION_GRPC_TARGET: "simulation:50053"
+      AGENT_GRPC_TARGET: "agent:50054"
     depends_on:
       player:
         condition: service_healthy
       matchmaking:
         condition: service_healthy
       simulation:
+        condition: service_healthy
+      agent:
         condition: service_healthy
     ports:
       - "8080:8080"

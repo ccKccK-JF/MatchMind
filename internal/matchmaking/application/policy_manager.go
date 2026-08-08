@@ -67,14 +67,9 @@ func NewPolicyManager(policies []domain.MatchPolicy, defaultVersion string) (*Po
 }
 
 func (m *PolicyManager) StartExperiment(experiment PolicyExperiment) error {
-	experiment.ID = strings.TrimSpace(experiment.ID)
-	experiment.ControlVersion = strings.TrimSpace(experiment.ControlVersion)
-	experiment.TreatmentVersion = strings.TrimSpace(experiment.TreatmentVersion)
-	experiment.AssignmentSalt = strings.TrimSpace(experiment.AssignmentSalt)
-	if experiment.ID == "" || experiment.ControlVersion == experiment.TreatmentVersion ||
-		experiment.TreatmentBasisPoints < 0 || experiment.TreatmentBasisPoints > 10000 ||
-		experiment.AssignmentSalt == "" || experiment.StartedAt.IsZero() {
-		return ErrInvalidExperiment
+	experiment, err := normalizeExperiment(experiment)
+	if err != nil {
+		return err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -88,6 +83,52 @@ func (m *PolicyManager) StartExperiment(experiment PolicyExperiment) error {
 		return ErrPolicyNotFound
 	}
 	experiment.StartedAt = experiment.StartedAt.UTC()
+	m.experiment = &experiment
+	return nil
+}
+
+func (m *PolicyManager) RegisterPolicy(policy domain.MatchPolicy) error {
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if existing, exists := m.policies[policy.Version]; exists && existing != policy {
+		return domain.ErrInvalidPolicy
+	}
+	m.policies[policy.Version] = policy
+	return nil
+}
+
+// ActivateApprovedPolicy atomically registers a reviewed policy and makes it
+// the treatment of an experiment. Authorization and approval verification are
+// deliberately owned by the operations service, not this registry.
+func (m *PolicyManager) ActivateApprovedPolicy(policy domain.MatchPolicy, experiment PolicyExperiment) error {
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	experiment, err := normalizeExperiment(experiment)
+	if err != nil || experiment.TreatmentVersion != policy.Version {
+		return ErrInvalidExperiment
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, exists := m.policies[experiment.ControlVersion]; !exists {
+		return ErrPolicyNotFound
+	}
+	if existing, exists := m.policies[policy.Version]; exists && existing != policy {
+		return domain.ErrInvalidPolicy
+	}
+	if m.experiment != nil && m.experiment.ID == experiment.ID {
+		if m.experiment.ControlVersion == experiment.ControlVersion &&
+			m.experiment.TreatmentVersion == experiment.TreatmentVersion &&
+			m.experiment.TreatmentBasisPoints == experiment.TreatmentBasisPoints &&
+			m.experiment.AssignmentSalt == experiment.AssignmentSalt {
+			return nil
+		}
+		return ErrInvalidExperiment
+	}
+	m.policies[policy.Version] = policy
 	m.experiment = &experiment
 	return nil
 }
@@ -151,6 +192,26 @@ func (m *PolicyManager) ActiveExperiment() (PolicyExperiment, bool) {
 		return PolicyExperiment{}, false
 	}
 	return *m.experiment, true
+}
+
+func (m *PolicyManager) DefaultPolicy() domain.MatchPolicy {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.policies[m.defaultVersion]
+}
+
+func normalizeExperiment(experiment PolicyExperiment) (PolicyExperiment, error) {
+	experiment.ID = strings.TrimSpace(experiment.ID)
+	experiment.ControlVersion = strings.TrimSpace(experiment.ControlVersion)
+	experiment.TreatmentVersion = strings.TrimSpace(experiment.TreatmentVersion)
+	experiment.AssignmentSalt = strings.TrimSpace(experiment.AssignmentSalt)
+	if experiment.ID == "" || experiment.ControlVersion == experiment.TreatmentVersion ||
+		experiment.TreatmentBasisPoints < 0 || experiment.TreatmentBasisPoints > 10000 ||
+		experiment.AssignmentSalt == "" || experiment.StartedAt.IsZero() {
+		return PolicyExperiment{}, ErrInvalidExperiment
+	}
+	experiment.StartedAt = experiment.StartedAt.UTC()
+	return experiment, nil
 }
 
 func experimentBucket(experiment PolicyExperiment, assignmentKey string) int {

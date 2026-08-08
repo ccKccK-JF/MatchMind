@@ -19,14 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MatchmakingService_CreateTicket_FullMethodName          = "/matchmind.matchmaking.v1.MatchmakingService/CreateTicket"
-	MatchmakingService_GetTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/GetTicket"
-	MatchmakingService_CancelTicket_FullMethodName          = "/matchmind.matchmaking.v1.MatchmakingService/CancelTicket"
-	MatchmakingService_GetMatch_FullMethodName              = "/matchmind.matchmaking.v1.MatchmakingService/GetMatch"
-	MatchmakingService_StartMatch_FullMethodName            = "/matchmind.matchmaking.v1.MatchmakingService/StartMatch"
-	MatchmakingService_CompleteMatch_FullMethodName         = "/matchmind.matchmaking.v1.MatchmakingService/CompleteMatch"
-	MatchmakingService_AnalyzeMatchQuality_FullMethodName   = "/matchmind.matchmaking.v1.MatchmakingService/AnalyzeMatchQuality"
-	MatchmakingService_ReplayHistoricalMatch_FullMethodName = "/matchmind.matchmaking.v1.MatchmakingService/ReplayHistoricalMatch"
+	MatchmakingService_CreateTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/CreateTicket"
+	MatchmakingService_GetTicket_FullMethodName                = "/matchmind.matchmaking.v1.MatchmakingService/GetTicket"
+	MatchmakingService_CancelTicket_FullMethodName             = "/matchmind.matchmaking.v1.MatchmakingService/CancelTicket"
+	MatchmakingService_GetMatch_FullMethodName                 = "/matchmind.matchmaking.v1.MatchmakingService/GetMatch"
+	MatchmakingService_StartMatch_FullMethodName               = "/matchmind.matchmaking.v1.MatchmakingService/StartMatch"
+	MatchmakingService_CompleteMatch_FullMethodName            = "/matchmind.matchmaking.v1.MatchmakingService/CompleteMatch"
+	MatchmakingService_AnalyzeMatchQuality_FullMethodName      = "/matchmind.matchmaking.v1.MatchmakingService/AnalyzeMatchQuality"
+	MatchmakingService_ReplayHistoricalMatch_FullMethodName    = "/matchmind.matchmaking.v1.MatchmakingService/ReplayHistoricalMatch"
+	MatchmakingService_GetOperationalSnapshot_FullMethodName   = "/matchmind.matchmaking.v1.MatchmakingService/GetOperationalSnapshot"
+	MatchmakingService_ActivateApprovedPolicy_FullMethodName   = "/matchmind.matchmaking.v1.MatchmakingService/ActivateApprovedPolicy"
+	MatchmakingService_RollbackPolicyExperiment_FullMethodName = "/matchmind.matchmaking.v1.MatchmakingService/RollbackPolicyExperiment"
 )
 
 // MatchmakingServiceClient is the client API for MatchmakingService service.
@@ -41,6 +44,9 @@ type MatchmakingServiceClient interface {
 	CompleteMatch(ctx context.Context, in *CompleteMatchRequest, opts ...grpc.CallOption) (*CompleteMatchResponse, error)
 	AnalyzeMatchQuality(ctx context.Context, in *AnalyzeMatchQualityRequest, opts ...grpc.CallOption) (*AnalyzeMatchQualityResponse, error)
 	ReplayHistoricalMatch(ctx context.Context, in *ReplayHistoricalMatchRequest, opts ...grpc.CallOption) (*ReplayHistoricalMatchResponse, error)
+	GetOperationalSnapshot(ctx context.Context, in *GetOperationalSnapshotRequest, opts ...grpc.CallOption) (*GetOperationalSnapshotResponse, error)
+	ActivateApprovedPolicy(ctx context.Context, in *ActivateApprovedPolicyRequest, opts ...grpc.CallOption) (*ActivateApprovedPolicyResponse, error)
+	RollbackPolicyExperiment(ctx context.Context, in *RollbackPolicyExperimentRequest, opts ...grpc.CallOption) (*RollbackPolicyExperimentResponse, error)
 }
 
 type matchmakingServiceClient struct {
@@ -131,6 +137,36 @@ func (c *matchmakingServiceClient) ReplayHistoricalMatch(ctx context.Context, in
 	return out, nil
 }
 
+func (c *matchmakingServiceClient) GetOperationalSnapshot(ctx context.Context, in *GetOperationalSnapshotRequest, opts ...grpc.CallOption) (*GetOperationalSnapshotResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOperationalSnapshotResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_GetOperationalSnapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *matchmakingServiceClient) ActivateApprovedPolicy(ctx context.Context, in *ActivateApprovedPolicyRequest, opts ...grpc.CallOption) (*ActivateApprovedPolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActivateApprovedPolicyResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_ActivateApprovedPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *matchmakingServiceClient) RollbackPolicyExperiment(ctx context.Context, in *RollbackPolicyExperimentRequest, opts ...grpc.CallOption) (*RollbackPolicyExperimentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RollbackPolicyExperimentResponse)
+	err := c.cc.Invoke(ctx, MatchmakingService_RollbackPolicyExperiment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MatchmakingServiceServer is the server API for MatchmakingService service.
 // All implementations must embed UnimplementedMatchmakingServiceServer
 // for forward compatibility.
@@ -143,6 +179,9 @@ type MatchmakingServiceServer interface {
 	CompleteMatch(context.Context, *CompleteMatchRequest) (*CompleteMatchResponse, error)
 	AnalyzeMatchQuality(context.Context, *AnalyzeMatchQualityRequest) (*AnalyzeMatchQualityResponse, error)
 	ReplayHistoricalMatch(context.Context, *ReplayHistoricalMatchRequest) (*ReplayHistoricalMatchResponse, error)
+	GetOperationalSnapshot(context.Context, *GetOperationalSnapshotRequest) (*GetOperationalSnapshotResponse, error)
+	ActivateApprovedPolicy(context.Context, *ActivateApprovedPolicyRequest) (*ActivateApprovedPolicyResponse, error)
+	RollbackPolicyExperiment(context.Context, *RollbackPolicyExperimentRequest) (*RollbackPolicyExperimentResponse, error)
 	mustEmbedUnimplementedMatchmakingServiceServer()
 }
 
@@ -176,6 +215,15 @@ func (UnimplementedMatchmakingServiceServer) AnalyzeMatchQuality(context.Context
 }
 func (UnimplementedMatchmakingServiceServer) ReplayHistoricalMatch(context.Context, *ReplayHistoricalMatchRequest) (*ReplayHistoricalMatchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReplayHistoricalMatch not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) GetOperationalSnapshot(context.Context, *GetOperationalSnapshotRequest) (*GetOperationalSnapshotResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOperationalSnapshot not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) ActivateApprovedPolicy(context.Context, *ActivateApprovedPolicyRequest) (*ActivateApprovedPolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ActivateApprovedPolicy not implemented")
+}
+func (UnimplementedMatchmakingServiceServer) RollbackPolicyExperiment(context.Context, *RollbackPolicyExperimentRequest) (*RollbackPolicyExperimentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RollbackPolicyExperiment not implemented")
 }
 func (UnimplementedMatchmakingServiceServer) mustEmbedUnimplementedMatchmakingServiceServer() {}
 func (UnimplementedMatchmakingServiceServer) testEmbeddedByValue()                            {}
@@ -342,6 +390,60 @@ func _MatchmakingService_ReplayHistoricalMatch_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MatchmakingService_GetOperationalSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOperationalSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).GetOperationalSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_GetOperationalSnapshot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).GetOperationalSnapshot(ctx, req.(*GetOperationalSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MatchmakingService_ActivateApprovedPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivateApprovedPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).ActivateApprovedPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_ActivateApprovedPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).ActivateApprovedPolicy(ctx, req.(*ActivateApprovedPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MatchmakingService_RollbackPolicyExperiment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RollbackPolicyExperimentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchmakingServiceServer).RollbackPolicyExperiment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchmakingService_RollbackPolicyExperiment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchmakingServiceServer).RollbackPolicyExperiment(ctx, req.(*RollbackPolicyExperimentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MatchmakingService_ServiceDesc is the grpc.ServiceDesc for MatchmakingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -380,6 +482,18 @@ var MatchmakingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReplayHistoricalMatch",
 			Handler:    _MatchmakingService_ReplayHistoricalMatch_Handler,
+		},
+		{
+			MethodName: "GetOperationalSnapshot",
+			Handler:    _MatchmakingService_GetOperationalSnapshot_Handler,
+		},
+		{
+			MethodName: "ActivateApprovedPolicy",
+			Handler:    _MatchmakingService_ActivateApprovedPolicy_Handler,
+		},
+		{
+			MethodName: "RollbackPolicyExperiment",
+			Handler:    _MatchmakingService_RollbackPolicyExperiment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

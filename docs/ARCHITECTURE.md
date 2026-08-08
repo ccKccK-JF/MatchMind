@@ -1,6 +1,6 @@
 # System architecture
 
-MatchMind uses four independently runnable processes. External clients use the
+MatchMind uses five independently runnable processes. External clients use the
 HTTP API; internal calls use versioned Protocol Buffers over gRPC.
 
 ```text
@@ -8,15 +8,17 @@ HTTP client
     |
     v
 api-service :8080
-    |--------------------|--------------------|
-    v                    v                    v
-player-service      matchmaking-service   simulation-service
-:50051 / :8081      :50052 / :8082        :50053 / :8083
-                         |                    |
-                         |<-------------------|
-                         |         completes matches
-                         v
-                  matching workers (1..N)
+    |-------------|--------------------|-------------------|
+    v             v                    v                   v
+player-service  matchmaking-service  simulation-service  agent-service
+:50051/:8081    :50052/:8082         :50053/:8083        :50054/:8084
+                    ^                    |                   |
+                    | completes matches  |                   |
+                    |<-------------------|                   |
+                    | allowlisted read/approved rollout      |
+                    |<---------------------------------------|
+                    v
+             matching workers (1..N)
 ```
 
 ## Package boundaries
@@ -53,6 +55,10 @@ player-service      matchmaking-service   simulation-service
    errors and process outcomes by persisted policy version.
 10. Historical replay rebuilds queued copies of durable Ticket snapshots and
     runs selected policies without reservations or writes.
+11. The Agent reads only operational snapshots, quality analysis, and replay
+    APIs. It proposes but does not directly activate a policy.
+12. A different reviewer approves a proposal after five mandatory risk checks;
+    an administrator may then start a persisted A/B rollout or roll it back.
 
 The chosen policy version is stored on each Match. This makes later replay and
 predicted-versus-actual quality analysis possible without reconstructing the
@@ -74,3 +80,11 @@ The production persistence adapter keeps these application interfaces while
 combining PostgreSQL transactions with Redis Lua scripts. PostgreSQL owns
 durable state; Redis owns rebuildable queue order, snapshots, reservations,
 and expiry indexes.
+
+The Agent is outside the real-time matchmaking path. Its gateway exposes a
+compile-time allowlist instead of a generic RPC, Shell, or SQL interface.
+Mutation calls require both an approved proposal and an internal control token
+sent as gRPC metadata. Run input/output, model and prompt versions, every tool
+call, reviewer identity, rollout parameters, activation, and rollback are
+durable audit data. Transitional `ACTIVATING` and `ROLLING_BACK` states make
+external calls retry-safe after process interruption.

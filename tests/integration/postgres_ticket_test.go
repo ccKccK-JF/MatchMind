@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	agentdomain "github.com/ccKccK-JF/MatchMind/internal/agent/domain"
+	agentpostgres "github.com/ccKccK-JF/MatchMind/internal/agent/repository/postgres"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	matchdomain "github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	matchpostgres "github.com/ccKccK-JF/MatchMind/internal/matchmaking/repository/postgres"
@@ -154,6 +156,63 @@ func TestPostgreSQLTicketPersistenceAndAtomicReservation(t *testing.T) {
 	next := newPersistentTicket(t, "ticket-next", "player-00", roles[0], now.Add(6*time.Second))
 	if _, err := tickets.CreateQueued(ctx, next, "create-next"); err != nil {
 		t.Fatalf("create Ticket after Match completion: %v", err)
+	}
+	agentRepository := agentpostgres.NewRepository(pool)
+	agentRun, err := agentdomain.NewAuditRun(
+		"agent-run-1", "matchmind-advisor", "rules-v1", "prompt-v1", "analyst-1", `{}`, now,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agentRepository.CreateRun(ctx, agentRun.Clone()); err != nil {
+		t.Fatal(err)
+	}
+	candidatePolicy := matchdomain.BeamPolicy()
+	candidatePolicy.Version = "postgres-proposal-policy"
+	riskReport := agentdomain.RiskReport{Passed: true, SampleCount: 20}
+	for _, category := range []string{"fairness", "latency", "role_fill", "sample_size", "high_rating"} {
+		riskReport.Findings = append(riskReport.Findings, agentdomain.RiskFinding{
+			Category: category, Status: agentdomain.RiskStatusPass, Message: "passed",
+		})
+	}
+	proposal, err := agentdomain.NewPolicyProposal(
+		"postgres-proposal-1", agentRun.ID, "analyst-1", "v1", candidatePolicy,
+		[]string{"verified PostgreSQL proposal"}, riskReport, now,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolCall := agentdomain.ToolCall{
+		Name: "match_quality_analysis", InputJSON: `{}`, OutputJSON: `{"count":20}`,
+		Status: agentdomain.ToolCallSucceeded, StartedAt: now, FinishedAt: now.Add(time.Second),
+	}
+	if err := agentRun.Succeed(`{"proposal_id":"postgres-proposal-1"}`, candidatePolicy.Version, []agentdomain.ToolCall{toolCall}, now.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := agentRepository.CompleteRun(ctx, agentRun.Clone(), proposal.Clone()); err != nil {
+		t.Fatal(err)
+	}
+	storedProposal, err := agentRepository.GetProposal(ctx, proposal.ID)
+	if err != nil || storedProposal.CandidatePolicy.Version != candidatePolicy.Version || len(storedProposal.RiskReport.Findings) != 5 {
+		t.Fatalf("stored Agent proposal = %#v, %v", storedProposal, err)
+	}
+	expectedState := storedProposal.State
+	if err := storedProposal.Review("reviewer-1", "all checks passed", true, now.Add(3*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := agentRepository.UpdateProposal(ctx, storedProposal, expectedState); err != nil {
+		t.Fatal(err)
+	}
+	expectedState = storedProposal.State
+	if err := storedProposal.BeginActivation("admin-1", 1250, "postgres-rollout", now.Add(4*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := agentRepository.UpdateProposal(ctx, storedProposal, expectedState); err != nil {
+		t.Fatal(err)
+	}
+	storedProposal, err = agentRepository.GetProposal(ctx, proposal.ID)
+	if err != nil || storedProposal.TreatmentBasisPoints != 1250 || storedProposal.AssignmentSalt != "postgres-rollout" {
+		t.Fatalf("stored Agent rollout parameters = %#v, %v", storedProposal, err)
 	}
 }
 

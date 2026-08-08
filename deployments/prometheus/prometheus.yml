@@ -9,3 +9,7 @@ scrape_configs:
   - job_name: matchmind-matchmaking
     static_configs:
       - targets: ["matchmaking:8082"]
+
+  - job_name: matchmind-agent
+    static_configs:
+      - targets: ["agent:8084"]

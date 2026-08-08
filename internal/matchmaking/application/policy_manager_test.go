@@ -60,3 +60,32 @@ func TestPolicyManagerRejectsInvalidExperiment(t *testing.T) {
 		t.Fatalf("StartExperiment() error = %v", err)
 	}
 }
+
+func TestPolicyManagerActivatesApprovedPolicyAtomically(t *testing.T) {
+	manager, err := NewPolicyManager([]domain.MatchPolicy{domain.DefaultPolicy()}, domain.DefaultPolicy().Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := domain.BeamPolicy()
+	candidate.Version = "proposal-approved"
+	experiment := PolicyExperiment{
+		ID: "approved-proposal-1", ControlVersion: domain.DefaultPolicy().Version,
+		TreatmentVersion: candidate.Version, TreatmentBasisPoints: 2500,
+		AssignmentSalt: "approval-salt", StartedAt: time.Now(),
+	}
+	if err := manager.ActivateApprovedPolicy(candidate, experiment); err != nil {
+		t.Fatal(err)
+	}
+	active, exists := manager.ActiveExperiment()
+	if !exists || active.ID != experiment.ID || len(manager.Policies()) != 2 {
+		t.Fatalf("active experiment = %#v, policies = %#v", active, manager.Policies())
+	}
+	if err := manager.ActivateApprovedPolicy(candidate, experiment); err != nil {
+		t.Fatalf("idempotent activation error = %v", err)
+	}
+	changedRollout := experiment
+	changedRollout.TreatmentBasisPoints = 9000
+	if err := manager.ActivateApprovedPolicy(candidate, changedRollout); !errors.Is(err, ErrInvalidExperiment) {
+		t.Fatalf("same approval with changed rollout error = %v", err)
+	}
+}

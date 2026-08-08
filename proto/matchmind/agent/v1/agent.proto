@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package matchmind.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "matchmind/matchmaking/v1/matchmaking.proto";
+
+option go_package = "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/agent/v1;agentv1";
+
+service AgentService {
+  rpc RunAnalysis(RunAnalysisRequest) returns (RunAnalysisResponse);
+  rpc GetRun(GetRunRequest) returns (GetRunResponse);
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+  rpc GetProposal(GetProposalRequest) returns (GetProposalResponse);
+  rpc ListProposals(ListProposalsRequest) returns (ListProposalsResponse);
+  rpc ReviewProposal(ReviewProposalRequest) returns (ReviewProposalResponse);
+  rpc ActivateProposal(ActivateProposalRequest) returns (ActivateProposalResponse);
+  rpc RollbackProposal(RollbackProposalRequest) returns (RollbackProposalResponse);
+}
+
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_RUNNING = 1;
+  RUN_STATUS_SUCCEEDED = 2;
+  RUN_STATUS_FAILED = 3;
+}
+
+enum ToolCallStatus {
+  TOOL_CALL_STATUS_UNSPECIFIED = 0;
+  TOOL_CALL_STATUS_SUCCEEDED = 1;
+  TOOL_CALL_STATUS_FAILED = 2;
+}
+
+enum ProposalState {
+  PROPOSAL_STATE_UNSPECIFIED = 0;
+  PROPOSAL_STATE_PENDING_APPROVAL = 1;
+  PROPOSAL_STATE_APPROVED = 2;
+  PROPOSAL_STATE_REJECTED = 3;
+  PROPOSAL_STATE_ACTIVATING = 4;
+  PROPOSAL_STATE_ACTIVE = 5;
+  PROPOSAL_STATE_ROLLING_BACK = 6;
+  PROPOSAL_STATE_ROLLED_BACK = 7;
+}
+
+enum RiskStatus {
+  RISK_STATUS_UNSPECIFIED = 0;
+  RISK_STATUS_PASS = 1;
+  RISK_STATUS_WARNING = 2;
+  RISK_STATUS_BLOCK = 3;
+}
+
+message ToolCall {
+  string name = 1;
+  string input_json = 2;
+  string output_json = 3;
+  ToolCallStatus status = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp finished_at = 6;
+}
+
+message AuditRun {
+  string id = 1;
+  string agent_name = 2;
+  string model = 3;
+  string prompt_version = 4;
+  string requested_by = 5;
+  string input_json = 6;
+  string output_json = 7;
+  string policy_version = 8;
+  RunStatus status = 9;
+  string error_message = 10;
+  repeated ToolCall tool_calls = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp finished_at = 13;
+}
+
+message RiskFinding {
+  string category = 1;
+  RiskStatus status = 2;
+  double observed = 3;
+  double threshold = 4;
+  string message = 5;
+}
+
+message RiskReport {
+  bool passed = 1;
+  int32 sample_count = 2;
+  repeated RiskFinding findings = 3;
+}
+
+message PolicyProposal {
+  string id = 1;
+  string run_id = 2;
+  string requested_by = 3;
+  string base_policy_version = 4;
+  matchmind.matchmaking.v1.MatchPolicyDefinition candidate_policy = 5;
+  repeated string rationale = 6;
+  RiskReport risk_report = 7;
+  ProposalState state = 8;
+  string reviewer_id = 9;
+  string review_reason = 10;
+  google.protobuf.Timestamp reviewed_at = 11;
+  string experiment_id = 12;
+  string activated_by = 13;
+  google.protobuf.Timestamp activated_at = 14;
+  string rolled_back_by = 15;
+  google.protobuf.Timestamp rolled_back_at = 16;
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+  int32 treatment_basis_points = 19;
+  string assignment_salt = 20;
+}
+
+message RunAnalysisRequest {
+  string requested_by = 1;
+  string base_policy_version = 2;
+  string mode = 3;
+  string server_region = 4;
+  google.protobuf.Timestamp from = 5;
+  google.protobuf.Timestamp to = 6;
+  int32 historical_limit = 7;
+}
+
+message RunAnalysisResponse {
+  AuditRun run = 1;
+  PolicyProposal proposal = 2;
+}
+
+message GetRunRequest { string run_id = 1; }
+message GetRunResponse { AuditRun run = 1; }
+message ListRunsRequest { int32 limit = 1; }
+message ListRunsResponse { repeated AuditRun runs = 1; }
+
+message GetProposalRequest { string proposal_id = 1; }
+message GetProposalResponse { PolicyProposal proposal = 1; }
+message ListProposalsRequest { int32 limit = 1; }
+message ListProposalsResponse { repeated PolicyProposal proposals = 1; }
+
+message ReviewProposalRequest {
+  string proposal_id = 1;
+  string reviewer_id = 2;
+  string reason = 3;
+  bool approve = 4;
+}
+message ReviewProposalResponse { PolicyProposal proposal = 1; }
+
+message ActivateProposalRequest {
+  string proposal_id = 1;
+  string operator_id = 2;
+  int32 treatment_basis_points = 3;
+  string assignment_salt = 4;
+}
+message ActivateProposalResponse { PolicyProposal proposal = 1; }
+
+message RollbackProposalRequest {
+  string proposal_id = 1;
+  string operator_id = 2;
+}
+message RollbackProposalResponse { PolicyProposal proposal = 1; }

@@ -3,12 +3,15 @@ package matchmakinggrpc
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -18,6 +21,11 @@ type Server struct {
 	service      *application.TicketService
 	matchService *application.MatchService
 	analysis     *application.AnalysisService
+	operations   *application.PolicyOperationsService
+}
+
+func (s *Server) SetPolicyOperations(operations *application.PolicyOperationsService) {
+	s.operations = operations
 }
 
 func NewServer(
@@ -175,8 +183,13 @@ func (s *Server) ReplayHistoricalMatch(
 	if s.analysis == nil {
 		return nil, status.Error(codes.Unavailable, "match analysis service is unavailable")
 	}
+	candidatePolicies, err := policiesFromProto(request.GetCandidatePolicies())
+	if err != nil {
+		return nil, ticketError(err)
+	}
 	report, err := s.analysis.ReplayHistoricalMatch(ctx, application.ReplayRequest{
 		MatchID: request.GetMatchId(), PolicyVersions: request.GetPolicyVersions(), TicketIDs: request.GetTicketIds(),
+		CandidatePolicies: candidatePolicies,
 	})
 	if err != nil {
 		return nil, ticketError(err)
@@ -192,11 +205,142 @@ func (s *Server) ReplayHistoricalMatch(
 	return response, nil
 }
 
+func (s *Server) GetOperationalSnapshot(
+	ctx context.Context,
+	_ *matchmakingv1.GetOperationalSnapshotRequest,
+) (*matchmakingv1.GetOperationalSnapshotResponse, error) {
+	if s.operations == nil {
+		return nil, status.Error(codes.Unavailable, "policy operations service is unavailable")
+	}
+	snapshot, err := s.operations.Snapshot(ctx)
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	response := &matchmakingv1.GetOperationalSnapshotResponse{QueueSize: int32(snapshot.QueueSize)}
+	for _, policy := range snapshot.Policies {
+		response.Policies = append(response.Policies, policyToProto(policy))
+	}
+	if snapshot.ActiveExperiment != nil {
+		response.ActiveExperiment = experimentToProto(*snapshot.ActiveExperiment)
+	}
+	return response, nil
+}
+
+func (s *Server) ActivateApprovedPolicy(
+	ctx context.Context,
+	request *matchmakingv1.ActivateApprovedPolicyRequest,
+) (*matchmakingv1.ActivateApprovedPolicyResponse, error) {
+	if request == nil || request.GetPolicy() == nil {
+		return nil, status.Error(codes.InvalidArgument, "approved policy is required")
+	}
+	if s.operations == nil {
+		return nil, status.Error(codes.Unavailable, "policy operations service is unavailable")
+	}
+	policy, err := policyFromProto(request.GetPolicy())
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	experiment, err := s.operations.ActivateApprovedPolicy(
+		ctx, incomingControlToken(ctx), request.GetApprovalId(), policy,
+		int(request.GetTreatmentBasisPoints()), request.GetAssignmentSalt(),
+	)
+	if err != nil {
+		return nil, ticketError(err)
+	}
+	return &matchmakingv1.ActivateApprovedPolicyResponse{Experiment: experimentToProto(experiment)}, nil
+}
+
+func (s *Server) RollbackPolicyExperiment(
+	ctx context.Context,
+	request *matchmakingv1.RollbackPolicyExperimentRequest,
+) (*matchmakingv1.RollbackPolicyExperimentResponse, error) {
+	if request == nil || strings.TrimSpace(request.GetExperimentId()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "experiment_id is required")
+	}
+	if s.operations == nil {
+		return nil, status.Error(codes.Unavailable, "policy operations service is unavailable")
+	}
+	if err := s.operations.RollbackExperiment(ctx, incomingControlToken(ctx), request.GetExperimentId()); err != nil {
+		return nil, ticketError(err)
+	}
+	return &matchmakingv1.RollbackPolicyExperimentResponse{RolledBack: true}, nil
+}
+
+func policiesFromProto(definitions []*matchmakingv1.MatchPolicyDefinition) ([]domain.MatchPolicy, error) {
+	result := make([]domain.MatchPolicy, 0, len(definitions))
+	for _, definition := range definitions {
+		policy, err := policyFromProto(definition)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, policy)
+	}
+	return result, nil
+}
+
+func policyFromProto(definition *matchmakingv1.MatchPolicyDefinition) (domain.MatchPolicy, error) {
+	if definition == nil {
+		return domain.MatchPolicy{}, domain.ErrInvalidPolicy
+	}
+	policy := domain.MatchPolicy{
+		Version: definition.GetVersion(), TeamSize: int(definition.GetTeamSize()),
+		CandidateLimit: int(definition.GetCandidateLimit()), TeamAlgorithm: domain.TeamAlgorithm(definition.GetTeamAlgorithm()),
+		BeamWidth: int(definition.GetBeamWidth()), SkillWeight: definition.GetSkillWeight(),
+		RoleWeight: definition.GetRoleWeight(), LatencyWeight: definition.GetLatencyWeight(),
+		PartyWeight: definition.GetPartyWeight(), WaitWeight: definition.GetWaitWeight(),
+		InitialRatingRange: definition.GetInitialRatingRange(), MaxRatingRange: definition.GetMaxRatingRange(),
+		RatingExpansionPerSecond: definition.GetRatingExpansionPerSecond(), MaxLatencyMS: int(definition.GetMaxLatencyMs()),
+		MinQualityScore: definition.GetMinQualityScore(),
+		ReservationTTL:  time.Duration(definition.GetReservationTtlMs()) * time.Millisecond,
+		TicketTTL:       time.Duration(definition.GetTicketTtlMs()) * time.Millisecond,
+	}
+	if err := policy.Validate(); err != nil {
+		return domain.MatchPolicy{}, err
+	}
+	return policy, nil
+}
+
+func policyToProto(policy domain.MatchPolicy) *matchmakingv1.MatchPolicyDefinition {
+	return &matchmakingv1.MatchPolicyDefinition{
+		Version: policy.Version, TeamSize: int32(policy.TeamSize), CandidateLimit: int32(policy.CandidateLimit),
+		TeamAlgorithm: string(policy.TeamAlgorithm), BeamWidth: int32(policy.BeamWidth),
+		SkillWeight: policy.SkillWeight, RoleWeight: policy.RoleWeight, LatencyWeight: policy.LatencyWeight,
+		PartyWeight: policy.PartyWeight, WaitWeight: policy.WaitWeight,
+		InitialRatingRange: policy.InitialRatingRange, MaxRatingRange: policy.MaxRatingRange,
+		RatingExpansionPerSecond: policy.RatingExpansionPerSecond, MaxLatencyMs: int32(policy.MaxLatencyMS),
+		MinQualityScore: policy.MinQualityScore, ReservationTtlMs: policy.ReservationTTL.Milliseconds(),
+		TicketTtlMs: policy.TicketTTL.Milliseconds(),
+	}
+}
+
+func experimentToProto(experiment application.PolicyExperiment) *matchmakingv1.PolicyExperiment {
+	return &matchmakingv1.PolicyExperiment{
+		Id: experiment.ID, ControlVersion: experiment.ControlVersion, TreatmentVersion: experiment.TreatmentVersion,
+		TreatmentBasisPoints: int32(experiment.TreatmentBasisPoints), AssignmentSalt: experiment.AssignmentSalt,
+		StartedAt: timestamppb.New(experiment.StartedAt),
+	}
+}
+
+func incomingControlToken(ctx context.Context) string {
+	values, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	tokens := values.Get("x-agent-control-token")
+	if len(tokens) == 0 {
+		return ""
+	}
+	return tokens[0]
+}
+
 func qualityObservationToProto(observation application.MatchQualityObservation) *matchmakingv1.MatchQualityObservation {
 	return &matchmakingv1.MatchQualityObservation{
 		MatchId: observation.MatchID, PolicyVersion: observation.PolicyVersion,
 		Mode: observation.Mode, ServerRegion: observation.ServerRegion,
 		PredictedQuality: observation.PredictedQuality, ActualQuality: observation.ActualQuality,
+		SkillScore: observation.SkillScore, RoleScore: observation.RoleScore,
+		LatencyScore: observation.LatencyScore, PartyScore: observation.PartyScore,
+		WaitScore: observation.WaitScore, AverageRating: observation.AverageRating,
 		SignedQualityError: observation.SignedQualityError, AbsoluteQualityError: observation.AbsoluteQualityError,
 		PredictedWinRateA: observation.PredictedWinRateA, TeamAOutcome: observation.TeamAOutcome,
 		WinProbabilityBrier: observation.WinProbabilityBrier, DurationSeconds: int32(observation.DurationSeconds),
@@ -439,8 +583,9 @@ func matchStateToProto(state domain.MatchState) matchmakingv1.MatchState {
 
 func ticketError(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrInvalidTicket), errors.Is(err, application.ErrIdempotencyKeyRequired),
-		errors.Is(err, application.ErrInvalidAnalysis):
+	case errors.Is(err, domain.ErrInvalidTicket), errors.Is(err, domain.ErrInvalidPolicy),
+		errors.Is(err, application.ErrIdempotencyKeyRequired), errors.Is(err, application.ErrInvalidAnalysis),
+		errors.Is(err, application.ErrInvalidExperiment):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, application.ErrTicketNotFound), errors.Is(err, application.ErrPlayerNotFound):
 		return status.Error(codes.NotFound, err.Error())
@@ -452,6 +597,12 @@ func ticketError(err error) error {
 		return status.Error(codes.AlreadyExists, err.Error())
 	case errors.Is(err, application.ErrTicketForbidden):
 		return status.Error(codes.PermissionDenied, err.Error())
+	case errors.Is(err, application.ErrOperationsUnauthorized):
+		return status.Error(codes.PermissionDenied, err.Error())
+	case errors.Is(err, application.ErrApprovalRequired):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, application.ErrExperimentActive), errors.Is(err, application.ErrExperimentNotActive):
+		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, domain.ErrIllegalStateTransition):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, domain.ErrInvalidMatch):

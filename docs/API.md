@@ -164,6 +164,80 @@ delta from the source, search diagnostics, and whether the team split and role
 assignments match history. A failed counterfactual is returned as an outcome
 with `matched: false`; replay never mutates persisted state.
 
+## Agent policy workflow
+
+Agent endpoints require `X-Operator-ID` and `X-Operator-Role`. The supported
+reference roles are `analyst`, `reviewer`, and `admin`; the API derives every
+audit identity from these headers rather than accepting it in JSON.
+
+Create an offline analysis as an analyst or administrator:
+
+```http
+POST /api/v1/agent/runs
+X-Operator-ID: analyst-1
+X-Operator-Role: analyst
+Content-Type: application/json
+
+{
+  "base_policy_version": "v2-beam",
+  "mode": "ranked_5v5",
+  "server_region": "hongkong",
+  "historical_limit": 20
+}
+```
+
+The response contains the completed run audit, every allowlisted tool call,
+candidate policy and rationale, plus exactly five risk findings: fairness,
+latency cap, role fill, sample size, and high-rating-player experience. This
+operation only reads snapshots and runs historical replay; it cannot change
+live matchmaking.
+
+Runs and proposals can be inspected by all three roles:
+
+```http
+GET /api/v1/agent/runs?limit=20
+GET /api/v1/agent/runs/{run_id}
+GET /api/v1/agent/proposals?limit=20
+GET /api/v1/agent/proposals/{proposal_id}
+```
+
+A reviewer or administrator who is not the requester may approve a proposal
+only when no risk finding blocks it, or may reject it:
+
+```http
+POST /api/v1/agent/proposals/{proposal_id}/review
+X-Operator-ID: reviewer-1
+X-Operator-Role: reviewer
+Content-Type: application/json
+
+{
+  "decision": "approve",
+  "reason": "offline checks passed"
+}
+```
+
+Only an administrator may activate an approved proposal or roll it back. Basis
+points range from 1 to 10,000 and are persisted with the assignment salt so a
+retry cannot change rollout semantics:
+
+```http
+POST /api/v1/agent/proposals/{proposal_id}/activate
+X-Operator-ID: admin-1
+X-Operator-Role: admin
+Content-Type: application/json
+
+{
+  "treatment_basis_points": 1000,
+  "assignment_salt": "guarded-rollout-2026-08"
+}
+```
+
+```http
+POST /api/v1/agent/proposals/{proposal_id}/rollback
+X-Operator-ID: admin-1
+X-Operator-Role: admin
+```
+
 ## Operations
 
 The public gateway exposes:
@@ -188,6 +262,7 @@ Greedy-versus-Beam comparison is exposed through
 `match_team_formation_greedy_quality_score`, and
 `match_team_formation_beam_quality_score`.
 
-Player and Simulation expose the same operational routes on ports `8081` and
-`8083` respectively. Their gRPC health services remain available for internal
-dependency checks.
+Player, Simulation, and Agent expose the same operational routes on ports
+`8081`, `8083`, and `8084` respectively. Agent metrics include run outcome and
+duration plus proposal approval, rejection, activation, and rollback counters.
+Their gRPC health services remain available for internal dependency checks.

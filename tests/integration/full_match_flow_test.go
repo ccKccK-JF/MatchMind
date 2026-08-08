@@ -7,9 +7,14 @@ import (
 	"testing"
 	"time"
 
+	agentv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/agent/v1"
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
+	agentapp "github.com/ccKccK-JF/MatchMind/internal/agent/application"
+	agentgateway "github.com/ccKccK-JF/MatchMind/internal/agent/gateway/matchmakinggrpc"
+	agentmemory "github.com/ccKccK-JF/MatchMind/internal/agent/repository/memory"
+	agentgrpc "github.com/ccKccK-JF/MatchMind/internal/agent/transport/grpc"
 	matchmakingapp "github.com/ccKccK-JF/MatchMind/internal/matchmaking/application"
 	"github.com/ccKccK-JF/MatchMind/internal/matchmaking/domain"
 	matchmakingplayergateway "github.com/ccKccK-JF/MatchMind/internal/matchmaking/gateway/playergrpc"
@@ -28,7 +33,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestCompleteThreeServiceMatchFlow(t *testing.T) {
+func TestCompleteServiceMatchAndAgentAnalysisFlow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	now := time.Date(2026, time.August, 1, 15, 0, 0, 0, time.UTC)
@@ -60,8 +65,20 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	policyManager, err := matchmakingapp.NewPolicyManager(
+		[]domain.MatchPolicy{domain.DefaultPolicy(), domain.BeamPolicy()}, domain.DefaultPolicy().Version,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operationsService, err := matchmakingapp.NewPolicyOperationsService(ticketStore, policyManager, "integration-agent-token", func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	matchmakingTransport := matchmakinggrpc.NewServer(ticketService, matchService, analysisService)
+	matchmakingTransport.SetPolicyOperations(operationsService)
 	matchmakingConnection := startBufconnServer(t, func(server *grpc.Server) {
-		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakinggrpc.NewServer(ticketService, matchService, analysisService))
+		matchmakingv1.RegisterMatchmakingServiceServer(server, matchmakingTransport)
 	})
 	matchmakingClient := matchmakingv1.NewMatchmakingServiceClient(matchmakingConnection)
 
@@ -178,6 +195,34 @@ func TestCompleteThreeServiceMatchFlow(t *testing.T) {
 	if replay.GetTicketCount() != 10 || len(replay.GetOutcomes()) != 2 ||
 		!replay.GetOutcomes()[0].GetMatched() || !replay.GetOutcomes()[1].GetMatched() {
 		t.Fatalf("historical replay = %+v", replay)
+	}
+	agentService, err := agentapp.NewService(
+		agentmemory.NewRepository(),
+		agentgateway.NewClient(matchmakingClient, "integration-agent-token"),
+		"integration-advisor", "rules-v1", "prompt-v1", "v1-greedy", nil,
+		func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentConnection := startBufconnServer(t, func(server *grpc.Server) {
+		agentv1.RegisterAgentServiceServer(server, agentgrpc.NewServer(agentService))
+	})
+	agentClient := agentv1.NewAgentServiceClient(agentConnection)
+	agentResult, err := agentClient.RunAnalysis(ctx, &agentv1.RunAnalysisRequest{
+		RequestedBy: "integration-analyst", BasePolicyVersion: "v1-greedy",
+		Mode: "ranked_5v5", ServerRegion: "hongkong", HistoricalLimit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Agent RunAnalysis() error = %v", err)
+	}
+	if agentResult.GetRun().GetStatus() != agentv1.RunStatus_RUN_STATUS_SUCCEEDED ||
+		len(agentResult.GetRun().GetToolCalls()) != 3 || agentResult.GetProposal().GetRiskReport().GetPassed() {
+		t.Fatalf("Agent result = %+v", agentResult)
+	}
+	audited, err := agentClient.GetRun(ctx, &agentv1.GetRunRequest{RunId: agentResult.GetRun().GetId()})
+	if err != nil || audited.GetRun().GetOutputJson() == "" {
+		t.Fatalf("Agent audit = %+v, %v", audited, err)
 	}
 	_, err = matchmakingClient.CreateTicket(ctx, &matchmakingv1.CreateTicketRequest{
 		PlayerId: firstPlayerID, Mode: "ranked_5v5", ClientVersion: "1.0.0",

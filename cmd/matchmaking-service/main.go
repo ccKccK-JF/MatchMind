@@ -34,6 +34,7 @@ type ticketRepository interface {
 	application.TicketStore
 	application.MatchQueue
 	application.AssignedTicketCompleter
+	application.QueueSizer
 }
 
 type matchRepository interface {
@@ -141,7 +142,7 @@ func main() {
 	}
 	policyMode := strings.ToLower(config.String("MATCHMAKING_POLICY_MODE", "beam"))
 	policy := beamPolicy
-	var policyManager *application.PolicyManager
+	var initialExperiment *application.PolicyExperiment
 	switch policyMode {
 	case "greedy":
 		policy = greedyPolicy
@@ -153,24 +154,25 @@ func main() {
 			slog.Error("invalid A/B treatment allocation", "error", configErr)
 			os.Exit(1)
 		}
-		policyManager, err = application.NewPolicyManager(
-			[]domain.MatchPolicy{greedyPolicy, beamPolicy}, greedyPolicy.Version,
-		)
-		if err == nil {
-			err = policyManager.StartExperiment(application.PolicyExperiment{
-				ID: "team-formation-v2", ControlVersion: greedyPolicy.Version,
-				TreatmentVersion: beamPolicy.Version, TreatmentBasisPoints: treatmentBasisPoints,
-				AssignmentSalt: config.String("MATCHMAKING_AB_SALT", "matchmind-team-formation-v2"),
-				StartedAt:      time.Now(),
-			})
-		}
-		if err != nil {
-			slog.Error("configure matchmaking A/B experiment", "error", err)
-			os.Exit(1)
-		}
 		policy = greedyPolicy
+		initialExperiment = &application.PolicyExperiment{
+			ID: "team-formation-v2", ControlVersion: greedyPolicy.Version,
+			TreatmentVersion: beamPolicy.Version, TreatmentBasisPoints: treatmentBasisPoints,
+			AssignmentSalt: config.String("MATCHMAKING_AB_SALT", "matchmind-team-formation-v2"),
+			StartedAt:      time.Now(),
+		}
 	default:
 		slog.Error("unsupported matchmaking policy mode", "mode", policyMode)
+		os.Exit(1)
+	}
+	policyManager, err := application.NewPolicyManager(
+		[]domain.MatchPolicy{greedyPolicy, beamPolicy}, policy.Version,
+	)
+	if err == nil && initialExperiment != nil {
+		err = policyManager.StartExperiment(*initialExperiment)
+	}
+	if err != nil {
+		slog.Error("configure matchmaking policy registry", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("matchmaking policy configured", "mode", policyMode, "default_version", policy.Version, "beam_width", beamPolicy.BeamWidth)
@@ -193,9 +195,7 @@ func main() {
 			slog.Error("create matchmaking worker", "worker_index", workerIndex, "error", workerErr)
 			os.Exit(1)
 		}
-		if policyManager != nil {
-			worker.SetPolicySelector(policyManager)
-		}
+		worker.SetPolicySelector(policyManager)
 		worker.SetMetrics(workerMetrics)
 		go worker.Run(ctx, 250*time.Millisecond)
 	}
@@ -206,7 +206,16 @@ func main() {
 		slog.Error("create match analysis service", "error", err)
 		os.Exit(1)
 	}
+	analysisService.SetPolicyCatalog(policyManager)
 	transport := matchmakinggrpc.NewServer(service, matchService, analysisService)
+	operationsService, err := application.NewPolicyOperationsService(
+		store, policyManager, config.String("AGENT_CONTROL_TOKEN", "matchmind-local-agent-control"), nil,
+	)
+	if err != nil {
+		slog.Error("create policy operations service", "error", err)
+		os.Exit(1)
+	}
+	transport.SetPolicyOperations(operationsService)
 
 	address := config.String("MATCHMAKING_GRPC_ADDRESS", ":50052")
 	errCh := make(chan error, 2)

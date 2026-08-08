@@ -11,9 +11,10 @@ gRPC/Protocol Buffers for internal APIs.
 | `player-service` | gRPC `:50051`, HTTP `:8081` | Player profiles and ratings |
 | `matchmaking-service` | gRPC `:50052`, HTTP `:8082` | Tickets, queues, team formation, and matches |
 | `simulation-service` | gRPC `:50053`, HTTP `:8083` | Deterministic match simulation |
+| `agent-service` | gRPC `:50054`, HTTP `:8084` | Offline policy advice, risk review, approval audit, and controlled rollout |
 | `api-service` | HTTP `:8080` | Public REST API and downstream readiness |
 
-The three internal gRPC services expose standard gRPC health and reflection.
+The four internal gRPC services expose standard gRPC health and reflection.
 Every process exposes HTTP liveness/readiness/metrics endpoints.
 
 ## Development status
@@ -45,9 +46,17 @@ Every process exposes HTTP liveness/readiness/metrics endpoints.
   through `matchmaking-service`. Its offline batch API evaluates up to 10,000
   seeded cases with bounded concurrency without changing live Match or Elo
   state.
-- A three-service integration test proves the complete in-memory flow from ten
+- `agent-service` has a fixed five-tool allowlist and cannot issue Shell or
+  arbitrary SQL. It reads queue/policy/quality data, generates a structured
+  candidate policy, replays historical Matches offline, and records fairness,
+  latency, role-fill, sample-size, and high-rating-player risk findings. A
+  separate reviewer must approve a passing proposal before an administrator
+  can start a guarded rollout; activation and rollback are audited and
+  retry-safe. Runs and proposals support memory or PostgreSQL storage.
+- A full-service integration test proves the complete in-memory flow from ten
   players entering the queue through match completion, rating history,
-  predicted-versus-actual quality analysis, and Greedy/Beam historical replay.
+  predicted-versus-actual quality analysis, Greedy/Beam historical replay, and
+  an audited Agent proposal.
 - `api-service` exposes the required REST routes, trace IDs, JSON error
   mapping, health/readiness checks, and Prometheus-format API metrics.
 - `matchmaking-service` exposes the required queue, wait, attempt, success,
@@ -112,7 +121,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-race-tools
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\race.ps1
 ```
 
-Run the complete four-process demo:
+Run the complete five-process demo:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1
@@ -124,6 +133,7 @@ Run the services in separate terminals, in dependency order:
 go run .\cmd\player-service
 go run .\cmd\matchmaking-service
 go run .\cmd\simulation-service
+go run .\cmd\agent-service
 go run .\cmd\api-service
 ```
 
@@ -147,6 +157,7 @@ Runtime configuration:
 | `MATCHMAKING_BEAM_WIDTH` | `64` |
 | `MATCHMAKING_AB_TREATMENT_BPS` | `5000` |
 | `MATCHMAKING_AB_SALT` | `matchmind-team-formation-v2` |
+| `AGENT_CONTROL_TOKEN` | `matchmind-local-agent-control` (must match Agent and Matchmaking) |
 | `MATCHMAKING_TICKET_STORAGE_BACKEND` | `memory` |
 | `MATCHMAKING_MATCH_STORAGE_BACKEND` | Ticket backend (`postgres` when Ticket backend is `redis`) |
 | `REDIS_ADDRESS` | `localhost:6379` |
@@ -156,8 +167,16 @@ Runtime configuration:
 | `PLAYER_GRPC_TARGET` | `localhost:50051` |
 | `SIMULATION_GRPC_ADDRESS` | `:50053` |
 | `SIMULATION_HTTP_ADDRESS` | `:8083` |
+| `AGENT_GRPC_ADDRESS` | `:50054` |
+| `AGENT_HTTP_ADDRESS` | `:8084` |
+| `AGENT_STORAGE_BACKEND` | `memory` |
+| `AGENT_NAME` | `matchmind-policy-advisor` |
+| `AGENT_MODEL` | `deterministic-policy-advisor-v1` |
+| `AGENT_PROMPT_VERSION` | `matchmind-agent-v1` |
+| `AGENT_DEFAULT_BASE_POLICY` | `v2-beam` |
 | `MATCHMAKING_GRPC_TARGET` | `localhost:50052` |
 | `SIMULATION_GRPC_TARGET` | `localhost:50053` |
+| `AGENT_GRPC_TARGET` | `localhost:50054` |
 | `API_HTTP_ADDRESS` | `:8080` |
 
 ## Documentation

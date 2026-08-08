@@ -45,6 +45,12 @@ type MatchQualityObservation struct {
 	ServerRegion         string
 	PredictedQuality     float64
 	ActualQuality        float64
+	SkillScore           float64
+	RoleScore            float64
+	LatencyScore         float64
+	PartyScore           float64
+	WaitScore            float64
+	AverageRating        float64
 	SignedQualityError   float64
 	AbsoluteQualityError float64
 	PredictedWinRateA    float64
@@ -78,9 +84,10 @@ type QualityAnalysis struct {
 }
 
 type ReplayRequest struct {
-	MatchID        string
-	PolicyVersions []string
-	TicketIDs      []string
+	MatchID           string
+	PolicyVersions    []string
+	TicketIDs         []string
+	CandidatePolicies []domain.MatchPolicy
 }
 
 type ReplayPlayer struct {
@@ -128,6 +135,11 @@ type AnalysisService struct {
 	matches  MatchHistoryReader
 	tickets  HistoricalTicketReader
 	policies map[string]domain.MatchPolicy
+	catalog  interface{ Policies() []domain.MatchPolicy }
+}
+
+func (s *AnalysisService) SetPolicyCatalog(catalog interface{ Policies() []domain.MatchPolicy }) {
+	s.catalog = catalog
 }
 
 func NewAnalysisService(
@@ -187,7 +199,11 @@ func (s *AnalysisService) AnalyzeMatchQuality(
 		observation := MatchQualityObservation{
 			MatchID: match.ID(), PolicyVersion: match.PolicyVersion(), Mode: match.Mode(),
 			ServerRegion: match.ServerRegion(), PredictedQuality: quality.TotalScore,
-			ActualQuality: result.ActualQualityScore, SignedQualityError: signedError,
+			ActualQuality: result.ActualQualityScore, SkillScore: quality.SkillScore,
+			RoleScore: quality.RoleScore, LatencyScore: quality.LatencyScore,
+			PartyScore: quality.PartyScore, WaitScore: quality.WaitScore,
+			AverageRating:        (match.TeamA().AverageRating + match.TeamB().AverageRating) / 2,
+			SignedQualityError:   signedError,
 			AbsoluteQualityError: math.Abs(signedError), PredictedWinRateA: quality.PredictedWinRateA,
 			TeamAOutcome: outcomeA, WinProbabilityBrier: square(quality.PredictedWinRateA - outcomeA),
 			DurationSeconds: result.DurationSeconds, OneSided: result.OneSided,
@@ -227,12 +243,12 @@ func (s *AnalysisService) ReplayHistoricalMatch(ctx context.Context, request Rep
 	if source.State() != domain.MatchStateFinished || !finished {
 		return ReplayReport{}, ErrInvalidAnalysis
 	}
-	versions, err := s.replayPolicyVersions(request.PolicyVersions)
+	policies, versions, err := s.replayPolicies(request.PolicyVersions, request.CandidatePolicies)
 	if err != nil {
 		return ReplayReport{}, err
 	}
 	ticketIDs := replayTicketIDs(source, request.TicketIDs)
-	maximumCandidates := s.maximumCandidateLimit(versions)
+	maximumCandidates := maximumCandidateLimit(versions, policies)
 	if len(ticketIDs) < domain.DefaultPolicy().TeamSize*2 || len(ticketIDs) > maximumCandidates {
 		return ReplayReport{}, ErrInvalidAnalysis
 	}
@@ -256,7 +272,7 @@ func (s *AnalysisService) ReplayHistoricalMatch(ctx context.Context, request Rep
 		TicketCount:         len(tickets), Outcomes: make([]ReplayOutcome, 0, len(versions)),
 	}
 	for _, version := range versions {
-		policy := s.policies[version]
+		policy := policies[version]
 		outcome := ReplayOutcome{PolicyVersion: version, Algorithm: policy.TeamAlgorithm}
 		candidates, candidateErr := engine.GenerateCandidates(tickets, source.CreatedAt(), policy)
 		outcome.AcceptedTickets = len(candidates.Tickets)
@@ -288,22 +304,45 @@ func (s *AnalysisService) ReplayHistoricalMatch(ctx context.Context, request Rep
 	return report, nil
 }
 
-func (s *AnalysisService) replayPolicyVersions(requested []string) ([]string, error) {
+func (s *AnalysisService) replayPolicies(
+	requested []string,
+	candidates []domain.MatchPolicy,
+) (map[string]domain.MatchPolicy, []string, error) {
+	basePolicies := s.policies
+	if s.catalog != nil {
+		basePolicies = make(map[string]domain.MatchPolicy)
+		for _, policy := range s.catalog.Policies() {
+			basePolicies[policy.Version] = policy
+		}
+	}
+	policies := make(map[string]domain.MatchPolicy, len(basePolicies)+len(candidates))
+	for version, policy := range basePolicies {
+		policies[version] = policy
+	}
+	for _, policy := range candidates {
+		if err := policy.Validate(); err != nil {
+			return nil, nil, err
+		}
+		if _, exists := policies[policy.Version]; exists {
+			return nil, nil, domain.ErrInvalidPolicy
+		}
+		policies[policy.Version] = policy
+	}
 	if len(requested) == 0 {
-		requested = make([]string, 0, len(s.policies))
-		for version := range s.policies {
+		requested = make([]string, 0, len(policies))
+		for version := range policies {
 			requested = append(requested, version)
 		}
 	}
 	if len(requested) > MaxReplayPolicies {
-		return nil, ErrInvalidAnalysis
+		return nil, nil, ErrInvalidAnalysis
 	}
 	seen := make(map[string]struct{}, len(requested))
 	versions := make([]string, 0, len(requested))
 	for _, version := range requested {
 		version = strings.TrimSpace(version)
-		if _, exists := s.policies[version]; !exists {
-			return nil, ErrPolicyNotFound
+		if _, exists := policies[version]; !exists {
+			return nil, nil, ErrPolicyNotFound
 		}
 		if _, duplicate := seen[version]; duplicate {
 			continue
@@ -312,17 +351,17 @@ func (s *AnalysisService) replayPolicyVersions(requested []string) ([]string, er
 		versions = append(versions, version)
 	}
 	if len(versions) == 0 {
-		return nil, ErrInvalidAnalysis
+		return nil, nil, ErrInvalidAnalysis
 	}
 	sort.Strings(versions)
-	return versions, nil
+	return policies, versions, nil
 }
 
-func (s *AnalysisService) maximumCandidateLimit(versions []string) int {
+func maximumCandidateLimit(versions []string, policies map[string]domain.MatchPolicy) int {
 	maximum := 0
 	for _, version := range versions {
-		if s.policies[version].CandidateLimit > maximum {
-			maximum = s.policies[version].CandidateLimit
+		if policies[version].CandidateLimit > maximum {
+			maximum = policies[version].CandidateLimit
 		}
 	}
 	return maximum

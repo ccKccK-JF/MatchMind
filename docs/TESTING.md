@@ -10,8 +10,9 @@ go vet ./...
 The suite covers Elo math, domain validation and state transitions, dynamic
 candidate windows, deterministic team formation, role assignment, quality
 scoring, reservation rollback and recovery, simulation reproducibility,
-idempotent rating updates, HTTP mapping, Prometheus output, and the complete
-three-service gRPC flow.
+idempotent rating updates, HTTP mapping, Prometheus output, Agent audit/state
+transitions, five-check risk gating, approval separation of duties,
+activation/rollback, and the complete service gRPC flow.
 
 Algorithm tests use a crafted candidate pool where Beam Search must improve
 role coverage and total quality over greedy selection. They also verify stable
@@ -21,7 +22,8 @@ cases at concurrency 1 and 16 and requires byte-for-byte equivalent reports.
 Analysis tests verify signed/absolute prediction error, per-policy aggregation,
 Brier win-probability scoring, normalized filters, invalid bounds, deterministic
 historical replay, and non-mutation of source Tickets. The complete in-memory
-gRPC test now finishes a Match and then exercises both analysis and replay.
+gRPC test finishes a Match, exercises analysis/replay, then runs the Agent over
+the same real Matchmaking gRPC boundary and verifies its immutable tool audit.
 
 With a real PostgreSQL instance, enable the isolated-schema persistence test:
 
@@ -36,7 +38,9 @@ recovery, optimistic revision conflicts, and transactional Match/Ticket
 assignment. The in-memory and PostgreSQL flows also verify that players cannot
 requeue during an assigned Match but can create a new Ticket after it finishes.
 The PostgreSQL path additionally queries the finished-Match history using
-policy, mode, region, time-range, and limit filters.
+policy, mode, region, time-range, and limit filters. It also verifies
+transactional Agent run/proposal completion and optimistic proposal review
+updates.
 
 With a real Redis instance, enable the Lua reservation/recovery test:
 

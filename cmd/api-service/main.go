@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	agentv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/agent/v1"
 	matchmakingv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/matchmaking/v1"
 	playerv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/player/v1"
 	simulationv1 "github.com/ccKccK-JF/MatchMind/gen/go/matchmind/simulation/v1"
@@ -37,6 +38,8 @@ func main() {
 	defer matchmakingConnection.Close()
 	simulationConnection := mustConnect(config.String("SIMULATION_GRPC_TARGET", "localhost:50053"))
 	defer simulationConnection.Close()
+	agentConnection := mustConnect(config.String("AGENT_GRPC_TARGET", "localhost:50054"))
+	defer agentConnection.Close()
 
 	registry := platformmetrics.NewRegistry()
 	api := apihttp.NewServer(
@@ -44,11 +47,13 @@ func main() {
 		matchmakingv1.NewMatchmakingServiceClient(matchmakingConnection),
 		simulationv1.NewSimulationServiceClient(simulationConnection),
 		apihttp.NewAPIMetrics(registry),
+		agentv1.NewAgentServiceClient(agentConnection),
 	)
 	downstreams := []downstream{
 		{name: "matchmind.player.v1.PlayerService", health: grpc_health_v1.NewHealthClient(playerConnection)},
 		{name: "matchmind.matchmaking.v1.MatchmakingService", health: grpc_health_v1.NewHealthClient(matchmakingConnection)},
 		{name: "matchmind.simulation.v1.SimulationService", health: grpc_health_v1.NewHealthClient(simulationConnection)},
+		{name: "matchmind.agent.v1.AgentService", health: grpc_health_v1.NewHealthClient(agentConnection)},
 	}
 	handler := httpserver.NewHandler(api, registry, func(ctx context.Context) error {
 		for _, service := range downstreams {

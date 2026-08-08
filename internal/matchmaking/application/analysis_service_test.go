@@ -159,6 +159,19 @@ func TestReplayHistoricalMatchIsDeterministicAndReadOnly(t *testing.T) {
 			t.Fatalf("historical ticket %s was mutated to %s", ticket.ID(), ticket.State())
 		}
 	}
+	candidate := domain.BeamPolicy()
+	candidate.Version = "candidate-offline-only"
+	candidate.MinQualityScore = 65
+	candidateReport, err := service.ReplayHistoricalMatch(context.Background(), ReplayRequest{
+		MatchID: source.ID(), TicketIDs: ticketMapIDs(tickets),
+		PolicyVersions: []string{candidate.Version}, CandidatePolicies: []domain.MatchPolicy{candidate},
+	})
+	if err != nil || len(candidateReport.Outcomes) != 1 || !candidateReport.Outcomes[0].Matched {
+		t.Fatalf("candidate policy replay = %#v, %v", candidateReport, err)
+	}
+	if _, exists := service.policies[candidate.Version]; exists {
+		t.Fatal("offline candidate was registered in the live policy catalog")
+	}
 }
 
 func TestAnalysisRejectsInvalidLimitsAndUnknownReplayPolicy(t *testing.T) {

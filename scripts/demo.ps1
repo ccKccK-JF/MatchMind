@@ -18,6 +18,7 @@ $serviceDefinitions = @(
     @{ Name = "player-service"; Package = ".\cmd\player-service" },
     @{ Name = "matchmaking-service"; Package = ".\cmd\matchmaking-service" },
     @{ Name = "simulation-service"; Package = ".\cmd\simulation-service" },
+    @{ Name = "agent-service"; Package = ".\cmd\agent-service" },
     @{ Name = "api-service"; Package = ".\cmd\api-service" }
 )
 
@@ -109,6 +110,14 @@ try {
     $analysis = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/analytics/match-quality?mode=ranked_5v5&server_region=hongkong&limit=10"
     $replayBody = @{ policy_versions = @("v1-greedy", "v2-beam") } | ConvertTo-Json -Depth 3
     $replay = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/matches/$matchId/replay" -ContentType "application/json" -Body $replayBody
+    $agentBody = @{
+        base_policy_version = $match.match.policy_version
+        mode = "ranked_5v5"
+        server_region = "hongkong"
+        historical_limit = 10
+    } | ConvertTo-Json -Depth 3
+    $agentHeaders = @{ "X-Operator-ID" = "demo-analyst"; "X-Operator-Role" = "analyst" }
+    $agent = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/agent/runs" -Headers $agentHeaders -ContentType "application/json" -Body $agentBody
 
     [pscustomobject]@{
         match_id = $matchId
@@ -123,6 +132,9 @@ try {
         policy_quality_summary_count = $analysis.summaries.Count
         replay_policy_versions = ($replay.outcomes.policy_version -join ", ")
         replay_quality_scores = (($replay.outcomes | ForEach-Object { "{0}:{1:N2}" -f $_.policy_version, $_.quality.total_score }) -join ", ")
+        agent_run_id = $agent.run.id
+        agent_proposal_id = $agent.proposal.id
+        agent_risk_passed = $agent.proposal.risk_report.passed
         api_metrics = "$BaseUrl/metrics"
         matchmaking_metrics = "http://localhost:8082/metrics"
     } | Format-List
