@@ -6,6 +6,15 @@ Run:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1
 ```
 
+The command writes an assertion-backed machine-readable report to
+`.cache/demo/acceptance-report.json`. Choose another path when a CI job needs
+to upload it:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1 `
+  -ReportPath .cache\portfolio\demo-report.json
+```
+
 The script performs the following observable flow:
 
 1. builds and starts Player, Matchmaking, Simulation, Agent, and API services;
@@ -19,11 +28,17 @@ The script performs the following observable flow:
 9. compares predicted quality with the stored actual quality;
 10. replays the historical Ticket snapshot through Greedy and Beam policies;
 11. asks the Agent for a structured candidate policy using the analyst role;
-12. prints the Agent run, proposal, five risk findings, Match, analysis, and
-    replay summary, then terminates all demo processes.
+12. verifies API and Matchmaking metrics, writes the JSON acceptance report,
+    prints a compact summary, then terminates and waits for all demo processes.
 
 Because the seed is fixed, the same input state produces the same simulation
 result. API responses include an `X-Trace-ID`, and operational metrics remain
 available during the run at ports `8080`, `8082`, and `8084`. The one-Match
 demo intentionally produces a blocking `sample_size` finding, demonstrating
 that an under-sampled proposal cannot be approved or activated.
+
+The script fails when any required state, seed, rating-history entry, analysis,
+replay outcome, Agent risk finding, or metric is missing. A failed report
+contains the error and the last 20 stderr lines for each service. Service logs
+remain under `.cache/demo`; this directory and the built binaries are ignored
+by Git.

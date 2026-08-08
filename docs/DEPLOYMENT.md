@@ -12,7 +12,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo.ps1
 
 The demo script builds all five executables, starts them in hidden processes,
 waits for readiness, runs one complete 5v5 match, prints the result, and always
-stops the processes. Logs are written under `.cache/demo`.
+stops and waits for the processes. Logs and an assertion-backed JSON acceptance
+report are written under `.cache/demo`.
 
 To start processes manually, use this order:
 

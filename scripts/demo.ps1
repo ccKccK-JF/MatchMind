@@ -1,5 +1,6 @@
 param(
     [string]$BaseUrl = "http://localhost:8080",
+    [string]$ReportPath = "",
     [switch]$SkipBuild
 )
 
@@ -7,12 +8,23 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$goExecutable = "C:\Program Files\Go\bin\go.exe"
+$goCommand = Get-Command go -ErrorAction Stop
+$goExecutable = $goCommand.Source
 $binDirectory = Join-Path $repoRoot "bin"
 $demoDirectory = Join-Path $repoRoot ".cache\demo"
 $env:GOCACHE = Join-Path $repoRoot ".cache\go-build"
 
-New-Item -ItemType Directory -Force -Path $binDirectory, $demoDirectory | Out-Null
+if ([string]::IsNullOrWhiteSpace($ReportPath)) {
+    $ReportPath = Join-Path $demoDirectory "acceptance-report.json"
+} elseif (-not [System.IO.Path]::IsPathRooted($ReportPath)) {
+    $ReportPath = Join-Path $repoRoot $ReportPath
+}
+$ReportPath = [System.IO.Path]::GetFullPath($ReportPath)
+$reportDirectory = Split-Path -Parent $ReportPath
+$startedAt = [DateTimeOffset]::UtcNow
+$gitCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+
+New-Item -ItemType Directory -Force -Path $binDirectory, $demoDirectory, $reportDirectory | Out-Null
 
 $serviceDefinitions = @(
     @{ Name = "player-service"; Package = ".\cmd\player-service" },
@@ -120,29 +132,115 @@ try {
     $agentHeaders = @{ "X-Operator-ID" = "demo-analyst"; "X-Operator-Role" = "analyst" }
     $agent = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/agent/runs" -Headers $agentHeaders -ContentType "application/json" -Body $agentBody
 
+    if ($match.match.state -ne "MATCH_STATE_READY") {
+        throw "Expected READY Match before simulation, got $($match.match.state)"
+    }
+    if ($simulation.random_seed -ne 42) {
+        throw "Simulation did not preserve random seed 42"
+    }
+    if ($rating.history.Count -ne 1) {
+        throw "Expected exactly one rating history entry, got $($rating.history.Count)"
+    }
+    if ($analysis.observations.Count -lt 1 -or $analysis.summaries.Count -lt 1) {
+        throw "Quality analysis did not return observations and summaries"
+    }
+    if ($replay.outcomes.Count -ne 2) {
+        throw "Expected two replay outcomes, got $($replay.outcomes.Count)"
+    }
+    if ($agent.proposal.risk_report.findings.Count -ne 5) {
+        throw "Expected five Agent risk findings, got $($agent.proposal.risk_report.findings.Count)"
+    }
+
+    $apiMetricsBody = (Invoke-WebRequest -UseBasicParsing -Method Get -Uri "$BaseUrl/metrics" -TimeoutSec 5).Content
+    $matchmakingMetricsBody = (Invoke-WebRequest -UseBasicParsing -Method Get -Uri "http://localhost:8082/metrics" -TimeoutSec 5).Content
+    if (-not $apiMetricsBody.Contains("api_http_request_total")) {
+        throw "API metrics did not expose api_http_request_total"
+    }
+    if (-not $matchmakingMetricsBody.Contains("match_success_total")) {
+        throw "Matchmaking metrics did not expose match_success_total"
+    }
+
+    $completedAt = [DateTimeOffset]::UtcNow
+    $report = [ordered]@{
+        schema_version = 1
+        status = "passed"
+        git_commit = $gitCommit
+        started_at = $startedAt.ToString("o")
+        completed_at = $completedAt.ToString("o")
+        elapsed_milliseconds = [math]::Round(($completedAt - $startedAt).TotalMilliseconds)
+        services = @($serviceDefinitions | ForEach-Object { $_.Name })
+        flow = [ordered]@{
+            players_created = 10
+            tickets_created = $tickets.Count
+            match_id = $matchId
+            match_state_before_simulation = $match.match.state
+            predicted_win_rate_a = $match.match.predicted_win_rate_a
+            quality_score = $match.match.quality_score
+            winning_team = $simulation.winning_team
+            random_seed = $simulation.random_seed
+            player_00_rating_after_match = $rating.rating
+            player_00_history_entries = $rating.history.Count
+            quality_prediction_absolute_error = $analysis.observations[0].absolute_quality_error
+            policy_quality_summary_count = $analysis.summaries.Count
+            replay_outcomes = @($replay.outcomes | ForEach-Object {
+                [ordered]@{ policy_version = $_.policy_version; quality_score = $_.quality.total_score }
+            })
+            agent_run_id = $agent.run.id
+            agent_proposal_id = $agent.proposal.id
+            agent_risk_passed = $agent.proposal.risk_report.passed
+            agent_risk_finding_count = $agent.proposal.risk_report.findings.Count
+        }
+        checks = [ordered]@{
+            api_ready = $true
+            match_created = $true
+            deterministic_seed_preserved = $true
+            rating_history_persisted = $true
+            quality_analysis_returned = $true
+            greedy_and_beam_replayed = $true
+            five_agent_risks_returned = $true
+            api_metrics_exposed = $true
+            matchmaking_metrics_exposed = $true
+        }
+    }
+    $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
+
     [pscustomobject]@{
-        match_id = $matchId
-        match_state_before_simulation = $match.match.state
-        predicted_win_rate_a = $match.match.predicted_win_rate_a
-        quality_score = $match.match.quality_score
-        winning_team = $simulation.winning_team
-        random_seed = $simulation.random_seed
-        player_00_rating_after_match = $rating.rating
-        player_00_history_entries = $rating.history.Count
-        quality_prediction_absolute_error = $analysis.observations[0].absolute_quality_error
-        policy_quality_summary_count = $analysis.summaries.Count
-        replay_policy_versions = ($replay.outcomes.policy_version -join ", ")
-        replay_quality_scores = (($replay.outcomes | ForEach-Object { "{0}:{1:N2}" -f $_.policy_version, $_.quality.total_score }) -join ", ")
-        agent_run_id = $agent.run.id
-        agent_proposal_id = $agent.proposal.id
-        agent_risk_passed = $agent.proposal.risk_report.passed
-        api_metrics = "$BaseUrl/metrics"
-        matchmaking_metrics = "http://localhost:8082/metrics"
+        status = $report.status
+        git_commit = $report.git_commit
+        elapsed_milliseconds = $report.elapsed_milliseconds
+        match_id = $report.flow.match_id
+        quality_score = $report.flow.quality_score
+        winning_team = $report.flow.winning_team
+        rating_history_entries = $report.flow.player_00_history_entries
+        replay_policy_versions = (($report.flow.replay_outcomes | ForEach-Object { $_.policy_version }) -join ", ")
+        agent_risk_finding_count = $report.flow.agent_risk_finding_count
+        report_path = $ReportPath
     } | Format-List
+} catch {
+    $completedAt = [DateTimeOffset]::UtcNow
+    $logTails = [ordered]@{}
+    foreach ($service in $serviceDefinitions) {
+        $stderr = Join-Path $demoDirectory ($service.Name + ".stderr.log")
+        if (Test-Path -LiteralPath $stderr) {
+            $logTails[$service.Name] = @((Get-Content -LiteralPath $stderr -Tail 20 -ErrorAction SilentlyContinue))
+        }
+    }
+    [ordered]@{
+        schema_version = 1
+        status = "failed"
+        git_commit = $gitCommit
+        started_at = $startedAt.ToString("o")
+        completed_at = $completedAt.ToString("o")
+        elapsed_milliseconds = [math]::Round(($completedAt - $startedAt).TotalMilliseconds)
+        error = $_.Exception.Message
+        stderr_tails = $logTails
+    } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
+    throw
 } finally {
     foreach ($process in $processes) {
         if (-not $process.HasExited) {
             Stop-Process -Id $process.Id -Force
+            Wait-Process -Id $process.Id -Timeout 5 -ErrorAction SilentlyContinue
         }
     }
 }

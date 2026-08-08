@@ -216,5 +216,6 @@ Runtime configuration:
 - [Deployment](docs/DEPLOYMENT.md)
 - [Testing and load testing](docs/TESTING.md)
 - [Reproducible demo](docs/DEMO.md)
+- [Portfolio and interview guide](docs/PORTFOLIO_GUIDE.md)
 - [Database design](docs/DATABASE.md)
 - [Requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md)

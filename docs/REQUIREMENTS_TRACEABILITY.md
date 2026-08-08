@@ -39,7 +39,7 @@ an automated check exist. Planned items are not counted as complete.
 | Race safety | Verified | `scripts/race.ps1` runs `go test -race -count=1 ./...` and passes on Windows |
 | Real PostgreSQL/Redis integration | Implemented, environment-gated | Isolated-schema PostgreSQL and isolated Redis tests exist; live external services are required to execute the gated variants |
 | 500 requests/s, 100k queue, P95/P99 targets | Pending verification | Load generator exists, but no current machine/run artifact proves the targets |
-| Reproducible complete demo | Implemented | Five-process PowerShell demo covers Match, Elo, analysis, replay and Agent; runtime execution remains an acceptance gate while services are intentionally kept off |
+| Reproducible complete demo | Verified | Assertion-backed five-process PowerShell demo was executed successfully; it verifies Match, rating history, analysis, Greedy/Beam replay, five Agent risks and metrics, writes a JSON report, captures failure stderr, and always removes its processes |
 | Glicko-2 rating | Verified optional mode | Official worked example, configurable tau, aggregate-team application, atomic uncertainty persistence, idempotency, gRPC/REST fields and automated tests; Elo remains the default |
 | Agones allocation | Implemented, environment-gated | Kubernetes adapter reads Fleet ready replicas and creates v1 `GameServerAllocation` resources with RBAC and HTTP contract tests; a live Agones cluster is required for deployment verification |
 | NATS/outbox | Pending extension | Architecture keeps the boundary open; no message broker is required by the first-version acceptance flow |
